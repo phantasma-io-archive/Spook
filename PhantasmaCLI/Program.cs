@@ -5,14 +5,21 @@ using Phantasma.Blockchain.Consensus;
 using Phantasma.Blockchain;
 using Phantasma.Cryptography;
 using Phantasma.Network.P2P;
-using Phantasma.VM.Utils;
 using Phantasma.Core.Log;
-using Phantasma.Core.Types;
+using Phantasma.Tests;
+using Phantasma.Core.Utils;
 
 namespace Phantasma.CLI
 {
     class Program
     {
+        private static readonly string[] validatorWIFs = new string[]
+        {
+            "L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25", //P2f7ZFuj6NfZ76ymNMnG3xRBT5hAMicDrQRHE4S7SoxEr
+            "L1sEB8Z6h5Y7aQKqxbAkrzQLY5DodmPacjqSkFPmcR82qdmHEEdY", // PGBinkbZA3Q6BxMnL2HnJSBubNvur3iC6GtQpEThDnvrr
+            "KxWUCAD2wECLfA7diT7sV7V3jcxAf9GSKqZy3cvAt79gQLHQ2Qo8", // PDiqQHDwe6MTcP6TH6DYjq7FTUouvy2YEkDXz2chCABCb
+        };
+
         static void PrintChain(Chain chain)
         {
             Console.WriteLine("Listing blocks...");
@@ -23,8 +30,9 @@ namespace Phantasma.CLI
 
                 Console.WriteLine("\tTransactions: ");
                 int index = 0;
-                foreach (var tx in block.Transactions)
+                foreach (var hash in block.TransactionHashes)
                 {
+                    var tx = chain.FindTransactionByHash(hash);
                     Console.WriteLine("\t\tTransaction #" + index);
                     Console.WriteLine("\t\tHash: " + tx.Hash);
                     Console.WriteLine();
@@ -34,68 +42,67 @@ namespace Phantasma.CLI
 
                 Console.WriteLine("\tEvents: ");
                 index = 0;
-                foreach (var evt in block.Events)
+                foreach (var hash in block.TransactionHashes)
                 {
-                    Console.WriteLine("\t\tEvent #" + index);
-                    Console.WriteLine("\t\tKind: " + evt.Kind);
-                    Console.WriteLine("\t\tTarget: " + evt.Address.Text);
-                    Console.WriteLine();
+                    var events = block.GetEventsForTransaction(hash);
 
-                    index++;
+                    foreach (var evt in events)
+                    {
+                        Console.WriteLine("\t\tEvent #" + index);
+                        Console.WriteLine("\t\tKind: " + evt.Kind);
+                        Console.WriteLine("\t\tTarget: " + evt.Address.Text);
+                        Console.WriteLine();
+
+                        index++;
+                    }
                 }
 
                 Console.WriteLine();
             }
         }
 
-        static void TestChain(Logger log)
-        {
-            Console.WriteLine("Initializng chain...");
-
-            var owner = KeyPair.Generate();
-            Console.WriteLine("Genesis Address: " + owner.Address);
-
-            var nexus = new Nexus(owner, log);
-
-            var miner = KeyPair.Generate();
-            var third = KeyPair.Generate();
-
-            var chain = nexus.RootChain;
-            var nativeToken = nexus.NativeToken;
-
-            var tx = new Transaction(ScriptUtils.TokenTransferScript(chain, nexus.NativeToken, owner.Address, third.Address, 5), 0, 0, Timestamp.Now + TimeSpan.FromDays(1), 123);
-            tx.Sign(owner);
-
-            var nextHeight = chain.LastBlock.Height + 1;
-            Console.WriteLine("Mining block #" + nextHeight);
-
-            var block = ProofOfWork.MineBlock(chain, miner.Address, new List<Transaction>() { tx });
-            chain.AddBlock(block);
-
-            PrintChain(chain);
-        }
-
         static void Main(string[] args)
         {
-            var node_keys = KeyPair.Generate();
             var log = new ConsoleLogger();
-            var seeds = new List<Endpoint>();
-            int port = 6060;
+            var seeds = new List<string>();
 
-            var nexus = new Nexus(node_keys, log);
+            var settings = new Arguments(args);
+
+            string wif = settings.GetValue("wif");
+            int port = int.Parse(settings.GetValue("port", "7073"));
+
+            var node_keys = KeyPair.FromWIF(wif);
+
+            var nexus = new Nexus("simnet", log);
+
+            if (wif == validatorWIFs[0])
+            {
+                if (!nexus.CreateGenesisBlock(node_keys))
+                {
+                    throw new ChainException("Genesis block failure");
+                }
+            }
+            else
+            {
+                seeds.Add("127.0.0.1:7073");
+            }
+
             var node = new Node(nexus, node_keys, port, seeds, log);
+
+            bool running = true;
 
             Console.WriteLine("Phantasma Node starting...");
             node.Start();
 
             Console.CancelKeyPress += delegate {
+                running = false;
                 Console.WriteLine("Phantasma Node stopping...");
                 node.Stop();
             };
 
-            while (node.IsRunning)
+            while (running)
             {
-                Thread.Sleep(100);
+                Thread.Sleep(1000);
             }
         }
     }

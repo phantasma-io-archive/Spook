@@ -1,109 +1,210 @@
-﻿using System;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Threading;
 using Phantasma.Cryptography;
 using Phantasma.Network.P2P;
 using Phantasma.Core;
 using Phantasma.Core.Log;
+using System.Net.Sockets;
+using System.Linq;
+using System.Net;
+using System;
+using System.IO;
+using Phantasma.Network.P2P.Messages;
 
 namespace Phantasma.Blockchain.Consensus
 {
     public sealed partial class Node: Runnable
     {
         public readonly int Port;
- 
-        private Router router;
-
-        private ConcurrentQueue<DeliveredMessage> queue = new ConcurrentQueue<DeliveredMessage>();
-        private ConcurrentDictionary<Hash, Transaction> _mempool = new ConcurrentDictionary<Hash, Transaction>();
-
         public Address Address => keys.Address;
 
         public readonly KeyPair keys;
-
         public readonly Logger Log;
 
-        public Node(Nexus nexus, KeyPair keys, int port, IEnumerable<Endpoint> seeds, Logger log)
+        public IEnumerable<Peer> Peers => _peers;
+
+        private Mempool _mempool;
+
+        private List<Peer> _peers = new List<Peer>();
+
+        private TcpClient client;
+        private TcpListener listener;
+
+        private List<Endpoint> _activeSeeds = new List<Endpoint>();
+        private List<Endpoint> _disabledSeeds = new List<Endpoint>();
+
+        private bool listening = false;
+
+        public Nexus Nexus { get; private set; }
+
+        public Node(Nexus nexus, KeyPair keys, int port, IEnumerable<string> seeds, Logger log)
         {
-            this.keys = keys;
+            this.Nexus = nexus;
             this.Port = port;
+            this.keys = keys;
 
             this.Log = Logger.Init(log);
 
-            //          this.ID = ID.FromBytes(keys.PublicKey);
+            this._mempool = new Mempool(keys, nexus);
 
-            this.State = RaftState.Invalid;
+            this._activeSeeds = seeds.Select(x => ParseEndpoint(x)).ToList();
 
-            this.router = new Router(nexus, seeds, Port, queue, log);
+            // TODO this is a security issue, later change this to be configurable and default to localhost
+            var bindAddress = IPAddress.Any;
 
-            //var kademliaNode = new KademliaNode(server, this.ID);
-            //this.dht = new DHT(seeds.First(), kademliaNode, false);
+            listener = new TcpListener(bindAddress, port);
+            client = new TcpClient();
+        }
+
+        public Endpoint ParseEndpoint(string src)
+        {
+            int port;
+
+            if (src.Contains(":"))
+            {
+                var temp = src.Split(':');
+                Throw.If(temp.Length != 2, "Invalid endpoint format");
+                src = temp[0];
+                port = int.Parse(temp[1]);
+            }
+            else
+            {
+                port = this.Port;
+            }
+
+            return new Endpoint(src, port);
         }
 
         protected override bool Run()
         {
-            UpdateRAFT();
-
-            DeliveredMessage item;
-            while (queue.TryDequeue(out item))
+            lock (_peers)
             {
-                HandleMessage(item);
-            };
+                if (ConnectToSeeds())
+                {
+                    return true;
+                }
+            }
 
-            Thread.Sleep(15);
+            if (!listening)
+            {
+                Log.Debug("Waiting for new connections");
+                listening = true;
+                var accept = listener.BeginAcceptSocket(new AsyncCallback(DoAcceptSocketCallback), listener);
+            }
+
             return true;
         }
 
         protected override void OnStart()
         {
-            this.router.Start();
+            Log.Message($"Starting TCP listener on {Port}...");
+
+            listener.Start();
         }
 
         protected override void OnStop()
         {
-            this.router.Stop();
+            listener.Stop();
         }
 
-        private bool IsLeader(Message msg) {
-            if (Leader == null) {
-                return false;
-            }
-
-            return msg.IsSigned && Leader == msg.Address;
-        }
-
-        private void UpdateLeader(Message msg) {
-            if (Leader != Address.Null && Leader == msg.Address)
-            {
-                _lastLeaderBeat = DateTime.UtcNow;
-            }
-        }
-
-        private void HandleMessage(DeliveredMessage item)
+        private bool ConnectToSeeds()
         {
-            var msg = item.message;
+            if (_peers.Count == 0 && _activeSeeds.Count > 0)
+            {
+                var idx = Environment.TickCount % _activeSeeds.Count;
+                var target = _activeSeeds[idx];
 
+                var result = client.BeginConnect(target.Host, target.Port, null, null);
+
+                var success = result.AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(1));
+
+                if (!success)
+                {
+                    Log.Message("Could not reach seed " + target);
+                    _disabledSeeds.Add(target);
+                    _activeSeeds.RemoveAt(idx);
+                }
+                else
+                {
+                    Log.Message("Connected to seed " + target);
+                    client.EndConnect(result);
+
+                    HandleConnection(client.Client, true);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // Process the client connection.
+        public void DoAcceptSocketCallback(IAsyncResult ar)
+        {
+            listening = false;
+
+            // Get the listener that handles the client request.
+            TcpListener listener = (TcpListener)ar.AsyncState;
+
+            Socket socket = listener.EndAcceptSocket(ar);
+            Log.Message("New connection accepted from " + socket.RemoteEndPoint.ToString());
+
+            HandleConnection(socket, false);
+        }
+
+        private void HandleConnection(Socket socket, bool sendIdentity)
+        {
+            var peer = new TCPPeer(Nexus, socket);
+            _peers.Add(peer);
+
+            var endpoint = GetEndpoint(socket);
+
+            if (sendIdentity)
+            {
+                var msg = new PeerIdentityMessage(this.Nexus, this.Address);
+                peer.Send(msg);
+            }
+
+            while (true)
+            {
+                var msg = peer.Receive();
+                if (msg == null)
+                {
+                    break;
+                }
+
+                var answer = HandleMessage(peer, msg);
+                if (answer != null)
+                {
+                    peer.Send(answer);
+                }
+
+            }
+
+            socket.Close();
+
+            // TODO remove peer from list
+        }
+
+        private Endpoint GetEndpoint(Socket client)
+        {
+            throw new NotImplementedException();
+        }
+
+        private Message HandleMessage(Peer peer, Message msg)
+        {
             switch (msg.Opcode) {
 
-                case Opcode.PEER_Join:
+                case Opcode.PEER_Identity:
                     {
                         // TODO add peer to list and send him list of peers
-                        if (msg.IsSigned)
+                        if (msg.IsSigned && msg.Address != Address.Null)
                         {
+                            peer.SetAddress(msg.Address);
+                            return null;
                         }
                         else {
-                            // send error
+                            return new ErrorMessage(Nexus, Address, P2PError.MessageShouldBeSigned);
                         }
-                        break;
-                    }
-
-                case Opcode.PEER_Leave:
-                    {
-                        if (IsLeader(msg)) {
-                            Leader = Address.Null;
-                        }
-                        break;
                     }
 
                 case Opcode.PEER_List:
@@ -112,89 +213,14 @@ namespace Phantasma.Blockchain.Consensus
                         break;
                     }
 
-                    // get a request for voting
-                case Opcode.RAFT_Request:
-                    {
-                        if (this.Vote == null) {
-                            this.Vote = msg.Address;
-                            // TODO send vote msg
-                        }
-                        
-                        break;
-                    }
-
-                case Opcode.RAFT_Vote:
-                    {
-                        if (!ReceivedVotes.Contains(msg.Address)) {
-                            ReceivedVotes.Add(msg.Address);
-
-                            // TODO check if received majority votes, become leader
-                        }
-                        break;
-                    }
-
-                case Opcode.RAFT_Lead:
-                    {
-                        // TODO verify sigs of majority
-                        if (!IsLeader(msg))
-                        {
-                            Leader = msg.Address;
-                            UpdateLeader(msg);
-
-                            SetState(RaftState.Follower);
-                        }
-
-                        break;
-                    }
-
-                    // received from leader new content
-                case Opcode.RAFT_Replicate:
-                    {
-                        if (IsLeader(msg))
-                        {
-                            UpdateLeader(msg);
-                        }
-
-                        break;
-                    }
-
-                case Opcode.RAFT_Confirm:
-                    {
-                        if (this.State == RaftState.Leader)
-                        {
-                        }
-                        else {
-                            // send error 
-                        }
-
-                        break;
-                    }
-
-                case Opcode.RAFT_Commit:
-                    {
-                        UpdateLeader(msg);
-
-                        break;
-                    }
-
-                case Opcode.RAFT_Beat:
-                    {
-                        if (Leader == Address.Null) {
-                            Leader = msg.Address;
-                        }
-
-                        UpdateLeader(msg);
-
-                        break;
-                    }
-
                 case Opcode.MEMPOOL_Add:
                     {
                         break;
                     }
 
-                case Opcode.MEMPOOL_Get:
+                case Opcode.MEMPOOL_List:
                     {
+                        var txs = _mempool.GetTransactions();
                         break;
                     }
 
@@ -203,22 +229,7 @@ namespace Phantasma.Blockchain.Consensus
                         break;
                     }
 
-                case Opcode.BLOCKS_Request:
-                    {
-                        break;
-                    }
-
-                case Opcode.CHAIN_Request:
-                    {
-                        break;
-                    }
-
-                case Opcode.CHAIN_Values:
-                    {
-                        break;
-                    }
-
-                case Opcode.SHARD_Submit:
+                case Opcode.CHAIN_List:
                     {
                         break;
                     }
@@ -228,6 +239,8 @@ namespace Phantasma.Blockchain.Consensus
                         break;
                     }
             }
+
+            return null;
         }
 
 

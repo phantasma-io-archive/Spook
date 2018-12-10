@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Phantasma.CLI": {
+      "commandName": "Project",
+      "commandLineArgs": "-wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25"
+    }
+  }
+}
