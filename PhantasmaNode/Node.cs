@@ -156,12 +156,11 @@ namespace Phantasma.Blockchain.Consensus
             var peer = new TCPPeer(Nexus, socket);
             _peers.Add(peer);
 
-            var endpoint = GetEndpoint(socket);
-
             if (sendIdentity)
             {
                 var msg = new PeerIdentityMessage(this.Nexus, this.Address);
                 peer.Send(msg);
+                msg.Sign(this.keys);
             }
 
             while (true)
@@ -172,9 +171,12 @@ namespace Phantasma.Blockchain.Consensus
                     break;
                 }
 
+                Console.WriteLine("Got: " + msg.GetType().Name);
+
                 var answer = HandleMessage(peer, msg);
                 if (answer != null)
                 {
+                    answer.Sign(this.keys);
                     peer.Send(answer);
                 }
 
@@ -183,11 +185,6 @@ namespace Phantasma.Blockchain.Consensus
             socket.Close();
 
             // TODO remove peer from list
-        }
-
-        private Endpoint GetEndpoint(Socket client)
-        {
-            throw new NotImplementedException();
         }
 
         private Message HandleMessage(Peer peer, Message msg)
