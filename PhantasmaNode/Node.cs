@@ -399,6 +399,19 @@ namespace Phantasma.Blockchain.Consensus
                             QueueEndpoints(newPeers);
                         }
 
+                        var blockFetches = new Dictionary<string, uint>();
+                        if (listMsg.Kind.HasFlag(RequestKind.Chains))
+                        {
+                            foreach (var entry in listMsg.Chains)
+                            {
+                                var chain = Nexus.FindChainByName(entry.name);
+                                if (chain.BlockHeight < entry.height)
+                                {
+                                    blockFetches[entry.name] = chain.BlockHeight + 1;
+                                }
+                            }
+                        }
+
                         if (listMsg.Kind.HasFlag(RequestKind.Mempool))
                         {
                             int submittedCount = 0;
@@ -413,6 +426,12 @@ namespace Phantasma.Blockchain.Consensus
 
                                 Log.Message(submittedCount+" new transactions");
                             }
+                        }
+
+                        if (blockFetches.Count > 0)
+                        {
+                            var answer = new RequestMessage(RequestKind.Blocks, this.Address);
+                            return answer;
                         }
 
                         break;
