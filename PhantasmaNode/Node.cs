@@ -306,7 +306,7 @@ namespace Phantasma.Blockchain.Consensus
             }
 
             // this initial message is not only used to fetch chains but also to verify identity of peers
-            var request = new RequestMessage(RequestKind.Chains | RequestKind.Peers | RequestKind.Mempool, this.Address);
+            var request = new RequestMessage(RequestKind.Chains | RequestKind.Peers | RequestKind.Mempool, Nexus.Name, this.Address);
             SendMessage(peer, request);
 
             while (true)
@@ -361,6 +361,11 @@ namespace Phantasma.Blockchain.Consensus
                         if (request.Kind == RequestKind.None)
                         {
                             return new ErrorMessage(Address, P2PError.InvalidRequest);
+                        }
+
+                        if (request.NexusName != Nexus.Name)
+                        {
+                            return new ErrorMessage(Address, P2PError.InvalidNexus);
                         }
 
                         var answer = new ListMessage(this.Address, request.Kind);
@@ -427,6 +432,8 @@ namespace Phantasma.Blockchain.Consensus
                     {
                         var listMsg = (ListMessage)msg;
 
+                        var outKind = RequestKind.None;
+
                         if (listMsg.Kind.HasFlag(RequestKind.Peers))
                         {
                             var newPeers = listMsg.Peers.Where(x => !IsKnown(x));
@@ -469,6 +476,8 @@ namespace Phantasma.Blockchain.Consensus
 
                         if (listMsg.Kind.HasFlag(RequestKind.Blocks))
                         {
+                            bool addedBlocks = false;
+
                             foreach (var entry in listMsg.Blocks)
                             {
                                 var chain = Nexus.FindChainByName(entry.Key);
@@ -499,15 +508,30 @@ namespace Phantasma.Blockchain.Consensus
                                     }
 
                                     Log.Message($"Added block #{currentBlock} to {chain.Name}");
+                                    addedBlocks = true;
                                     currentBlock++;
                                 }
+                            }
+
+                            if (addedBlocks)
+                            {
+                                outKind |= RequestKind.Chains;
                             }
                         }
 
                         if (blockFetches.Count > 0)
                         {
-                            var answer = new RequestMessage(RequestKind.Blocks, this.Address);
-                            answer.SetBlocks(blockFetches);
+                            outKind |= RequestKind.Blocks;
+                        }
+
+                        if (outKind != RequestKind.None)
+                        {
+                            var answer = new RequestMessage(outKind, Nexus.Name, this.Address);
+
+                            if (blockFetches.Count > 0)
+                            {
+                                answer.SetBlocks(blockFetches);
+                            }
 
                             return answer;
                         }
@@ -527,6 +551,15 @@ namespace Phantasma.Blockchain.Consensus
 
                 case Opcode.ERROR:
                     {
+                        var errorMsg = (ErrorMessage)msg;
+                        if (string.IsNullOrEmpty(errorMsg.Text))
+                        {
+                            Log.Error($"ERROR: {errorMsg.Code}");
+                        }
+                        else
+                        {
+                            Log.Error($"ERROR: {errorMsg.Code} ({errorMsg.Text})");
+                        }
                         break;
                     }
             }

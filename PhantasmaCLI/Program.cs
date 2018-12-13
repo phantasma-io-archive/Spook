@@ -65,6 +65,8 @@ namespace Phantasma.CLI
             var log = new ConsoleLogger();
             var seeds = new List<string>();
 
+            Console.ForegroundColor = ConsoleColor.DarkGray;
+
             var settings = new Arguments(args);
 
             string wif = settings.GetValue("wif");
@@ -95,6 +97,11 @@ namespace Phantasma.CLI
             {
                 var simulator = new ChainSimulator(node_keys, 1234);
                 nexus = simulator.Nexus;
+
+                for (int i=0; i< 1000; i++)
+                {
+                    simulator.GenerateRandomBlock();
+                }
             }
             else
             {
