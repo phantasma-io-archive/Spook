@@ -14,8 +14,8 @@ namespace Phantasma.CLI
     {
         private static readonly string[] validatorWIFs = new string[]
         {
-            "L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25", //P2f7ZFuj6NfZ76ymNMnG3xRBT5hAMicDrQRHE4S7SoxEr
             "L1sEB8Z6h5Y7aQKqxbAkrzQLY5DodmPacjqSkFPmcR82qdmHEEdY", // PGBinkbZA3Q6BxMnL2HnJSBubNvur3iC6GtQpEThDnvrr
+            "L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25", //P2f7ZFuj6NfZ76ymNMnG3xRBT5hAMicDrQRHE4S7SoxEr
             "KxWUCAD2wECLfA7diT7sV7V3jcxAf9GSKqZy3cvAt79gQLHQ2Qo8", // PDiqQHDwe6MTcP6TH6DYjq7FTUouvy2YEkDXz2chCABCb
         };
 
@@ -68,7 +68,24 @@ namespace Phantasma.CLI
             var settings = new Arguments(args);
 
             string wif = settings.GetValue("wif");
-            int port = int.Parse(settings.GetValue("port", "7073"));
+            var nexusName = settings.GetValue("nexus", "simnet");
+            var genesisAddress = Address.FromText(settings.GetValue("genesis", KeyPair.FromWIF(validatorWIFs[0]).Address.Text));
+
+            string defaultPort = null;
+            for (int i=0; i<validatorWIFs.Length; i++)
+            {
+                if (validatorWIFs[i] == wif)
+                {
+                    defaultPort = (7073 + i).ToString();
+                }
+            }
+
+            if (defaultPort == null)
+            {
+                defaultPort = (7073 + validatorWIFs.Length).ToString();
+            }
+
+            int port = int.Parse(settings.GetValue("port", defaultPort));
 
             var node_keys = KeyPair.FromWIF(wif);
 
@@ -81,12 +98,7 @@ namespace Phantasma.CLI
             }
             else
             {
-                nexus = new Nexus("simnet", log);
-                if (!nexus.CreateGenesisBlock(node_keys))
-                {
-                    throw new ChainException("Genesis block failure");
-                }
-
+                nexus = new Nexus(nexusName, genesisAddress, log);
                 seeds.Add("127.0.0.1:7073");
             }
 
@@ -94,12 +106,12 @@ namespace Phantasma.CLI
 
             bool running = true;
 
-            Console.WriteLine("Phantasma Node starting...");
+            log.Message("Phantasma Node address: " + node_keys.Address.Text);
             node.Start();
 
             Console.CancelKeyPress += delegate {
                 running = false;
-                Console.WriteLine("Phantasma Node stopping...");
+                log.Message("Phantasma Node stopping...");
                 node.Stop();
             };
 

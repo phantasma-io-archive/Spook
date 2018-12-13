@@ -382,6 +382,44 @@ namespace Phantasma.Blockchain.Consensus
                             answer.SetMempool(txs);
                         }
 
+                        if (request.Kind.HasFlag(RequestKind.Blocks))
+                        {
+                            foreach (var entry in request.Blocks)
+                            {
+                                var chain = this.Nexus.FindChainByName(entry.Key);
+                                if (chain == null)
+                                {
+                                    continue;
+                                }
+
+                                var startBlock = entry.Value;
+                                if (startBlock > chain.BlockHeight)
+                                {
+                                    continue;
+                                }
+
+                                var blockList = new List<string>();
+                                var currentBlock = startBlock;
+                                while (blockList.Count < 50 && currentBlock <= chain.BlockHeight)
+                                {
+                                    var block = chain.FindBlockByHeight(currentBlock);
+                                    var bytes = block.ToByteArray();
+                                    var str = Base16.Encode(bytes);
+
+                                    foreach (var tx in chain.GetBlockTransactions(block))
+                                    {
+                                        var txBytes = tx.ToByteArray(true);
+                                        str += "/" + Base16.Encode(txBytes);
+                                    }
+
+                                    blockList.Add(str);
+                                    currentBlock++;
+                                }
+
+                                answer.AddBlockRange(chain.Name, startBlock, blockList);
+                            }
+                        }
+
                         return answer;
                     }
 
@@ -405,7 +443,8 @@ namespace Phantasma.Blockchain.Consensus
                             foreach (var entry in listMsg.Chains)
                             {
                                 var chain = Nexus.FindChainByName(entry.name);
-                                if (chain.BlockHeight < entry.height)
+                                // NOTE if we dont find this chain then it is too soon for ask for blocks from that chain
+                                if (chain != null && chain.BlockHeight < entry.height)
                                 {
                                     blockFetches[entry.name] = chain.BlockHeight + 1;
                                 }
@@ -424,13 +463,52 @@ namespace Phantasma.Blockchain.Consensus
                                     submittedCount++;
                                 }
 
-                                Log.Message(submittedCount+" new transactions");
+                                Log.Message(submittedCount + " new transactions");
+                            }
+                        }
+
+                        if (listMsg.Kind.HasFlag(RequestKind.Blocks))
+                        {
+                            foreach (var entry in listMsg.Blocks)
+                            {
+                                var chain = Nexus.FindChainByName(entry.Key);
+                                if (chain == null)
+                                {
+                                    continue;
+                                }
+
+                                var blockRange = entry.Value;
+                                var currentBlock = blockRange.startHeight;
+                                foreach (var rawBlock in blockRange.rawBlocks)
+                                {
+                                    var temp = rawBlock.Split('/');
+
+                                    var block = Block.Unserialize(Base16.Decode(temp[0]));
+
+                                    var transactions = new List<Transaction>();
+                                    for (int i= 1; i<temp.Length; i++)
+                                    {
+                                        var tx = Transaction.Unserialize(Base16.Decode(temp[i]));
+                                        transactions.Add(tx);
+                                    }
+
+                                    if (!chain.AddBlock(block, transactions))
+                                    {
+                                        chain.AddBlock(block, transactions);
+                                        throw new Exception("block add failed");
+                                    }
+
+                                    Log.Message($"Added block #{currentBlock} to {chain.Name}");
+                                    currentBlock++;
+                                }
                             }
                         }
 
                         if (blockFetches.Count > 0)
                         {
                             var answer = new RequestMessage(RequestKind.Blocks, this.Address);
+                            answer.SetBlocks(blockFetches);
+
                             return answer;
                         }
 
@@ -453,6 +531,7 @@ namespace Phantasma.Blockchain.Consensus
                     }
             }
 
+            Log.Message("No answer sent.");
             return null;
         }
 
