@@ -4,7 +4,6 @@ using System.Threading;
 using Phantasma.Blockchain.Consensus;
 using Phantasma.Blockchain;
 using Phantasma.Cryptography;
-using Phantasma.Network.P2P;
 using Phantasma.Core.Log;
 using Phantasma.Tests;
 using Phantasma.Core.Utils;
@@ -73,17 +72,21 @@ namespace Phantasma.CLI
 
             var node_keys = KeyPair.FromWIF(wif);
 
-            var nexus = new Nexus("simnet", log);
+            Nexus nexus;
 
             if (wif == validatorWIFs[0])
             {
+                var simulator = new ChainSimulator(node_keys, 1234);
+                nexus = simulator.Nexus;
+            }
+            else
+            {
+                nexus = new Nexus("simnet", log);
                 if (!nexus.CreateGenesisBlock(node_keys))
                 {
                     throw new ChainException("Genesis block failure");
                 }
-            }
-            else
-            {
+
                 seeds.Add("127.0.0.1:7073");
             }
 
