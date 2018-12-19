@@ -7,6 +7,11 @@ using Phantasma.Cryptography;
 using Phantasma.Core.Log;
 using Phantasma.Tests;
 using Phantasma.Core.Utils;
+using Phantasma.Numerics;
+using Phantasma.Core.Types;
+using Phantasma.Blockchain.Tokens;
+using LunarLabs.Parser.JSON;
+using LunarLabs.Parser;
 
 namespace Phantasma.CLI
 {
@@ -14,8 +19,8 @@ namespace Phantasma.CLI
     {
         private static readonly string[] validatorWIFs = new string[]
         {
-            "L1sEB8Z6h5Y7aQKqxbAkrzQLY5DodmPacjqSkFPmcR82qdmHEEdY", // PGBinkbZA3Q6BxMnL2HnJSBubNvur3iC6GtQpEThDnvrr
             "L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25", //P2f7ZFuj6NfZ76ymNMnG3xRBT5hAMicDrQRHE4S7SoxEr
+            "L1sEB8Z6h5Y7aQKqxbAkrzQLY5DodmPacjqSkFPmcR82qdmHEEdY", // PGBinkbZA3Q6BxMnL2HnJSBubNvur3iC6GtQpEThDnvrr
             "KxWUCAD2wECLfA7diT7sV7V3jcxAf9GSKqZy3cvAt79gQLHQ2Qo8", // PDiqQHDwe6MTcP6TH6DYjq7FTUouvy2YEkDXz2chCABCb
         };
 
@@ -60,6 +65,35 @@ namespace Phantasma.CLI
             }
         }
 
+        private static void SendTransfer(string host, KeyPair from, Address to, BigInteger amount)
+        {
+            var script = ScriptUtils.BeginScript().AllowGas(from.Address, 1, 9999).TransferTokens("SOUL", from.Address, to, amount).SpendGas(from.Address).EndScript();
+
+            var tx = new Transaction("simnet", "main", script, Timestamp.Now + TimeSpan.FromMinutes(30), 0);
+            tx.Sign(from);
+
+            var bytes = tx.ToByteArray(true);
+
+            var paramData = DataNode.CreateArray("params");
+            paramData.AddField(null, Base16.Encode(bytes));
+
+            var jsonRpcData = DataNode.CreateObject(null);
+            jsonRpcData.AddField("jsonrpc", "2.0");
+            jsonRpcData.AddField("method", "sendRawTransaction");
+            jsonRpcData.AddNode(paramData);
+            jsonRpcData.AddField("id", "1");
+
+            var response = JSONRequest.Execute(RequestType.POST, host, jsonRpcData);
+        }
+
+        static void RunSender(string wif, string host)
+        {
+            Console.WriteLine("Running in sender mode.");
+            var initialKey = KeyPair.Generate();
+
+            SendTransfer(host, KeyPair.FromWIF(wif), initialKey.Address, TokenUtils.ToBigInteger(1000, Nexus.NativeTokenDecimals));
+        }
+
         static void Main(string[] args)
         {
             var log = new ConsoleLogger();
@@ -69,9 +103,26 @@ namespace Phantasma.CLI
 
             var settings = new Arguments(args);
 
+            string mode = settings.GetValue("mode", "validator");
+
             string wif = settings.GetValue("wif");
             var nexusName = settings.GetValue("nexus", "simnet");
             var genesisAddress = Address.FromText(settings.GetValue("genesis", KeyPair.FromWIF(validatorWIFs[0]).Address.Text));
+
+            switch (mode)
+            {
+                case "sender":
+                    string host = settings.GetValue("host");
+                    RunSender(host, wif);
+                    return;
+
+                case "validator": break;
+                default:
+                    {
+                        log.Error("Unknown mode: " + mode);
+                        return;
+                    }
+            }
 
             string defaultPort = null;
             for (int i=0; i<validatorWIFs.Length; i++)
