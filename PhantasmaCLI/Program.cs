@@ -12,6 +12,7 @@ using Phantasma.Core.Types;
 using Phantasma.Blockchain.Tokens;
 using LunarLabs.Parser.JSON;
 using LunarLabs.Parser;
+using Phantasma.API;
 
 namespace Phantasma.CLI
 {
@@ -65,7 +66,7 @@ namespace Phantasma.CLI
             }
         }
 
-        private static void SendTransfer(string host, KeyPair from, Address to, BigInteger amount)
+        private static bool SendTransfer(Logger log, string host, KeyPair from, Address to, BigInteger amount)
         {
             var script = ScriptUtils.BeginScript().AllowGas(from.Address, 1, 9999).TransferTokens("SOUL", from.Address, to, amount).SpendGas(from.Address).EndScript();
 
@@ -74,24 +75,53 @@ namespace Phantasma.CLI
 
             var bytes = tx.ToByteArray(true);
 
-            var paramData = DataNode.CreateArray("params");
-            paramData.AddField(null, Base16.Encode(bytes));
+            log.Debug("RAW: " + Base16.Encode(bytes));
 
-            var jsonRpcData = DataNode.CreateObject(null);
-            jsonRpcData.AddField("jsonrpc", "2.0");
-            jsonRpcData.AddField("method", "sendRawTransaction");
-            jsonRpcData.AddNode(paramData);
-            jsonRpcData.AddField("id", "1");
+            var response = JSONRequest.Execute(RequestType.POST, host, "sendRawTransaction", Base16.Encode(bytes));
+            if (response == null)
+            {
+                log.Error("Transfer request failed");
+                return false;
+            }
 
-            var response = JSONRequest.Execute(RequestType.POST, host, jsonRpcData);
+            var hash = response.GetString("hash");
+            if (string.IsNullOrEmpty(hash))
+            {
+                log.Error("Hash not found");
+                return false;
+            }
+
+            do
+            {
+                Thread.Sleep(1000);
+                response = JSONRequest.Execute(RequestType.POST, host, "getConfirmations", hash);
+                if (response == null)
+                {
+                    log.Error("Transfer request failed");
+                    return false;
+                }
+
+                var confirmations = response.GetInt32("confirmations");
+                if (confirmations > 0)
+                {
+                    log.Success("Confirmations: " + confirmations);
+                    return true;
+                }
+
+            } while (true);
         }
 
-        static void RunSender(string wif, string host)
+        static void RunSender(Logger log, string wif, string host)
         {
-            Console.WriteLine("Running in sender mode.");
+            log.Message("Running in sender mode.");
             var initialKey = KeyPair.Generate();
 
-            SendTransfer(host, KeyPair.FromWIF(wif), initialKey.Address, TokenUtils.ToBigInteger(1000, Nexus.NativeTokenDecimals));
+            var masterKeys = KeyPair.FromWIF(wif);
+            log.Message($"Connecting to host: {host} with address {masterKeys.Address.Text}");
+            if (!SendTransfer(log, host, masterKeys, initialKey.Address, TokenUtils.ToBigInteger(1000, Nexus.NativeTokenDecimals)))
+            {
+                return;
+            }
         }
 
         static void Main(string[] args)
@@ -113,7 +143,8 @@ namespace Phantasma.CLI
             {
                 case "sender":
                     string host = settings.GetValue("host");
-                    RunSender(host, wif);
+                    RunSender(log, wif, host);
+                    Console.WriteLine("Sender finished operations.");
                     return;
 
                 case "validator": break;
@@ -149,7 +180,7 @@ namespace Phantasma.CLI
                 var simulator = new ChainSimulator(node_keys, 1234);
                 nexus = simulator.Nexus;
 
-                for (int i=0; i< 1000; i++)
+                for (int i=0; i< 100; i++)
                 {
                     simulator.GenerateRandomBlock();
                 }
@@ -160,10 +191,21 @@ namespace Phantasma.CLI
                 seeds.Add("127.0.0.1:7073");
             }
 
-            var node = new Node(nexus, node_keys, port, seeds, log);
-
             bool running = true;
 
+            // mempool setup
+            var mempool = new Mempool(node_keys, nexus);
+            mempool.Start();
+
+            // RPC setup
+            var api = new NexusAPI(nexus, mempool);
+            var webLogger = new LunarLabs.WebServer.Core.NullLogger(); // TODO ConsoleLogger is not working properly here, why?
+            var rpcServer = new RPCServer(api, null, 7077, webLogger);
+            new Thread(() => { rpcServer.Start(); }).Start();
+
+            // node setup
+            var node = new Node(nexus, node_keys, port, seeds, log);
+            
             log.Message("Phantasma Node address: " + node_keys.Address.Text);
             node.Start();
 
@@ -171,6 +213,7 @@ namespace Phantasma.CLI
                 running = false;
                 log.Message("Phantasma Node stopping...");
                 node.Stop();
+                mempool.Stop();
             };
 
             while (running)

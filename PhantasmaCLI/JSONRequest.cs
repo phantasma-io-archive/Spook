@@ -11,9 +11,34 @@ namespace LunarLabs.Parser.JSON
 
     public static class JSONRequest
     {
-        public static DataNode Execute(RequestType kind, string url, DataNode data = null)
+        public static DataNode Execute(RequestType kind, string url, string method, params object[] parameters)
         {
             string contents;
+
+            DataNode paramData;
+
+            if (parameters!=null && parameters.Length > 0)
+            {
+                paramData = DataNode.CreateArray("params");
+                foreach (var obj in parameters)
+                {
+                    paramData.AddField(null, obj);
+                }
+            }
+            else
+            {
+                paramData = null;
+            }
+
+            var jsonRpcData = DataNode.CreateObject(null);
+            jsonRpcData.AddField("jsonrpc", "2.0");
+            jsonRpcData.AddField("method", method);
+            jsonRpcData.AddField("id", "1");
+
+            if (paramData != null)
+            {
+                jsonRpcData.AddNode(paramData);
+            }
 
             try
             {
@@ -25,8 +50,8 @@ namespace LunarLabs.Parser.JSON
                         }
                     case RequestType.POST:
                         {
-                            var paramData = data != null ? JSONWriter.WriteToString(data) : "{}";
-                            contents = PostWebRequest(url, paramData);
+                            var json = JSONWriter.WriteToString(jsonRpcData);
+                            contents = PostWebRequest(url, json);
                             break;
                         }
                     default: return null;
@@ -34,6 +59,7 @@ namespace LunarLabs.Parser.JSON
             }
             catch (Exception e)
             {
+                Console.WriteLine(e);
                 return null;
             }
 
@@ -43,8 +69,20 @@ namespace LunarLabs.Parser.JSON
             }
 
             //File.WriteAllText("response.json", contents);
+            Console.WriteLine(contents);
 
             var root = JSONReader.ReadFromString(contents);
+
+            if (root == null)
+            {
+                return null;
+            }
+
+            if (root.HasNode("result"))
+            {
+                return root["result"];
+            }
+
             return root;
         }
 
