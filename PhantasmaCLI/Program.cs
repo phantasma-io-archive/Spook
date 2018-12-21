@@ -133,16 +133,19 @@ namespace Phantasma.CLI
 
             var settings = new Arguments(args);
 
-            string mode = settings.GetValue("mode", "validator");
+            string mode = settings.GetString("node.mode", "validator");
 
-            string wif = settings.GetValue("wif");
-            var nexusName = settings.GetValue("nexus", "simnet");
-            var genesisAddress = Address.FromText(settings.GetValue("genesis", KeyPair.FromWIF(validatorWIFs[0]).Address.Text));
+            bool hasRPC = settings.GetBool("rpc.enabled", false);
+
+            string wif = settings.GetString("node.wif");
+
+            var nexusName = settings.GetString("nexus.name", "simnet");
+            var genesisAddress = Address.FromText(settings.GetString("nexus.genesis", KeyPair.FromWIF(validatorWIFs[0]).Address.Text));
 
             switch (mode)
             {
                 case "sender":
-                    string host = settings.GetValue("host");
+                    string host = settings.GetString("sender.host");
                     RunSender(log, wif, host);
                     Console.WriteLine("Sender finished operations.");
                     return;
@@ -169,7 +172,7 @@ namespace Phantasma.CLI
                 defaultPort = (7073 + validatorWIFs.Length).ToString();
             }
 
-            int port = int.Parse(settings.GetValue("port", defaultPort));
+            int port = int.Parse(settings.GetString("node.port", defaultPort));
 
             var node_keys = KeyPair.FromWIF(wif);
 
