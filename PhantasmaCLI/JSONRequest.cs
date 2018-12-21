@@ -9,9 +9,16 @@ namespace LunarLabs.Parser.JSON
         POST
     }
 
-    public static class JSONRequest
+    public class JSONRPC_Client
     {
-        public static DataNode Execute(RequestType kind, string url, string method, params object[] parameters)
+        private WebClient client;
+
+        public JSONRPC_Client()
+        {
+            client = new WebClient() { Encoding = System.Text.Encoding.UTF8 }; 
+        }
+
+        public DataNode SendRequest(RequestType kind, string url, string method, params object[] parameters)
         {
             string contents;
 
@@ -42,16 +49,18 @@ namespace LunarLabs.Parser.JSON
 
             try
             {
+                client.Headers.Add("Content-Type", "application/json-rpc");
+
                 switch (kind)
                 {
                     case RequestType.GET:
                         {
-                            contents = GetWebRequest(url); break;
+                            contents = client.DownloadString(url); break;
                         }
                     case RequestType.POST:
                         {
                             var json = JSONWriter.WriteToString(jsonRpcData);
-                            contents = PostWebRequest(url, json);
+                            contents = client.UploadString(url, json);
                             break;
                         }
                     default: return null;
@@ -69,7 +78,7 @@ namespace LunarLabs.Parser.JSON
             }
 
             //File.WriteAllText("response.json", contents);
-            Console.WriteLine(contents);
+            //Console.WriteLine(contents);
 
             var root = JSONReader.ReadFromString(contents);
 
@@ -85,23 +94,5 @@ namespace LunarLabs.Parser.JSON
 
             return root;
         }
-
-        private static string GetWebRequest(string url)
-        {
-            using (var client = new WebClient { Encoding = System.Text.Encoding.UTF8 })
-            {
-                client.Headers.Add("Content-Type", "application/json-rpc");
-                return client.DownloadString(url);
-            }
-        }
-
-        private static string PostWebRequest(string url, string paramData)
-        {
-            using (var client = new WebClient { Encoding = System.Text.Encoding.UTF8 })
-            {
-                client.Headers.Add("Content-Type", "application/json-rpc");
-                return client.UploadString(url, paramData);
-            }
-        }
-    }
+   }
 }

@@ -13,11 +13,44 @@ using Phantasma.Blockchain.Tokens;
 using LunarLabs.Parser.JSON;
 using LunarLabs.Parser;
 using Phantasma.API;
+using System.Threading.Tasks;
 
 namespace Phantasma.CLI
 {
+    public class TPSPlugin : IChainPlugin
+    {
+        private int periodInSeconds;
+        private int txCount;
+        private DateTime lastTime = DateTime.UtcNow;
+        private Logger log;
+
+        public TPSPlugin(Logger log, int periodInSeconds)
+        {
+            this.log = log;
+            this.periodInSeconds = periodInSeconds;
+        }
+
+        public override void OnTransaction(Chain chain, Block block, Transaction transaction)
+        {
+            txCount++;
+            
+            var currentTime = DateTime.UtcNow;
+            var diff = (currentTime - lastTime).TotalSeconds;
+
+            if (diff >= periodInSeconds)
+            {
+                lastTime = currentTime;
+                var tps = txCount / (float)periodInSeconds;
+                log.Message($"{tps.ToString("0.##")} TPS");
+                txCount = 0;
+            }
+        }
+    }
+
     class Program
     {
+        private static bool running = false;
+
         private static readonly string[] validatorWIFs = new string[]
         {
             "L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25", //P2f7ZFuj6NfZ76ymNMnG3xRBT5hAMicDrQRHE4S7SoxEr
@@ -66,7 +99,7 @@ namespace Phantasma.CLI
             }
         }
 
-        private static bool SendTransfer(Logger log, string host, KeyPair from, Address to, BigInteger amount)
+        private static Hash SendTransfer(JSONRPC_Client rpc, Logger log, string host, KeyPair from, Address to, BigInteger amount)
         {
             var script = ScriptUtils.BeginScript().AllowGas(from.Address, 1, 9999).TransferTokens("SOUL", from.Address, to, amount).SpendGas(from.Address).EndScript();
 
@@ -75,52 +108,148 @@ namespace Phantasma.CLI
 
             var bytes = tx.ToByteArray(true);
 
-            log.Debug("RAW: " + Base16.Encode(bytes));
+            //log.Debug("RAW: " + Base16.Encode(bytes));
 
-            var response = JSONRequest.Execute(RequestType.POST, host, "sendRawTransaction", Base16.Encode(bytes));
+            var response = rpc.SendRequest(RequestType.POST, host, "sendRawTransaction", Base16.Encode(bytes));
             if (response == null)
             {
-                log.Error("Transfer request failed");
-                return false;
+                if (log != null)
+                {
+                    log.Error("Transfer request failed");
+                }
+                return Hash.Null;
             }
 
             var hash = response.GetString("hash");
             if (string.IsNullOrEmpty(hash))
             {
-                log.Error("Hash not found");
-                return false;
+                if (log != null)
+                {
+                    log.Error("Hash not found");
+                }
+                return Hash.Null;
             }
+
+            return Hash.Parse(hash);
+        }
+
+        static bool ConfirmTransaction(JSONRPC_Client rpc, Logger log, string host, Hash hash, int maxTries = 99999)
+        {
+            var hashStr = hash.ToString();
+
+            int tryCount = 0;
 
             do
             {
-                Thread.Sleep(1000);
-                response = JSONRequest.Execute(RequestType.POST, host, "getConfirmations", hash);
+                var response = rpc.SendRequest(RequestType.POST, host, "getConfirmations", hashStr);
                 if (response == null)
                 {
-                    log.Error("Transfer request failed");
+                    if (log != null)
+                    {
+                        log.Error("Transfer request failed");
+                    }
                     return false;
                 }
 
                 var confirmations = response.GetInt32("confirmations");
                 if (confirmations > 0)
                 {
-                    log.Success("Confirmations: " + confirmations);
+                    if (log != null)
+                    {
+                        log.Success("Confirmations: " + confirmations);
+                    }
                     return true;
                 }
 
+                tryCount--;
+                if (tryCount >= maxTries)
+                {
+                    return false;
+                }
+
+                Thread.Sleep(1000);
             } while (true);
+        }
+
+        static void SenderSpawn(Logger log, string wif, string host)
+        {
+            Thread.CurrentThread.IsBackground = true;
+
+            var currentKey = KeyPair.Generate();
+
+            var masterKeys = KeyPair.FromWIF(wif);
+            log.Message($"Connecting to host: {host} with address {masterKeys.Address.Text}");
+
+            var rpc = new JSONRPC_Client();
+
+            var amount = TokenUtils.ToBigInteger(1000, Nexus.NativeTokenDecimals);
+            var hash = SendTransfer(rpc, log, host, masterKeys, currentKey.Address, amount);
+            if (hash == Hash.Null)
+            {
+                return;
+            }
+
+            ConfirmTransaction(rpc, log, host, hash);
+
+            var rnd = new Random();
+
+            int totalTxs = 0;
+
+            var confirming = new Dictionary<Address, Hash>();
+
+            while (running)
+            {
+                KeyPair destKey;
+
+                do
+                {
+                    destKey = KeyPair.Generate();
+                } while (destKey == currentKey);
+
+                amount = amount - (amount / 1000); // left some SOUL at the address for stress testing
+
+                var txHash = SendTransfer(rpc, null, host, currentKey, destKey.Address, amount);
+                if (txHash == Hash.Null)
+                {
+                    log.Error($"Error sending {amount} SOUL from {currentKey.Address} to {destKey.Address}...");
+                    return;
+                }
+
+                totalTxs++;
+                currentKey = destKey;
+
+                if (totalTxs % 10 == 0)
+                {
+                    log.Message($"Sent {totalTxs} transactions");
+                }
+            }
         }
 
         static void RunSender(Logger log, string wif, string host)
         {
             log.Message("Running in sender mode.");
-            var initialKey = KeyPair.Generate();
 
-            var masterKeys = KeyPair.FromWIF(wif);
-            log.Message($"Connecting to host: {host} with address {masterKeys.Address.Text}");
-            if (!SendTransfer(log, host, masterKeys, initialKey.Address, TokenUtils.ToBigInteger(1000, Nexus.NativeTokenDecimals)))
+            running = true;
+            Console.CancelKeyPress += delegate {
+                running = false;
+                log.Message("Stopping sender...");
+            };
+
+            for (int i=1; i<=500; i++)
             {
-                return;
+                log.Message($"Starting thread #{i}...");
+                try
+                {
+                    new Thread(() => { SenderSpawn(log, wif, host); }).Start();
+                }
+                catch (Exception e) {
+                    break;
+                }
+            }
+
+            while (running)
+            {
+                Thread.Sleep(1000);
             }
         }
 
@@ -194,7 +323,7 @@ namespace Phantasma.CLI
                 seeds.Add("127.0.0.1:7073");
             }
 
-            bool running = true;
+            running = true;
 
             // mempool setup
             var mempool = new Mempool(node_keys, nexus);
@@ -207,10 +336,11 @@ namespace Phantasma.CLI
             new Thread(() => { rpcServer.Start(); }).Start();
 
             // node setup
-            var node = new Node(nexus, node_keys, port, seeds, log);
-            
+            var node = new Node(nexus, node_keys, port, seeds, log);           
             log.Message("Phantasma Node address: " + node_keys.Address.Text);
             node.Start();
+
+            nexus.AddPlugin(new TPSPlugin(log, 10));
 
             Console.CancelKeyPress += delegate {
                 running = false;
