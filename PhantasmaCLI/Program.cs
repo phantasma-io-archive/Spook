@@ -225,7 +225,7 @@ namespace Phantasma.CLI
             }
         }
 
-        static void RunSender(Logger log, string wif, string host)
+        static void RunSender(Logger log, string wif, string host, int threadCount)
         {
             log.Message("Running in sender mode.");
 
@@ -235,7 +235,7 @@ namespace Phantasma.CLI
                 log.Message("Stopping sender...");
             };
 
-            for (int i=1; i<=500; i++)
+            for (int i=1; i<= threadCount; i++)
             {
                 log.Message($"Starting thread #{i}...");
                 try
@@ -275,7 +275,8 @@ namespace Phantasma.CLI
             {
                 case "sender":
                     string host = settings.GetString("sender.host");
-                    RunSender(log, wif, host);
+                    int threadCount = settings.GetInt("sender.threads", 8);
+                    RunSender(log, wif, host, threadCount);
                     Console.WriteLine("Sender finished operations.");
                     return;
 
