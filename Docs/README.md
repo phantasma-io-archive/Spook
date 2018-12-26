@@ -583,7 +583,7 @@ Returns the information about a transaction requested by a block hash and transa
 
 ##### Parameters
 
-1. `DATA`, 33 bytes - hash of a transaction
+1. `DATA`, 33 bytes - hash of a block
 ```js
 params: [
    '0x1EBA956A82900DCB69B3A372EBE558760913ACEF9292917C9E43DFB685DEDDA5',
@@ -602,5 +602,76 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"getTransactionByBlockHashAndInde
 ```
 Result
 See [getTransactionByHash](#getTransactionByHash).
+
+***
+
+#### getTokens
+Returns an array of tokens deployed in Phantasma.
+
+
+##### Parameters
+
+none
+
+##### Returns
+
+Array of token info:
+
+  - `symbol`: `string` - Unique token symbol.
+  - `name`: `string` - Full token name.
+  - `currentSupply`: `QUANTITY` - Token current supply.
+  - `maxSupply`: `QUANTITY` - Token maximum supply.
+  - `decimals`: `QUANTITY` - Token decimals.
+  - `isFungible`: `bool` - Indicates if the token is fungible or not.
+  - `flags`: `string` - Set of token properties.
+  - `owner`: `string` - Address of token owner.   
+ 
+
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"getTokens","params":[],"id":1}'
+
+
+//Result
+{
+   "jsonrpc":"2.0",
+   "result":{
+      "tokens":[
+         {
+            "symbol":"SOUL",
+            "name":"Phantasma",
+            "currentSupply":"8648333245505330",
+            "maxSupply":"9113637400000000",
+            "decimals":8,
+            "isFungible":true,
+            "flags":"Transferable, Fungible, Finite, Divisible",
+            "owner":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX"
+         },
+         {
+            "symbol":"ALMA",
+            "name":"Stable Coin",
+            "currentSupply":"0",
+            "maxSupply":"0",
+            "decimals":8,
+            "isFungible":true,
+            "flags":"Transferable, Fungible, Divisible",
+            "owner":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX"
+         },
+         {
+            "symbol":"NACHO",
+            "name":"Nachomen",
+            "currentSupply":"0",
+            "maxSupply":"0",
+            "decimals":0,
+            "isFungible":false,
+            "flags":"Transferable",
+            "owner":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX"
+         }
+      ]
+   },
+   "id":"1"
+}
+```
 
 ***
