@@ -675,3 +675,34 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"getTokens","params":[],"id":1}'
 ```
 
 ***
+
+
+#### getTokenTransfers
+Returns last X transactions of given token.
+
+##### Parameters
+
+1. `string` - token symbol
+2. `QUANTITY` - amount of transactions to query
+```js
+params: [
+   'SOUL',
+   5
+]
+```
+
+##### Returns
+
+See [getTransactionByHash](#getTransactionByHash). 
+
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"getTokenTransfers","params":["SOUL", 5],"id":1}'
+```
+
+Result
+
+See [getTransactionByHash](#getTransactionByHash). 
+
+***
