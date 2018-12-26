@@ -74,7 +74,7 @@ params: [
 
   - `address `: `string` - Given address.
   - `amount`: `QUANTITY` - Amount of transactions query.
-  - `txs`: `Array` - Array of transaction objects.
+  - `txs`: `Array` - Array of transaction objects. See [getTransactionByHash](#getTransactionByHash).
   - `txs - txid`: `DATA` - Transaction hash.
   - `txs - chainAddress`: `string` - Chain address.
   - `txs - chainName`: `string` - Chain name.
@@ -222,13 +222,12 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"getApps","params":[],"id":1}'
 ***
 
 #### getBlockByHash
-Returns information about a block by hash or `error` if given hash is invalid or is not found.
-
+Returns information about a block by hash.
 
 ##### Parameters
 
 
-1. `DATA`, 33 bytes - hash of given block
+1. `DATA`, 33 bytes - hash of a block
 ```js
 params: [
    '0x4C8D0DA35EF24DAE6F5BBAC8A11597A0EAB25926A3A474A28AD87C7F7792F6F2'
@@ -237,7 +236,7 @@ params: [
 
 ##### Returns
 
-Object - A block object:
+Object - A block object or `error` if given hash is invalid or is not found:
 
   - `hash`: `DATA`, 33 bytes - Block hash.
   - `previousHash`: `DATA` - Hash of previous block.
@@ -247,7 +246,7 @@ Object - A block object:
   - `nonce`: `DATA` - Nonce.
   - `reward`: `QUANTITY` - Reward given to the block miner.
   - `payload`: `DATA` - Custom data given by miners.
-  - `txs`: `Array` - List of transactions inside this block.
+  - `txs`: `Array` - List of transactions inside this block. See [getTransactionByHash](#getTransactionByHash).
  
 
 ##### Example
@@ -308,14 +307,14 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"getBlockByHash","params":["0x4C8
 ***
 
 #### getBlockByHeight
-Returns information about a block by height and chain or `error` if given height or chain are invalid or not found.
+Returns information about a block by height and chain.
 
 
 ##### Parameters
 
 
 1. `string`, - chain name or chain address
-2. `QUANTITY`, - height of given block
+2. `QUANTITY`, - height of a block
 ```js
 params: [
    'main',
@@ -372,7 +371,7 @@ Returns the number of transactions of given block hash or `error` if given hash 
 
 ##### Parameters
 
-1. `DATA`, 33 bytes - hash of given block
+1. `DATA`, 33 bytes - hash of a block
 ```js
 params: [
    '0x4C8D0DA35EF24DAE6F5BBAC8A11597A0EAB25926A3A474A28AD87C7F7792F6F2'
@@ -397,7 +396,6 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"getBlockTransactionCountByHash",
 ```
 
 ***
-
 
 #### getChains
 Returns an array of chains with useful information.
@@ -465,13 +463,14 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"getChains","params":[],"id":1}'
 }
 ```
 
+***
 
 #### getConfirmations
 Returns the number of confirmations of given transaction hash and other useful info.
 
 ##### Parameters
 
-1. `DATA`, 33 bytes - hash of given transaction
+1. `DATA`, 33 bytes - hash of a transaction
 ```js
 params: [
    '0x34647C9A097909C7E5112B7F8F3950F6FA65D20DFA9D172A8F5084AC8595EABD'
@@ -504,3 +503,52 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"getConfirmations","params":["0x3
    "id":"1"
 }
 ```
+
+***
+
+#### getTransactionByHash
+Returns the information about a transaction requested by transaction hash.
+
+##### Parameters
+
+1. `DATA`, 33 bytes - hash of a transaction
+```js
+params: [
+   '0x3C0D260AACF17BD4AFA535C4845E1CE8B9D8A600A826AB138ADF677C6369C703'
+]
+```
+##### Returns
+
+Object - A transaction object or `error` if hash is invalid or not found:
+
+  - `txs - txid`: `DATA` - Transaction hash.
+  - `txs - chainAddress`: `string` - Chain address.
+  - `txs - chainName`: `string` - Chain name.
+  - `txs - timestamp`: `long` - Timestamp of the transaction.
+  - `txs - blockHeight`: `long` - Block height of chain in which the transaction occurred.
+  - `txs - script`: `DATA` - Transaction script.
+  - `txs - events`: `Array` - Array of the events occurred in the transaction.
+  - `events - address`: `string` - Address on which the specific event occurred.
+  - `events - data`: `DATA` - Serialized data of the event.
+  - `events - kind`: `string` - Enum that specify the type of event. E.g: TokenSend.
+ 
+
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"getConfirmations","params":["0x34647C9A097909C7E5112B7F8F3950F6FA65D20DFA9D172A8F5084AC8595EABD"],"id":1}'
+
+// Result
+{
+   "jsonrpc":"2.0",
+   "result":{
+      "confirmations":1,
+      "hash":"0x34647C9A097909C7E5112B7F8F3950F6FA65D20DFA9D172A8F5084AC8595EABD",
+      "height":510,
+      "chain":"NztsEZP7dtrzRBagogUYVp6mgEFbhjZfvHMVkd2bYWJfE"
+   },
+   "id":"1"
+}
+```
+
+***
