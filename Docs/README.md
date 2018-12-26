@@ -767,7 +767,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"sendRawTransaction","params":["0
    "jsonrpc":"2.0",
    "result":{
       "hash":"0x3C0D260AACF17BD4AFA535C4845E1CE8B9D8A600A826AB138ADF677C6369C703"
-      }",
+      },
    "id":"1"
 }
 
