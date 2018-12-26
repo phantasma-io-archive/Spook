@@ -182,7 +182,7 @@ namespace Phantasma.CLI
 
             var rpc = new JSONRPC_Client();
 
-            var amount = TokenUtils.ToBigInteger(1000, Nexus.NativeTokenDecimals);
+            var amount = TokenUtils.ToBigInteger(1000000, Nexus.NativeTokenDecimals);
             var hash = SendTransfer(rpc, log, host, masterKeys, currentKey.Address, amount);
             if (hash == Hash.Null)
             {
@@ -206,7 +206,7 @@ namespace Phantasma.CLI
                     destKey = KeyPair.Generate();
                 } while (destKey == currentKey);
 
-                amount = amount - (amount / 1000); // left some SOUL at the address for stress testing
+                amount = 1;
 
                 var txHash = SendTransfer(rpc, null, host, currentKey, destKey.Address, amount);
                 if (txHash == Hash.Null)
