@@ -139,5 +139,35 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"getAddressTransactions","params"
 ```
 
 ***
-      
- 
+
+#### getAddressTxCount
+Returns the number of transaction of given address.
+
+
+##### Parameters
+
+1. `String`, 45 length string - address to query transaction count.
+```js
+params: [
+   'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
+]
+```
+
+##### Returns
+
+`QUANTITY` - Integer of the number of transactions send from this address.
+  
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"getAddressTxCount","params":["PDHcAHq1fZXuwDrtJGDhjemFnj2ZaFc7iu3qD4XjZG9eV"],"id":1}'
+
+// Result
+{
+   "jsonrpc":"2.0",
+   "result":"42",
+   "id":"1"
+}
+```
+
+***
