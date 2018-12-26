@@ -54,7 +54,6 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"getAccount","params":["PDHcAHq1f
 ***
 
 #### getAddressTransactions
-
 Returns last X transactions of given address.
 
 
@@ -349,12 +348,45 @@ Returns the height of most recent block of given chain.
 
 ##### Returns
 
-`QUANTITY` - integer of the current block number the client is on.
+`QUANTITY` - Integer of the current block number the client is on.
 
 ##### Example
 ```js
 // Request
 curl -X POST --data '{"jsonrpc":"2.0","method":"getBlockHeight","params":["main"],"id":1}'
+
+// Result
+{
+   "jsonrpc":"2.0",
+   "result":"540",
+   "id":"1"
+}
+```
+
+
+***
+
+
+#### getBlockTransactionCountByHash
+Returns the number of transactions of given block hash or `error` if given hash is invalid or is not found.
+
+##### Parameters
+
+1. `DATA`, 34 bytes - hash of given block
+```js
+params: [
+   '0x4C8D0DA35EF24DAE6F5BBAC8A11597A0EAB25926A3A474A28AD87C7F7792F6F2'
+]
+```
+
+##### Returns
+
+`QUANTITY` - integer of the number of transactions in this block.
+
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"getBlockTransactionCountByHash","params":["0x4C8D0DA35EF24DAE6F5BBAC8A11597A0EAB25926A3A474A28AD87C7F7792F6F2"],"id":1}'
 
 // Result
 {
