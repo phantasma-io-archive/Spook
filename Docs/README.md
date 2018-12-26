@@ -395,3 +395,72 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"getBlockTransactionCountByHash",
    "id":"1"
 }
 ```
+
+***
+
+
+#### getChains
+Returns an array of chains with useful information.
+
+##### Parameters
+
+none
+
+##### Returns
+
+Array of chain info:
+
+  - `name`: `string` - Chain name.
+  - `address`: `string` - Chain address.
+  - `height`: `QUANTITY` - Block timestamp.
+  - `children`: `Array` - Child chains.
+ 
+
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"getChains","params":[],"id":1}'
+
+// Result
+{
+   "jsonrpc":"2.0",
+   "result":[
+      {
+         "name":"main",
+         "address":"NztsEZP7dtrzRBagogUYVp6mgEFbhjZfvHMVkd2bYWJfE",
+         "height":504,
+         "children":[
+            {
+               "name":"privacy",
+               "address":"PB5k5d7rbdNU5QKHMgErzw8Mkqx9TZh8FcfE8oTfdqn2v"
+            },
+            {
+               "name":"vault",
+               "address":"PFXw1o59Kshau2rPXKRhVVLmKwfMh2eyNzBbdqNoSDkwx"
+            },
+            {
+               "name":"bank",
+               "address":"P4XxbH98DUM59KCQogauUxWxsyuQJ1wbfoCDQUhryhXK1"
+            },
+            {
+               "name":"apps",
+               "address":"PEMbn8smAMZxbGVFCcLMWbQZBYK7SFf93jFLFi8dZV6Ga"
+            }
+         ]
+      },
+      {
+         "name":"privacy",
+         "address":"PB5k5d7rbdNU5QKHMgErzw8Mkqx9TZh8FcfE8oTfdqn2v",
+         "height":1,
+         "parentAddress":"main"
+      },
+      {
+         "name":"vault",
+         "address":"PFXw1o59Kshau2rPXKRhVVLmKwfMh2eyNzBbdqNoSDkwx",
+         "height":1,
+         "parentAddress":"main"
+      },{...}
+   ],
+   "id":"1"
+}
+```
