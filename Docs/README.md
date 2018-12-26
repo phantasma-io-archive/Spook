@@ -338,3 +338,28 @@ Result see [getBlockByHash](#getblockbyhash)
 
 
 ***
+
+
+#### getBlockHeight
+Returns the height of most recent block of given chain.
+
+##### Parameters
+
+1. `string`, - chain name or chain address
+
+##### Returns
+
+`QUANTITY` - integer of the current block number the client is on.
+
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"getBlockHeight","params":["main"],"id":1}'
+
+// Result
+{
+   "jsonrpc":"2.0",
+   "result":"540",
+   "id":"1"
+}
+```
