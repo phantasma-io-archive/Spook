@@ -331,10 +331,13 @@ namespace Phantasma.CLI
             mempool.Start();
 
             // RPC setup
-            var api = new NexusAPI(nexus, mempool);
-            var webLogger = new LunarLabs.WebServer.Core.NullLogger(); // TODO ConsoleLogger is not working properly here, why?
-            var rpcServer = new RPCServer(api, null, 7077, webLogger);
-            new Thread(() => { rpcServer.Start(); }).Start();
+            if (hasRPC)
+            {
+                var api = new NexusAPI(nexus, mempool);
+                var webLogger = new LunarLabs.WebServer.Core.NullLogger(); // TODO ConsoleLogger is not working properly here, why?
+                var rpcServer = new RPCServer(api, null, 7077, webLogger);
+                new Thread(() => { rpcServer.Start(); }).Start();
+            }
 
             // node setup
             var node = new Node(nexus, node_keys, port, seeds, log);           
