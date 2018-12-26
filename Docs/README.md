@@ -4,7 +4,7 @@ Returns the account name and balance of given address.
 
 ##### Parameters
 
-1. `String`, 45 length string - address to check for balance and name.
+1. `String`, base58 encoded - address to check for balance and name.
 ```js
 params: [
    'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
@@ -59,7 +59,7 @@ Returns last X transactions of given address.
 
 ##### Parameters
 
-1. `String`, 45 length string - address to check for balance and name.
+1. `String`, base58 encoded - address to check for balance and name.
 2. `QUANTITY`, number of last transactions.
 ```js
 params: [
@@ -145,7 +145,7 @@ Returns the number of transaction of given address.
 
 ##### Parameters
 
-1. `String`, 45 length string - address to query transaction count.
+1. `String`, base58 encoded - address to query transaction count.
 ```js
 params: [
    'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
