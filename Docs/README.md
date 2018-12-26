@@ -706,3 +706,37 @@ Result
 See [getTransactionByHash](#getTransactionByHash). 
 
 ***
+
+#### getTokenTransferCount
+Returns the number of transaction of a given token.
+
+##### Parameters
+
+1. `string` - token symbol
+```js
+params: [
+   'SOUL'
+]
+```
+
+##### Returns
+
+`QUANTITY` - Integer of the number of transactions of given token.
+
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"getTokenTransferCount","params":["SOUL"],"id":1}'
+
+
+//Result
+Formatted JSON Data
+{
+   "jsonrpc":"2.0",
+   "result":"2245",
+   "id":"1"
+}
+
+```
+
+***
