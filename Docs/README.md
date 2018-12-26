@@ -228,7 +228,7 @@ Returns information about a block by hash or `error` if given hash is invalid or
 ##### Parameters
 
 
-1. `DATA`, 34 bytes - hash of given block
+1. `DATA`, 33 bytes - hash of given block
 ```js
 params: [
    '0x4C8D0DA35EF24DAE6F5BBAC8A11597A0EAB25926A3A474A28AD87C7F7792F6F2'
@@ -239,7 +239,7 @@ params: [
 
 Object - A block object:
 
-  - `hash`: `DATA`, 34 bytes - Block hash.
+  - `hash`: `DATA`, 33 bytes - Block hash.
   - `previousHash`: `DATA` - Hash of previous block.
   - `timestamp`: `QUANTITY` - Block timestamp.
   - `height`: `QUANTITY` - Block height.
@@ -372,7 +372,7 @@ Returns the number of transactions of given block hash or `error` if given hash 
 
 ##### Parameters
 
-1. `DATA`, 34 bytes - hash of given block
+1. `DATA`, 33 bytes - hash of given block
 ```js
 params: [
    '0x4C8D0DA35EF24DAE6F5BBAC8A11597A0EAB25926A3A474A28AD87C7F7792F6F2'
@@ -412,7 +412,7 @@ Array of chain info:
 
   - `name`: `string` - Chain name.
   - `address`: `string` - Chain address.
-  - `height`: `QUANTITY` - Block timestamp.
+  - `height`: `QUANTITY` - Last block number.
   - `children`: `Array` - Child chains.
  
 
@@ -461,6 +461,46 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"getChains","params":[],"id":1}'
          "parentAddress":"main"
       },{...}
    ],
+   "id":"1"
+}
+```
+
+
+#### getConfirmations
+Returns the number of confirmations of given transaction hash and other useful info.
+
+##### Parameters
+
+1. `DATA`, 33 bytes - hash of given transaction
+```js
+params: [
+   '0x34647C9A097909C7E5112B7F8F3950F6FA65D20DFA9D172A8F5084AC8595EABD'
+]
+```
+##### Returns
+
+Array of chain info:
+
+  - `confirmations`: `QUANTITY` - Chain name.
+  - `hash`: `DATA` - Chain address.
+  - `height`: `QUANTITY` - Last block number.
+  - `chain`: `string` - Child chains.
+ 
+
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"getConfirmations","params":["0x34647C9A097909C7E5112B7F8F3950F6FA65D20DFA9D172A8F5084AC8595EABD"],"id":1}'
+
+// Result
+{
+   "jsonrpc":"2.0",
+   "result":{
+      "confirmations":1,
+      "hash":"0x34647C9A097909C7E5112B7F8F3950F6FA65D20DFA9D172A8F5084AC8595EABD",
+      "height":510,
+      "chain":"NztsEZP7dtrzRBagogUYVp6mgEFbhjZfvHMVkd2bYWJfE"
+   },
    "id":"1"
 }
 ```
