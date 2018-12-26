@@ -730,10 +730,44 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"getTokenTransferCount","params":
 
 
 //Result
-Formatted JSON Data
 {
    "jsonrpc":"2.0",
    "result":"2245",
+   "id":"1"
+}
+
+```
+
+***
+
+#### sendRawTransaction
+Allows to broadcast a signed operation on the network, but it's required to build it manually. 
+
+##### Parameters
+
+1. `DATA` - The signed transaction data.
+```js
+params: [
+   '0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675'
+]
+```
+
+##### Returns
+
+`DATA` - The transaction hash, or null if the transaction does not make it to the mempool for some reason.
+
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"sendRawTransaction","params":["0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675"],"id":1}'
+
+
+//Result
+{
+   "jsonrpc":"2.0",
+   "result":{
+      "hash":"0x3C0D260AACF17BD4AFA535C4845E1CE8B9D8A600A826AB138ADF677C6369C703"
+      }",
    "id":"1"
 }
 
