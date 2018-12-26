@@ -171,3 +171,53 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"getAddressTxCount","params":["PD
 ```
 
 ***
+
+#### getApps
+Returns an array of application running on Phantasma.
+
+
+##### Parameters
+
+none
+
+##### Returns
+
+- `apps`: `Array` - Set of applications descriptions.
+
+  - `description `: `string` - Brief application description.
+  - `icon `: `DATA` - Small application icon.
+  - `id `: `string` - Application ID.
+  - `title `: `string` - Application title.
+  - `url `: `string` - Url of the application website.
+
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"getApps","params":[],"id":1}'
+
+// Result
+{
+   "jsonrpc":"2.0",
+   "result":{
+      "apps":[
+         {
+            "description":"Collect, train and battle against other players in Nacho Men!",
+            "icon":"0x0000000000000000000000000000000000000000000000000000000000000000",
+            "id":"nachomen",
+            "title":"nachomen",
+            "url":"https:\/\/nacho.men"
+         },
+         {
+            "description":"The future of digital content distribution!",
+            "icon":"0x0000000000000000000000000000000000000000000000000000000000000000",
+            "id":"mystore",
+            "title":"mystore",
+            "url":"https:\/\/my.store"
+         }
+      ]
+   },
+   "id":"1"
+}
+```
+
+***
