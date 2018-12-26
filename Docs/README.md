@@ -536,19 +536,71 @@ Object - A transaction object or `error` if hash is invalid or not found:
 ##### Example
 ```js
 // Request
-curl -X POST --data '{"jsonrpc":"2.0","method":"getConfirmations","params":["0x34647C9A097909C7E5112B7F8F3950F6FA65D20DFA9D172A8F5084AC8595EABD"],"id":1}'
+curl -X POST --data '{"jsonrpc":"2.0","method":"getTransactionByHash","params":["0x3C0D260AACF17BD4AFA535C4845E1CE8B9D8A600A826AB138ADF677C6369C703"],"id":1}'
 
 // Result
 {
    "jsonrpc":"2.0",
    "result":{
-      "confirmations":1,
-      "hash":"0x34647C9A097909C7E5112B7F8F3950F6FA65D20DFA9D172A8F5084AC8595EABD",
-      "height":510,
-      "chain":"NztsEZP7dtrzRBagogUYVp6mgEFbhjZfvHMVkd2bYWJfE"
+      "txid":"0x3C0D260AACF17BD4AFA535C4845E1CE8B9D8A600A826AB138ADF677C6369C703",
+      "chainAddress":"NztsEZP7dtrzRBagogUYVp6mgEFbhjZfvHMVkd2bYWJfE",
+      "chainName":"main",
+      "timestamp":1545844818,
+      "blockHeight":515,
+      "script":"030004036761732B0001030003020F270400030003010104000300022042CDF84A890B8E2649D6C9A6D643B09D15A01BB64F5EE0816A8EF8F341055096040003000409416464726573732829080003000408416C6C6F7747617304002C0103000405746F6B656E2B0001030003061E4ED9E77901040003000404534F554C040003000220A81C7F808DE996F8C61E01F2488CA69F93A21E76949075BCCDAE03245C14B2E004000300040941646472657373282908000300022042CDF84A890B8E2649D6C9A6D643B09D15A01BB64F5EE0816A8EF8F34105509604000300040941646472657373282908000300040E5472616E73666572546F6B656E7304002C01030004036761732B00010300022042CDF84A890B8E2649D6C9A6D643B09D15A01BB64F5EE0816A8EF8F3410550960400030004094164647265737328290800030004085370656E6447617304002C010C",
+      "events":[
+         {
+            "address":"P4VDVj2xoHXjShSaCxHWZDEuy8pBcTe56msuWJACQyhcy",
+            "data":"0101020F27",
+            "kind":"GasEscrow"
+         },
+         {
+            "address":"P4VDVj2xoHXjShSaCxHWZDEuy8pBcTe56msuWJACQyhcy",
+            "data":"04534F554C061E4ED9E779010D6E4079E36703EBD37C00722F5891D28B0E2811DC114B129215123ADCCE3605",
+            "kind":"TokenSend"
+         },
+         {
+            "address":"PBJg8AF9ta8nEHF3MidzzofTj4WDBRWAoHv2WQDWwcyGb",
+            "data":"04534F554C061E4ED9E779010D6E4079E36703EBD37C00722F5891D28B0E2811DC114B129215123ADCCE3605",
+            "kind":"TokenReceive"
+         },
+         {
+            "address":"P4VDVj2xoHXjShSaCxHWZDEuy8pBcTe56msuWJACQyhcy",
+            "data":"01010168",
+            "kind":"GasPayment"
+         }
+      ]
    },
    "id":"1"
 }
 ```
+
+***
+
+
+#### getTransactionByBlockHashAndIndex
+Returns the information about a transaction requested by a block hash and transaction index.
+
+##### Parameters
+
+1. `DATA`, 33 bytes - hash of a transaction
+```js
+params: [
+   '0x1EBA956A82900DCB69B3A372EBE558760913ACEF9292917C9E43DFB685DEDDA5',
+   5
+]
+```
+##### Returns
+
+See [getTransactionByHash](#getTransactionByHash).
+ 
+
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"getTransactionByBlockHashAndIndex","params":["0x1EBA956A82900DCB69B3A372EBE558760913ACEF9292917C9E43DFB685DEDDA5", 5],"id":1}'
+```
+Result
+See [getTransactionByHash](#getTransactionByHash).
 
 ***
