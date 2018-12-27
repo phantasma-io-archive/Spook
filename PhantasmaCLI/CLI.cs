@@ -34,6 +34,8 @@ namespace Phantasma.CLI
         private readonly Mempool mempool;
         private bool running = false;
 
+        private NexusAPI api;
+
         private static Hash SendTransfer(JSONRPC_Client rpc, Logger log, string host, KeyPair from, Address to, BigInteger amount)
         {
             var script = ScriptUtils.BeginScript().AllowGas(from.Address, 1, 9999).TransferTokens("SOUL", from.Address, to, amount).SpendGas(from.Address).EndScript();
@@ -276,10 +278,11 @@ namespace Phantasma.CLI
             this.mempool = new Mempool(node_keys, nexus);
             mempool.Start();
 
+            api = new NexusAPI(nexus, mempool);
+
             // RPC setup
             if (hasRPC)
             {
-                var api = new NexusAPI(nexus, mempool);
                 var webLogger = new LunarLabs.WebServer.Core.NullLogger(); // TODO ConsoleLogger is not working properly here, why?
                 var rpcServer = new RPCServer(api, "rpc", 7077, webLogger);
                 new Thread(() => { rpcServer.Start(); }).Start();
@@ -335,9 +338,31 @@ namespace Phantasma.CLI
             }
         }
 
+        private void ExecuteAPI(string name, string[] args)
+        {
+            var result = api.Execute(name, args);
+            if (result == null)
+            {
+                logger.Warning("API returned null value...");
+                return;
+            }
+
+            var json = JSONWriter.WriteToString(result);
+            var lines = json.Split('\n');
+            foreach (var line in lines)
+            {
+                logger.Message(line);
+            }
+        }
+
         private void SetupCommands(CommandDispatcher dispatcher)
         {
             dispatcher.RegisterCommand("quit", "Stops the node and exits", (args) => Terminate());
+
+            foreach (var method in api.Methods)
+            {
+                dispatcher.RegisterCommand("api."+method.Name, "API CALL", (args) => ExecuteAPI(method.Name, args));
+            }
         }
     }
 }
