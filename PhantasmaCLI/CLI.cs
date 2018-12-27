@@ -12,6 +12,7 @@ using Phantasma.Core.Types;
 using Phantasma.Blockchain.Tokens;
 using LunarLabs.Parser.JSON;
 using Phantasma.API;
+using Phantasma.Network.P2P;
 
 namespace Phantasma.CLI
 {
