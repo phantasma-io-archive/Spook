@@ -212,7 +212,8 @@ namespace Phantasma.CLI
                 if (txHash == Hash.Null)
                 {
                     log.Error($"Error sending {amount} SOUL from {currentKey.Address} to {destKey.Address}...");
-                    return;
+                    amount = TokenUtils.ToBigInteger(1000000, Nexus.NativeTokenDecimals);
+                    SendTransfer(rpc, log, host, masterKeys, currentKey.Address, amount);
                 }
 
                 totalTxs++;
@@ -235,7 +236,7 @@ namespace Phantasma.CLI
                 log.Message("Stopping sender...");
             };
 
-            for (int i=1; i<= threadCount; i++)
+            for (int i=1; i<= 1; i++)
             {
                 log.Message($"Starting thread #{i}...");
                 try
@@ -271,22 +272,7 @@ namespace Phantasma.CLI
             var nexusName = settings.GetString("nexus.name", "simnet");
             var genesisAddress = Address.FromText(settings.GetString("nexus.genesis", KeyPair.FromWIF(validatorWIFs[0]).Address.Text));
 
-            switch (mode)
-            {
-                case "sender":
-                    string host = settings.GetString("sender.host");
-                    int threadCount = settings.GetInt("sender.threads", 8);
-                    RunSender(log, wif, host, threadCount);
-                    Console.WriteLine("Sender finished operations.");
-                    return;
-
-                case "validator": break;
-                default:
-                    {
-                        log.Error("Unknown mode: " + mode);
-                        return;
-                    }
-            }
+            
 
             string defaultPort = null;
             for (int i=0; i<validatorWIFs.Length; i++)
@@ -349,6 +335,24 @@ namespace Phantasma.CLI
                 node.Stop();
                 mempool.Stop();
             };
+
+            switch (mode)
+            {
+                case "sender":
+                    string host = settings.GetString("sender.host");
+                    int threadCount = settings.GetInt("sender.threads", 8);
+                    RunSender(log, wif, host, threadCount);
+                    Console.WriteLine("Sender finished operations.");
+                    //return;
+                    break;
+
+                case "validator": break;
+                default:
+                {
+                    log.Error("Unknown mode: " + mode);
+                    return;
+                }
+            }
 
             while (running)
             {
