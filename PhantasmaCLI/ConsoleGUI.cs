@@ -72,20 +72,10 @@ namespace Phantasma.CLI
             }
         }
 
-        private void FillLine(ConsoleColor fg, char symbol)
+        private void FillLine(char symbol)
         {
-            Console.ForegroundColor = fg;
-
-            int maxX = Console.WindowWidth;
-            if (Console.CursorTop >= Console.WindowHeight-1)
-            {
-                maxX--;
-            }
-
-            for (int i= Console.CursorLeft; i <maxX; i++)
-            {
-                Console.Write(symbol);
-            }
+            Console.Write(new string(symbol, (Console.WindowWidth - 1) - Console.CursorLeft));
+            return;
         }
 
         private void Redraw()
@@ -93,16 +83,15 @@ namespace Phantasma.CLI
             //Console.Clear();
             Console.CursorVisible = false;
 
-            int lY = 1;
+            int lY = 0;
             if (redrawFlags.HasFlag(RedrawFlags.Logo))
             {
                 redrawFlags &= ~RedrawFlags.Logo;
 
-                Console.SetCursorPosition(0, 0);
-                FillLine(ConsoleColor.DarkCyan, '.');
-
                 int midX = Console.WindowWidth / 2;
                 int lX = midX - (Logo.Width / 2);
+
+                Console.ForegroundColor = ConsoleColor.DarkBlue;
 
                 for (int j = 0; j < Logo.Height; j++)
                 {
@@ -110,6 +99,12 @@ namespace Phantasma.CLI
                     for (int i = 0; i < Logo.Width; i++)
                     {
                         var pixel = logo[i + j * Logo.Width];
+                        if (pixel == 0)
+                        {
+                            Console.CursorLeft++;
+                            continue;
+                        }
+
                         switch (pixel)
                         {
                             case 1: Console.BackgroundColor = ConsoleColor.DarkCyan; break;
@@ -125,13 +120,11 @@ namespace Phantasma.CLI
             Console.BackgroundColor = defaultBG;
             Console.ForegroundColor = ConsoleColor.DarkGray;
 
-            int curY = Logo.Height + lY;
-
             if (redrawFlags.HasFlag(RedrawFlags.Prompt))
             {
                 redrawFlags &= ~RedrawFlags.Prompt;
 
-                Console.SetCursorPosition(0, curY);
+                Console.SetCursorPosition(0, Console.WindowHeight - 2);
 
                 if (initializing)
                 {
@@ -144,44 +137,35 @@ namespace Phantasma.CLI
                 }
                 else
                 {
-                    Console.Write(">"+prompt);
+                    Console.Write(">");
+
+                    if (!string.IsNullOrEmpty(prompt))
+                    {
+                        Console.Write(prompt);
+                    }
+
                     if (animationCounter % 2 == 0)
                     {
                         Console.Write("_");
                     }
                 }
-                FillLine(ConsoleColor.White, ' ');
 
-                Console.SetCursorPosition(0, curY + 1);
-                FillLine(ConsoleColor.DarkCyan, '.');
+                FillLine(' ');
             }
 
-            curY++;
             if (redrawFlags.HasFlag(RedrawFlags.Log))
             {
                 redrawFlags &= ~RedrawFlags.Log;
 
+                int curY = Logo.Height + lY;
+                Console.SetCursorPosition(0, curY);
+                FillLine('.');
 
                 curY++;
                 int maxLines = (Console.WindowHeight - 1) - (curY + 1);
 
                 for (int i = 0; i < _text.Count; i++)
                 {
-                    Console.SetCursorPosition(0, curY + i);
-
-                    var entry = _text[i];
-                    switch (entry.Key)
-                    {
-                        case LogEntryKind.Error: Console.ForegroundColor = ConsoleColor.Red; break;
-                        case LogEntryKind.Warning: Console.ForegroundColor = ConsoleColor.Yellow; break;
-                        case LogEntryKind.Sucess: Console.ForegroundColor = ConsoleColor.Green; break;
-                        case LogEntryKind.Debug: Console.ForegroundColor = ConsoleColor.Cyan; break;
-                        default: Console.ForegroundColor = ConsoleColor.Gray; break;
-                    }
-
-                    Console.Write(entry.Value);
-                    FillLine(ConsoleColor.DarkCyan, ' ');
-
                     if (i >= maxLines)
                     {
                         if (_text.Count > maxLines)
@@ -198,10 +182,30 @@ namespace Phantasma.CLI
                         }
                         break;
                     }
-                }
 
-                Console.SetCursorPosition(0, Console.WindowHeight - 1);
-                FillLine(ConsoleColor.DarkCyan, '.');
+                    Console.SetCursorPosition(0, curY + i);
+
+                    var entry = _text[i];
+                    switch (entry.Key)
+                    {
+                        case LogEntryKind.Error: Console.ForegroundColor = ConsoleColor.Red; break;
+                        case LogEntryKind.Warning: Console.ForegroundColor = ConsoleColor.Yellow; break;
+                        case LogEntryKind.Sucess: Console.ForegroundColor = ConsoleColor.Green; break;
+                        case LogEntryKind.Debug: Console.ForegroundColor = ConsoleColor.Cyan; break;
+                        default: Console.ForegroundColor = ConsoleColor.Gray; break;
+                    }
+
+                    if (entry.Value.Length > Console.WindowWidth - 1)
+                    {
+                        var str = entry.Value.Substring(0, Console.WindowWidth-4)+"...";
+                        Console.Write(str);
+                    }
+                    else
+                    {
+                        Console.Write(entry.Value);
+                    }
+                    FillLine(' ');
+                }
             }
         }
 
