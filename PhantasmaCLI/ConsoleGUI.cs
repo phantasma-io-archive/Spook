@@ -1,6 +1,7 @@
 ﻿using Phantasma.Core.Log;
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 
 namespace Phantasma.CLI
 {
@@ -34,7 +35,18 @@ namespace Phantasma.CLI
             this.defaultBG = Console.BackgroundColor;
             this.logo = Logo.GetPixels();
             this.redrawFlags = RedrawFlags.Logo | RedrawFlags.Prompt;
-           
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                var colors = ColorMapper.GetBufferColors();
+                colors[ConsoleColor.DarkCyan] = new COLORREF(52, 133, 157);
+                colors[ConsoleColor.Cyan] = new COLORREF(126, 196, 193);
+                colors[ConsoleColor.Yellow] = new COLORREF(245, 237, 186);
+                colors[ConsoleColor.Red] = new COLORREF(210, 100, 103);
+                colors[ConsoleColor.Green] = new COLORREF(192, 199, 65);
+                ColorMapper.SetBatchBufferColors(colors);
+            }
+
             Update();
         }
 
@@ -99,7 +111,7 @@ namespace Phantasma.CLI
                         {
                             case 1: Console.BackgroundColor = ConsoleColor.DarkCyan; break;
                             case 2: Console.BackgroundColor = ConsoleColor.Cyan; break;
-                            case 3: Console.BackgroundColor = ConsoleColor.White; break;
+                            case 3: Console.BackgroundColor = ConsoleColor.Yellow; break;
                             default: Console.BackgroundColor = defaultBG; break;
                         }
                         Console.Write(" ");
