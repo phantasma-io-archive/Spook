@@ -310,7 +310,7 @@ namespace Phantasma.CLI
                 var simulator = new ChainSimulator(node_keys, 1234, logger);
                 nexus = simulator.Nexus;
 
-                for (int i=0; i< 100; i++)
+                for (int i=0; i< 10; i++)
                 {
                     simulator.GenerateRandomBlock();
                 }

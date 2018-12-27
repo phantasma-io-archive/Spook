@@ -59,7 +59,13 @@ namespace Phantasma.CLI
         {
             Console.ForegroundColor = fg;
 
-            for (int i= Console.CursorLeft; i <Console.WindowWidth; i++)
+            int maxX = Console.WindowWidth;
+            if (Console.CursorTop >= Console.WindowHeight-1)
+            {
+                maxX--;
+            }
+
+            for (int i= Console.CursorLeft; i <maxX; i++)
             {
                 Console.Write(symbol);
             }
@@ -136,7 +142,7 @@ namespace Phantasma.CLI
 
 
                 curY++;
-                int maxLines = (Console.WindowHeight - 1) - (curY + 3); // this might be wrong...
+                int maxLines = (Console.WindowHeight - 1) - (curY + 1);
 
                 for (int i = 0; i < _text.Count; i++)
                 {
@@ -155,22 +161,25 @@ namespace Phantasma.CLI
                     Console.Write(entry.Value);
                     FillLine(ConsoleColor.DarkCyan, ' ');
 
-                    if (i > maxLines)
+                    if (i >= maxLines)
                     {
                         if (_text.Count > maxLines)
                         {
                             _text.RemoveAt(0);
                             redrawFlags |= RedrawFlags.Log;
-                        }
-                        else
-                        if (ready)
-                        {
-                            initializing = false;
-                            ready = false;
+
+                            if (_text.Count == maxLines && ready)
+                            {
+                                initializing = false;
+                                ready = false;
+                                redrawFlags |= RedrawFlags.Log | RedrawFlags.Logo | RedrawFlags.Prompt;
+                            }
                         }
                         break;
                     }
                 }
+
+                Console.SetCursorPosition(0, Console.WindowHeight - 1);
                 FillLine(ConsoleColor.DarkCyan, '.');
             }
         }
