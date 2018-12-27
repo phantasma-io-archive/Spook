@@ -280,9 +280,17 @@ namespace Phantasma.Blockchain.Consensus
             // Get the listener that handles the client request.
             var listener = (TcpListener)ar.AsyncState;
 
-            Socket socket = listener.EndAcceptSocket(ar);
-            Log.Message("New connection accepted from " + socket.RemoteEndPoint.ToString());
+            Socket socket;
+            try
+            {
+                socket = listener.EndAcceptSocket(ar);
+            }
+            catch (ObjectDisposedException e)
+            {
+                return;
+            }
 
+            Log.Message("New connection accepted from " + socket.RemoteEndPoint.ToString());
             Task.Run(() => { HandleConnection(socket); });
         }
 
