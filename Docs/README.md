@@ -1,3 +1,28 @@
+## JSON-RPC methods
+
+* [getAccount](#getAccount)
+* [getAddressTransactions](#getAddressTransactions)
+* [getAddressTxCount](#getAddressTxCount)
+* [getApps](#getApps)
+* [getBlockByHash](#getBlockByHash)
+* [getBlockByHeight](#getBlockByHeight)
+* [getBlockHeight](#getBlockHeight)
+* [getBlockTransactionCountByHash](#getBlockTransactionCountByHash)
+* [getChains](#getChains)
+* [getConfirmations](#getConfirmations)
+* [getTransactionByHash](#getTransactionByHash)
+* [getTransactionByBlockHashAndIndex](#getTransactionByBlockHashAndIndex)
+* [getTokens](#getTokens)
+* [getTokenBalance](#getTokenBalance)
+* [getTokenTransfers](#getTokenTransfers)
+* [getTokenTransferCount](#getTokenTransferCount)
+* [sendRawTransaction](#sendRawTransaction)
+
+
+## JSON RPC API Reference
+
+***
+
 #### getAccount
 Returns the account name and balance of given address.
 
@@ -604,6 +629,46 @@ Result
 See [getTransactionByHash](#getTransactionByHash).
 
 ***
+
+#### getTokenBalance
+Returns the balance for a specific token and chain, given an address.
+
+
+##### Parameters
+
+1. `String`, base58 encoded - address to check for balance.
+2. `String`, token symbol.
+3. `String`, base58 encoded chain address or name.
+```js
+params: [
+   'P2kArw3PA6JPQZpQT6FMDjTkX4VGdL6kmWZHe8Fgeg8CZ',
+   'SOUL',
+   'privacy',
+]
+```
+
+##### Returns
+
+This endpoint can have 2 types of returns, depending on the token. If the token is fungible, it will return a `QUANTITY`. If it's a NFT, it returns a list of `Id's` and `QUANTITY`, being this the total of id's.
+ 
+  
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"getTokenBalance","params":["P2kArw3PA6JPQZpQT6FMDjTkX4VGdL6kmWZHe8Fgeg8CZ", "SOUL", "privacy"],"id":1}'
+
+// Result
+{
+	"jsonrpc": "2.0",
+	"result": {
+		"balance": "2540151826638"
+	},
+	"id": "1"
+}
+```
+
+***
+
 
 #### getTokens
 Returns an array of tokens deployed in Phantasma.
