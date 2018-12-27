@@ -11,9 +11,7 @@ using Phantasma.Numerics;
 using Phantasma.Core.Types;
 using Phantasma.Blockchain.Tokens;
 using LunarLabs.Parser.JSON;
-using LunarLabs.Parser;
 using Phantasma.API;
-using System.Threading.Tasks;
 
 namespace Phantasma.CLI
 {
@@ -255,10 +253,9 @@ namespace Phantasma.CLI
 
         static void Main(string[] args)
         {
-            var log = new ConsoleLogger();
             var seeds = new List<string>();
 
-            Console.ForegroundColor = ConsoleColor.DarkGray;
+            var logger = new ConsoleOutput();
 
             var settings = new Arguments(args);
 
@@ -276,14 +273,14 @@ namespace Phantasma.CLI
                 case "sender":
                     string host = settings.GetString("sender.host");
                     int threadCount = settings.GetInt("sender.threads", 8);
-                    RunSender(log, wif, host, threadCount);
+                    RunSender(logger, wif, host, threadCount);
                     Console.WriteLine("Sender finished operations.");
                     return;
 
                 case "validator": break;
                 default:
                     {
-                        log.Error("Unknown mode: " + mode);
+                        logger.Error("Unknown mode: " + mode);
                         return;
                     }
             }
@@ -310,7 +307,7 @@ namespace Phantasma.CLI
 
             if (wif == validatorWIFs[0])
             {
-                var simulator = new ChainSimulator(node_keys, 1234);
+                var simulator = new ChainSimulator(node_keys, 1234, logger);
                 nexus = simulator.Nexus;
 
                 for (int i=0; i< 100; i++)
@@ -320,7 +317,7 @@ namespace Phantasma.CLI
             }
             else
             {
-                nexus = new Nexus(nexusName, genesisAddress, log);
+                nexus = new Nexus(nexusName, genesisAddress, logger);
                 seeds.Add("127.0.0.1:7073");
             }
 
@@ -340,22 +337,24 @@ namespace Phantasma.CLI
             }
 
             // node setup
-            var node = new Node(nexus, node_keys, port, seeds, log);           
-            log.Message("Phantasma Node address: " + node_keys.Address.Text);
+            var node = new Node(nexus, node_keys, port, seeds, logger);           
+            logger.Message("Phantasma Node address: " + node_keys.Address.Text);
             node.Start();
 
-            nexus.AddPlugin(new TPSPlugin(log, 10));
+            nexus.AddPlugin(new TPSPlugin(logger, 10));
 
             Console.CancelKeyPress += delegate {
                 running = false;
-                log.Message("Phantasma Node stopping...");
+                logger.Message("Phantasma Node stopping...");
                 node.Stop();
                 mempool.Stop();
             };
 
+            logger.MakeReady();
             while (running)
             {
-                Thread.Sleep(1000);
+                logger.Update();
+                Thread.Sleep(100);
             }
         }
     }
