@@ -1,3 +1,27 @@
+## JSON-RPC methods
+
+* [getAccount](#getAccount)
+* [getAddressTransactions](#getAddressTransactions)
+* [getAddressTxCount](#getAddressTxCount)
+* [getApps](#getApps)
+* [getBlockByHash](#getBlockByHash)
+* [getBlockByHeight](#getBlockByHeight)
+* [getBlockHeight](#getBlockHeight)
+* [getBlockTransactionCountByHash](#getBlockTransactionCountByHash)
+* [getChains](#getChains)
+* [getConfirmations](#getConfirmations)
+* [getTransactionByHash](#getTransactionByHash)
+* [getTransactionByBlockHashAndIndex](#getTransactionByBlockHashAndIndex)
+* [getTokens](#getTokens)
+* [getTokenTransfers](#getTokenTransfers)
+* [getTokenTransferCount](#getTokenTransferCount)
+* [sendRawTransaction](#sendRawTransaction)
+
+
+## JSON RPC API Reference
+
+***
+
 #### getAccount
 Returns the account name and balance of given address.
 
