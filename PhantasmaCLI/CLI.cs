@@ -312,7 +312,6 @@ namespace Phantasma.CLI
                 while (running)
                 {
                     gui.Update();
-                    Thread.Sleep(100);
                 }
             }
             else {

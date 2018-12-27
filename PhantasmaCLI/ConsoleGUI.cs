@@ -208,57 +208,67 @@ namespace Phantasma.CLI
                 }
             }
         }
+             
+        private void CheckKeys()
+        {
+            if (!Console.KeyAvailable)
+            {
+                return;
+            }
+
+            var press = Console.ReadKey();
+
+            if (press.KeyChar >= 32 && press.KeyChar <= 127)
+            {
+                prompt += press.KeyChar;
+                redrawFlags |= RedrawFlags.Prompt;
+            }
+            else
+            {
+                switch (press.Key)
+                {
+                    case ConsoleKey.Enter:
+                        {
+                            if (!string.IsNullOrEmpty(prompt))
+                            {
+                                if (dispatcher != null)
+                                {
+                                    try
+                                    {
+                                        dispatcher.ExecuteCommand(prompt);
+                                    }
+                                    catch (CommandException e)
+                                    {
+                                        Write(LogEntryKind.Warning, e.Message);
+                                    }
+                                    catch (Exception e)
+                                    {
+                                        Write(LogEntryKind.Error, e.ToString());
+                                    }
+                                }
+                                prompt = "";
+                            }
+                            break;
+                        }
+
+                    case ConsoleKey.Backspace:
+                        {
+                            if (!string.IsNullOrEmpty(prompt))
+                            {
+                                prompt = prompt.Substring(0, prompt.Length - 1);
+                                redrawFlags |= RedrawFlags.Prompt;
+                            }
+                            break;
+                        }
+                }
+            }
+        }
 
         public void Update()
         {
-            if (!initializing && Console.KeyAvailable)
+            if (!initializing)
             {
-                var press = Console.ReadKey();
-
-                if (press.KeyChar>=32 && press.KeyChar<=127)
-                {
-                    prompt += press.KeyChar;
-                    redrawFlags |= RedrawFlags.Prompt;
-                }
-                else
-                {
-                    switch (press.Key)
-                    {
-                        case ConsoleKey.Enter:
-                            {
-                                if (!string.IsNullOrEmpty(prompt))
-                                {
-                                    if (dispatcher != null)
-                                    {
-                                        try
-                                        {
-                                            dispatcher.ExecuteCommand(prompt);
-                                        }
-                                        catch (CommandException e)
-                                        {
-                                            Write(LogEntryKind.Warning, e.Message);
-                                        }
-                                        catch (Exception e)
-                                        {
-                                            Write(LogEntryKind.Error, e.ToString());
-                                        }
-                                    }
-                                    prompt = "";
-                                }
-                                break;
-                            }
-
-                        case ConsoleKey.Backspace:
-                            {
-                                if (!string.IsNullOrEmpty(prompt))
-                                {
-                                    prompt = prompt.Substring(0, prompt.Length - 1);
-                                    redrawFlags |= RedrawFlags.Prompt;
-                                }
-                                break;
-                            }
-                    }
-                }
+                CheckKeys();
             }
 
             var diff = DateTime.UtcNow - lastRedraw;
