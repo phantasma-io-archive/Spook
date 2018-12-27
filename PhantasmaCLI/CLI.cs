@@ -15,9 +15,12 @@ using Phantasma.API;
 
 namespace Phantasma.CLI
 {
-    class Program
+    public class CLI
     {
-        private static bool running = false;
+        static void Main(string[] args)
+        {
+            new CLI(args);
+        }
 
         private static readonly string[] validatorWIFs = new string[]
         {
@@ -26,46 +29,10 @@ namespace Phantasma.CLI
             "KxWUCAD2wECLfA7diT7sV7V3jcxAf9GSKqZy3cvAt79gQLHQ2Qo8", // PDiqQHDwe6MTcP6TH6DYjq7FTUouvy2YEkDXz2chCABCb
         };
 
-        static void PrintChain(Chain chain)
-        {
-            Console.WriteLine("Listing blocks...");
-            foreach (var block in chain.Blocks)
-            {
-                Console.WriteLine("Block #" + block.Height);
-                Console.WriteLine("\tHash: " + block.Hash);
-
-                Console.WriteLine("\tTransactions: ");
-                int index = 0;
-                foreach (var hash in block.TransactionHashes)
-                {
-                    var tx = chain.FindTransactionByHash(hash);
-                    Console.WriteLine("\t\tTransaction #" + index);
-                    Console.WriteLine("\t\tHash: " + tx.Hash);
-                    Console.WriteLine();
-
-                    index++;
-                }
-
-                Console.WriteLine("\tEvents: ");
-                index = 0;
-                foreach (var hash in block.TransactionHashes)
-                {
-                    var events = block.GetEventsForTransaction(hash);
-
-                    foreach (var evt in events)
-                    {
-                        Console.WriteLine("\t\tEvent #" + index);
-                        Console.WriteLine("\t\tKind: " + evt.Kind);
-                        Console.WriteLine("\t\tTarget: " + evt.Address.Text);
-                        Console.WriteLine();
-
-                        index++;
-                    }
-                }
-
-                Console.WriteLine();
-            }
-        }
+        private readonly Node node;
+        private readonly Logger logger;
+        private readonly Mempool mempool;
+        private bool running = false;
 
         private static Hash SendTransfer(JSONRPC_Client rpc, Logger log, string host, KeyPair from, Address to, BigInteger amount)
         {
@@ -139,25 +106,25 @@ namespace Phantasma.CLI
             } while (true);
         }
 
-        static void SenderSpawn(Logger log, string wif, string host)
+        private void SenderSpawn(string wif, string host)
         {
             Thread.CurrentThread.IsBackground = true;
 
             var currentKey = KeyPair.Generate();
 
             var masterKeys = KeyPair.FromWIF(wif);
-            log.Message($"Connecting to host: {host} with address {masterKeys.Address.Text}");
+            logger.Message($"Connecting to host: {host} with address {masterKeys.Address.Text}");
 
             var rpc = new JSONRPC_Client();
 
             var amount = TokenUtils.ToBigInteger(1000000, Nexus.NativeTokenDecimals);
-            var hash = SendTransfer(rpc, log, host, masterKeys, currentKey.Address, amount);
+            var hash = SendTransfer(rpc, logger, host, masterKeys, currentKey.Address, amount);
             if (hash == Hash.Null)
             {
                 return;
             }
 
-            ConfirmTransaction(rpc, log, host, hash);
+            ConfirmTransaction(rpc, logger, host, hash);
 
             var rnd = new Random();
 
@@ -179,7 +146,7 @@ namespace Phantasma.CLI
                 var txHash = SendTransfer(rpc, null, host, currentKey, destKey.Address, amount);
                 if (txHash == Hash.Null)
                 {
-                    log.Error($"Error sending {amount} SOUL from {currentKey.Address} to {destKey.Address}...");
+                    logger.Error($"Error sending {amount} SOUL from {currentKey.Address} to {destKey.Address}...");
                     return;
                 }
 
@@ -188,27 +155,27 @@ namespace Phantasma.CLI
 
                 if (totalTxs % 10 == 0)
                 {
-                    log.Message($"Sent {totalTxs} transactions");
+                    logger.Message($"Sent {totalTxs} transactions");
                 }
             }
         }
 
-        static void RunSender(Logger log, string wif, string host, int threadCount)
+        private void RunSender(string wif, string host, int threadCount)
         {
-            log.Message("Running in sender mode.");
+            logger.Message("Running in sender mode.");
 
             running = true;
             Console.CancelKeyPress += delegate {
                 running = false;
-                log.Message("Stopping sender...");
+                logger.Message("Stopping sender...");
             };
 
             for (int i=1; i<= threadCount; i++)
             {
-                log.Message($"Starting thread #{i}...");
+                logger.Message($"Starting thread #{i}...");
                 try
                 {
-                    new Thread(() => { SenderSpawn(log, wif, host); }).Start();
+                    new Thread(() => { SenderSpawn(wif, host); }).Start();
                 }
                 catch (Exception e) {
                     break;
@@ -221,8 +188,7 @@ namespace Phantasma.CLI
             }
         }
 
-        static void Main(string[] args)
-        {
+        public CLI(string[] args) { 
             var seeds = new List<string>();
 
             ConsoleGUI gui;
@@ -230,8 +196,6 @@ namespace Phantasma.CLI
             var settings = new Arguments(args);
 
             var useGUI = settings.GetBool("gui.enabled", true);
-
-            Logger logger;
 
             if (useGUI)
             {
@@ -258,7 +222,7 @@ namespace Phantasma.CLI
                 case "sender":
                     string host = settings.GetString("sender.host");
                     int threadCount = settings.GetInt("sender.threads", 8);
-                    RunSender(logger, wif, host, threadCount);
+                    RunSender(wif, host, threadCount);
                     Console.WriteLine("Sender finished operations.");
                     return;
 
@@ -309,7 +273,7 @@ namespace Phantasma.CLI
             running = true;
 
             // mempool setup
-            var mempool = new Mempool(node_keys, nexus);
+            this.mempool = new Mempool(node_keys, nexus);
             mempool.Start();
 
             // RPC setup
@@ -322,35 +286,58 @@ namespace Phantasma.CLI
             }
 
             // node setup
-            var node = new Node(nexus, node_keys, port, seeds, gui);           
+            this.node = new Node(nexus, node_keys, port, seeds, gui);           
             gui.Message("Phantasma Node address: " + node_keys.Address.Text);
             node.Start();
 
             nexus.AddPlugin(new TPSPlugin(gui, 10));
 
             Console.CancelKeyPress += delegate {
-                running = false;
-                gui.Message("Phantasma Node stopping...");
-
-                if (node.IsRunning)
-                {
-                    node.Stop();
-                }
-
-                if (mempool.IsRunning)
-                {
-                    mempool.Stop();
-                }
+                Terminate();
             };
 
             logger.Success("Node is ready");
 
-            gui.MakeReady();
-            while (running)
+            var dispatcher = new CommandDispatcher();
+            SetupCommands(dispatcher);
+
+            if (gui != null)
             {
-                gui.Update();
-                Thread.Sleep(100);
+                gui.MakeReady(dispatcher);
+
+                while (running)
+                {
+                    gui.Update();
+                    Thread.Sleep(100);
+                }
             }
+            else {
+                while (running)
+                {
+                    Thread.Sleep(5000);
+                }
+            }
+        }
+
+        private void Terminate()
+        {
+            running = false;
+            logger.Message("Phantasma Node stopping...");
+
+            if (node.IsRunning)
+            {
+                node.Stop();
+            }
+
+            if (mempool.IsRunning)
+            {
+                mempool.Stop();
+            }
+        }
+
+        private void SetupCommands(CommandDispatcher dispatcher)
+        {
+            dispatcher.RegisterCommand("quit", "Stops the node and exits", (args) => Terminate());
         }
     }
 }

@@ -27,6 +27,8 @@ namespace Phantasma.CLI
         private int animationCounter = 0;
         private DateTime lastRedraw;
 
+        private CommandDispatcher dispatcher;
+
         private string prompt = "";
 
         public ConsoleGUI()
@@ -50,8 +52,9 @@ namespace Phantasma.CLI
             Update();
         }
 
-        public void MakeReady()
+        public void MakeReady(CommandDispatcher dispatcher)
         {
+            this.dispatcher = dispatcher;
             ready = true;
         }
 
@@ -217,6 +220,30 @@ namespace Phantasma.CLI
                 {
                     switch (press.Key)
                     {
+                        case ConsoleKey.Enter:
+                            {
+                                if (!string.IsNullOrEmpty(prompt))
+                                {
+                                    if (dispatcher != null)
+                                    {
+                                        try
+                                        {
+                                            dispatcher.ExecuteCommand(prompt);
+                                        }
+                                        catch (CommandException e)
+                                        {
+                                            Write(LogEntryKind.Warning, e.Message);
+                                        }
+                                        catch (Exception e)
+                                        {
+                                            Write(LogEntryKind.Error, e.ToString());
+                                        }
+                                    }
+                                    prompt = "";
+                                }
+                                break;
+                            }
+
                         case ConsoleKey.Backspace:
                             {
                                 if (!string.IsNullOrEmpty(prompt))
