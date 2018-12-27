@@ -4,13 +4,22 @@ using System.Collections.Generic;
 
 namespace Phantasma.CLI
 {
+    [Flags]
+    public enum RedrawFlags
+    {
+        None = 0,
+        Logo = 0x1,
+        Prompt = 0x2,
+        Log = 0x4
+    }
+
     public class ConsoleOutput: Logger
     {
         private byte[] logo;
         private ConsoleColor defaultBG;
         private List<KeyValuePair<LogEntryKind, string>> _text = new List<KeyValuePair<LogEntryKind, string>>();
         private int lastIndex;
-        private bool shouldRedraw;
+        private RedrawFlags redrawFlags = RedrawFlags.None;
 
         private bool ready = false;
         private bool initializing = true;
@@ -21,8 +30,8 @@ namespace Phantasma.CLI
         {
             Console.ResetColor();
             this.defaultBG = Console.BackgroundColor;
-
             this.logo = Logo.GetPixels();
+            this.redrawFlags = RedrawFlags.Logo | RedrawFlags.Prompt;
            
             Update();
         }
@@ -42,7 +51,7 @@ namespace Phantasma.CLI
             lock (_text)
             {
                 _text.Add(new KeyValuePair<LogEntryKind, string>(kind, msg));
-                shouldRedraw = true;
+                redrawFlags |= RedrawFlags.Log;
             }
         }
 
@@ -60,81 +69,110 @@ namespace Phantasma.CLI
         {
             //Console.Clear();
             Console.CursorVisible = false;
-            Console.SetCursorPosition(0, 0);
-            FillLine(ConsoleColor.DarkCyan, '.');
-
-            int midX = Console.WindowWidth / 2;
-            int lX = midX - (Logo.Width / 2);
 
             int lY = 1;
-            for (int j = 0; j < Logo.Height; j++)
+            if (redrawFlags.HasFlag(RedrawFlags.Logo))
             {
-                Console.SetCursorPosition(lX, j + lY);
-                for (int i = 0; i < Logo.Width; i++)
+                redrawFlags &= ~RedrawFlags.Logo;
+
+                Console.SetCursorPosition(0, 0);
+                FillLine(ConsoleColor.DarkCyan, '.');
+
+                int midX = Console.WindowWidth / 2;
+                int lX = midX - (Logo.Width / 2);
+
+                for (int j = 0; j < Logo.Height; j++)
                 {
-                    var pixel = logo[i + j * Logo.Width];
-                    switch (pixel)
+                    Console.SetCursorPosition(lX, j + lY);
+                    for (int i = 0; i < Logo.Width; i++)
                     {
-                        case 1: Console.BackgroundColor = ConsoleColor.DarkCyan; break;
-                        case 2: Console.BackgroundColor = ConsoleColor.Cyan; break;
-                        case 3: Console.BackgroundColor = ConsoleColor.White; break;
-                        default: Console.BackgroundColor = defaultBG; break;
+                        var pixel = logo[i + j * Logo.Width];
+                        switch (pixel)
+                        {
+                            case 1: Console.BackgroundColor = ConsoleColor.DarkCyan; break;
+                            case 2: Console.BackgroundColor = ConsoleColor.Cyan; break;
+                            case 3: Console.BackgroundColor = ConsoleColor.White; break;
+                            default: Console.BackgroundColor = defaultBG; break;
+                        }
+                        Console.Write(" ");
                     }
-                    Console.Write(" ");
                 }
             }
+
             Console.BackgroundColor = defaultBG;
+            Console.ForegroundColor = ConsoleColor.DarkGray;
 
             int curY = Logo.Height + lY;
 
-            Console.ForegroundColor = ConsoleColor.DarkGray;
-            Console.SetCursorPosition(0, curY);
-
-            if (initializing)
+            if (redrawFlags.HasFlag(RedrawFlags.Prompt))
             {
-                Console.Write("Booting Phantasma node");
-                int dots = animationCounter % 4;
-                for (int i=0; i<dots; i++)
+                redrawFlags &= ~RedrawFlags.Prompt;
+
+                Console.SetCursorPosition(0, curY);
+
+                if (initializing)
                 {
-                    Console.Write(".");
-                }                
-            }
-            else
-            {
-                Console.Write(">Ready");
-            }
-            FillLine(ConsoleColor.White, ' ');
-
-            curY++;
-            Console.SetCursorPosition(0, curY);
-            FillLine(ConsoleColor.DarkCyan, '.');
-
-            curY++;
-            int maxLines = (Console.WindowHeight-1) - (curY + 3); // this might be wrong...
-
-            for (int i = 0; i < _text.Count; i++)
-            {
-                Console.SetCursorPosition(0, curY + i);
-                Console.Write(_text[i]);
-                FillLine(ConsoleColor.DarkCyan, ' ');
-
-                if (i > maxLines)
-                {
-                    if (_text.Count > maxLines)
+                    Console.Write("Booting Phantasma node");
+                    int dots = animationCounter % 4;
+                    for (int i = 0; i < dots; i++)
                     {
-                        _text.RemoveAt(0);
-                        shouldRedraw = true;
+                        Console.Write(".");
                     }
-                    else
-                    if (ready)
-                    {
-                        initializing = false;
-                        ready = false;
-                    }
-                    break;
                 }
+                else
+                {
+                    Console.Write(">Ready");
+                }
+                FillLine(ConsoleColor.White, ' ');
+
+                Console.SetCursorPosition(0, curY + 1);
+                FillLine(ConsoleColor.DarkCyan, '.');
             }
-            FillLine(ConsoleColor.DarkCyan, '.');
+
+            curY++;
+            if (redrawFlags.HasFlag(RedrawFlags.Log))
+            {
+                redrawFlags &= ~RedrawFlags.Log;
+
+
+                curY++;
+                int maxLines = (Console.WindowHeight - 1) - (curY + 3); // this might be wrong...
+
+                for (int i = 0; i < _text.Count; i++)
+                {
+                    Console.SetCursorPosition(0, curY + i);
+
+                    var entry = _text[i];
+                    switch (entry.Key)
+                    {
+                        case LogEntryKind.Error: Console.ForegroundColor = ConsoleColor.Red; break;
+                        case LogEntryKind.Warning: Console.ForegroundColor = ConsoleColor.Yellow; break;
+                        case LogEntryKind.Sucess: Console.ForegroundColor = ConsoleColor.Green; break;
+                        case LogEntryKind.Debug: Console.ForegroundColor = ConsoleColor.Cyan; break;
+                        default: Console.ForegroundColor = ConsoleColor.Gray; break;
+                    }
+
+                    Console.Write(entry.Value);
+                    FillLine(ConsoleColor.DarkCyan, ' ');
+
+                    if (i > maxLines)
+                    {
+                        if (_text.Count > maxLines)
+                        {
+                            _text.RemoveAt(0);
+                            redrawFlags |= RedrawFlags.Log;
+                        }
+                        else
+                        if (ready)
+                        {
+                            initializing = false;
+                            ready = false;
+                        }
+                        break;
+                    }
+                }
+                FillLine(ConsoleColor.DarkCyan, '.');
+            }
         }
 
         public void Update()
@@ -146,12 +184,11 @@ namespace Phantasma.CLI
                 {
                     lastRedraw = DateTime.UtcNow;
                     animationCounter++;
-                    shouldRedraw = true;
+                    redrawFlags |= RedrawFlags.Prompt;
                 }
             }
 
-            if (shouldRedraw) {
-                shouldRedraw = false;
+            if (redrawFlags != RedrawFlags.None) {
                 lock (_text)
                 {
                     Redraw();
