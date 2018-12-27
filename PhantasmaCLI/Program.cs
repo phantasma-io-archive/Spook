@@ -103,6 +103,8 @@ namespace Phantasma.CLI
         {
             var script = ScriptUtils.BeginScript().AllowGas(from.Address, 1, 9999).TransferTokens("SOUL", from.Address, to, amount).SpendGas(from.Address).EndScript();
 
+            Console.WriteLine($"Transfering {TokenUtils.ToDecimal(amount, Nexus.NativeTokenDecimals)} SOUL from {from.Address.Text} to {to.Text}");
+
             var tx = new Transaction("simnet", "main", script, Timestamp.Now + TimeSpan.FromMinutes(30), 0);
             tx.Sign(from);
 
@@ -183,6 +185,7 @@ namespace Phantasma.CLI
             var rpc = new JSONRPC_Client();
 
             var amount = TokenUtils.ToBigInteger(1000000, Nexus.NativeTokenDecimals);
+
             var hash = SendTransfer(rpc, log, host, masterKeys, currentKey.Address, amount);
             if (hash == Hash.Null)
             {
@@ -207,7 +210,7 @@ namespace Phantasma.CLI
                 } while (destKey == currentKey);
 
                 amount = 1;
-
+                
                 var txHash = SendTransfer(rpc, null, host, currentKey, destKey.Address, amount);
                 if (txHash == Hash.Null)
                 {
@@ -273,7 +276,6 @@ namespace Phantasma.CLI
             var genesisAddress = Address.FromText(settings.GetString("nexus.genesis", KeyPair.FromWIF(validatorWIFs[0]).Address.Text));
 
             
-
             string defaultPort = null;
             for (int i=0; i<validatorWIFs.Length; i++)
             {
@@ -301,7 +303,7 @@ namespace Phantasma.CLI
 
                 for (int i=0; i< 100; i++)
                 {
-                    simulator.GenerateRandomBlock();
+                //    simulator.GenerateRandomBlock();
                 }
             }
             else
