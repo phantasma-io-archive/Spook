@@ -192,6 +192,32 @@ namespace Phantasma.CLI
 
         public void Update()
         {
+            if (!initializing && Console.KeyAvailable)
+            {
+                var press = Console.ReadKey();
+
+                if (press.KeyChar>=32 && press.KeyChar<=127)
+                {
+                    prompt += press.KeyChar;
+                    redrawFlags |= RedrawFlags.Prompt;
+                }
+                else
+                {
+                    switch (press.Key)
+                    {
+                        case ConsoleKey.Backspace:
+                            {
+                                if (!string.IsNullOrEmpty(prompt))
+                                {
+                                    prompt = prompt.Substring(0, prompt.Length - 1);
+                                    redrawFlags |= RedrawFlags.Prompt;
+                                }
+                                break;
+                            }
+                    }
+                }
+            }
+
             var diff = DateTime.UtcNow - lastRedraw;
             if (diff.TotalSeconds >= 1)
             {
