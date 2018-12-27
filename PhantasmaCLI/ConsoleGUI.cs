@@ -91,7 +91,7 @@ namespace Phantasma.CLI
                 int midX = Console.WindowWidth / 2;
                 int lX = midX - (Logo.Width / 2);
 
-                Console.ForegroundColor = ConsoleColor.DarkBlue;
+                Console.BackgroundColor = ConsoleColor.Black;
 
                 for (int j = 0; j < Logo.Height; j++)
                 {
@@ -107,12 +107,27 @@ namespace Phantasma.CLI
 
                         switch (pixel)
                         {
-                            case 1: Console.BackgroundColor = ConsoleColor.DarkCyan; break;
-                            case 2: Console.BackgroundColor = ConsoleColor.Cyan; break;
-                            case 3: Console.BackgroundColor = ConsoleColor.Yellow; break;
-                            default: Console.BackgroundColor = defaultBG; break;
+                            case 1: Console.ForegroundColor = ConsoleColor.DarkCyan; break;
+                            case 2: Console.ForegroundColor = ConsoleColor.Cyan; break;
+                            case 3: Console.ForegroundColor = ConsoleColor.Yellow; break;
                         }
-                        Console.Write(" ");
+
+                        char ch;
+
+                        if (j == Logo.Height-1)
+                        {
+                            ch = '▀';
+                        }
+                        else
+                        if (j == 0)
+                        {
+                            ch = '▄';
+                        }
+                        else
+                        {
+                            ch = '█';
+                        }
+                        Console.Write(ch);
                     }
                 }
             }
