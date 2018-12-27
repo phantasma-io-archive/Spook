@@ -20,7 +20,6 @@
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.Storage\Phantasma.Storage.csproj" />
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.Tests\Phantasma.Tests.csproj" />
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.VM\Phantasma.VM.csproj" />
-    <ProjectReference Include="..\PhantasmaNode\Phantasma.Node.csproj" />
   </ItemGroup>
 
 </Project>
