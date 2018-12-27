@@ -3,7 +3,7 @@
     public static class Logo
     {
         public const int Width = 16;
-        public const int Height = 11;
+        public const int Height = 10;
 
         private static int Ofs(int x, int y)
         {
@@ -24,16 +24,16 @@
             for (int i = 1; i <= 14; i++)
                 pixels[Ofs(i, 1)] = blue;
 
-            for (int j = 2; j <= 9; j++)
+            for (int j = 2; j <= 8; j++)
                 for (int i = 0; i <= 15; i++)
                     pixels[Ofs(i, j)] = blue;
 
-            pixels[Ofs(1, 10)] = blue;
-            pixels[Ofs(5, 10)] = blue;
-            pixels[Ofs(6, 10)] = blue;
-            pixels[Ofs(10, 10)] = blue;
-            pixels[Ofs(11, 10)] = blue;
-            pixels[Ofs(15, 10)] = blue;
+            pixels[Ofs(1, 9)] = blue;
+            pixels[Ofs(5, 9)] = blue;
+            pixels[Ofs(6, 9)] = blue;
+            pixels[Ofs(10, 9)] = blue;
+            pixels[Ofs(11, 9)] = blue;
+            pixels[Ofs(15, 9)] = blue;
 
             pixels[Ofs(1, 0)] = cyan;
             pixels[Ofs(14, 0)] = cyan;
@@ -53,10 +53,10 @@
             pixels[Ofs(11, 5)] = cyan;
             pixels[Ofs(12, 5)] = cyan;
 
-            pixels[Ofs(0, 10)] = cyan;
-            pixels[Ofs(4, 10)] = cyan;
-            pixels[Ofs(9, 10)] = cyan;
-            pixels[Ofs(14, 10)] = cyan;
+            pixels[Ofs(0, 9)] = cyan;
+            pixels[Ofs(4, 9)] = cyan;
+            pixels[Ofs(9, 9)] = cyan;
+            pixels[Ofs(14, 9)] = cyan;
 
             pixels[Ofs(3, 3)] = white;
             pixels[Ofs(4, 3)] = white;
