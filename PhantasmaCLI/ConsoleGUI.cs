@@ -13,7 +13,7 @@ namespace Phantasma.CLI
         Log = 0x4
     }
 
-    public class ConsoleOutput: Logger
+    public class ConsoleGUI: Logger
     {
         private byte[] logo;
         private ConsoleColor defaultBG;
@@ -28,7 +28,7 @@ namespace Phantasma.CLI
 
         private string prompt = "";
 
-        public ConsoleOutput()
+        public ConsoleGUI()
         {
             Console.ResetColor();
             this.defaultBG = Console.BackgroundColor;

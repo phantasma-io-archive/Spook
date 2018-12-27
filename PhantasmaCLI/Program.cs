@@ -255,9 +255,24 @@ namespace Phantasma.CLI
         {
             var seeds = new List<string>();
 
-            var logger = new ConsoleOutput();
+            ConsoleGUI gui;
 
             var settings = new Arguments(args);
+
+            var useGUI = settings.GetBool("gui.enabled", true);
+
+            Logger logger;
+
+            if (useGUI)
+            {
+                gui = new ConsoleGUI();
+                logger = gui;
+            }
+            else
+            {
+                gui = null;
+                logger = new ConsoleLogger();
+            }
 
             string mode = settings.GetString("node.mode", "validator");
 
@@ -337,23 +352,33 @@ namespace Phantasma.CLI
             }
 
             // node setup
-            var node = new Node(nexus, node_keys, port, seeds, logger);           
-            logger.Message("Phantasma Node address: " + node_keys.Address.Text);
+            var node = new Node(nexus, node_keys, port, seeds, gui);           
+            gui.Message("Phantasma Node address: " + node_keys.Address.Text);
             node.Start();
 
-            nexus.AddPlugin(new TPSPlugin(logger, 10));
+            nexus.AddPlugin(new TPSPlugin(gui, 10));
 
             Console.CancelKeyPress += delegate {
                 running = false;
-                logger.Message("Phantasma Node stopping...");
-                node.Stop();
-                mempool.Stop();
+                gui.Message("Phantasma Node stopping...");
+
+                if (node.IsRunning)
+                {
+                    node.Stop();
+                }
+
+                if (mempool.IsRunning)
+                {
+                    mempool.Stop();
+                }
             };
 
-            logger.MakeReady();
+            logger.Success("Node is ready");
+
+            gui.MakeReady();
             while (running)
             {
-                logger.Update();
+                gui.Update();
                 Thread.Sleep(100);
             }
         }
