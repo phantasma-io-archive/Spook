@@ -26,6 +26,8 @@ namespace Phantasma.CLI
         private int animationCounter = 0;
         private DateTime lastRedraw;
 
+        private string prompt = "";
+
         public ConsoleOutput()
         {
             Console.ResetColor();
@@ -127,7 +129,11 @@ namespace Phantasma.CLI
                 }
                 else
                 {
-                    Console.Write(">Ready");
+                    Console.Write(">"+prompt);
+                    if (animationCounter % 2 == 0)
+                    {
+                        Console.Write("_");
+                    }
                 }
                 FillLine(ConsoleColor.White, ' ');
 
@@ -186,15 +192,12 @@ namespace Phantasma.CLI
 
         public void Update()
         {
-            if (initializing)
+            var diff = DateTime.UtcNow - lastRedraw;
+            if (diff.TotalSeconds >= 1)
             {
-                var diff = DateTime.UtcNow - lastRedraw;
-                if (diff.TotalSeconds >= 1)
-                {
-                    lastRedraw = DateTime.UtcNow;
-                    animationCounter++;
-                    redrawFlags |= RedrawFlags.Prompt;
-                }
+                lastRedraw = DateTime.UtcNow;
+                animationCounter++;
+                redrawFlags |= RedrawFlags.Prompt;
             }
 
             if (redrawFlags != RedrawFlags.None) {
