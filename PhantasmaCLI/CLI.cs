@@ -291,7 +291,7 @@ namespace Phantasma.CLI
 
             // node setup
             this.node = new Node(nexus, node_keys, port, seeds, gui);           
-            gui.Message("Phantasma Node address: " + node_keys.Address.Text);
+            logger.Message("Phantasma Node address: " + node_keys.Address.Text);
             node.Start();
 
             nexus.AddPlugin(new TPSPlugin(gui, 10));
