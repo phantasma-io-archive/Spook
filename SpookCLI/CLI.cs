@@ -14,7 +14,7 @@ using LunarLabs.Parser.JSON;
 using Phantasma.API;
 using Phantasma.Network.P2P;
 
-namespace Phantasma.CLI
+namespace Phantasma.Spook
 {
     public class CLI
     {

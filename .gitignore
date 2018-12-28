@@ -1,5 +1,3 @@
 .vs/*
-PhantasmaNode/obj/*
-PhantasmaNode/bin/*
-PhantasmaCLI/obj/*
-PhantasmaCLI/bin/*
+SpookCLI/obj/*
+SpookCLI/bin/*

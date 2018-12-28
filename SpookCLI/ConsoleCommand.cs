@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Phantasma.CLI
+namespace Phantasma.Spook
 {
     public class ConsoleCommand
     {

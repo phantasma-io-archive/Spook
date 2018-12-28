@@ -3,7 +3,7 @@ using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Collections.Generic;
 
-namespace Phantasma.CLI
+namespace Phantasma.Spook
 {
     /// <summary>
     /// A Win32 COLORREF, used to specify an RGB color.  See MSDN for more information:

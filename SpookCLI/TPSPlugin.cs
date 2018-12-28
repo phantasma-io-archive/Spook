@@ -2,7 +2,7 @@
 using Phantasma.Core.Log;
 using System;
 
-namespace Phantasma.CLI
+namespace Phantasma.Spook
 {
     public class TPSPlugin : IChainPlugin
     {

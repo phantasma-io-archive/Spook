@@ -1,7 +1,7 @@
 ﻿using Phantasma.Blockchain;
 using System;
 
-namespace Phantasma.CLI
+namespace Phantasma.Spook
 {
     public static class Utils
     {

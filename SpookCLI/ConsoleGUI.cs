@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
-namespace Phantasma.CLI
+namespace Phantasma.Spook
 {
     [Flags]
     public enum RedrawFlags
@@ -143,7 +143,7 @@ namespace Phantasma.CLI
 
                 if (initializing)
                 {
-                    Console.Write("Booting Phantasma node");
+                    Console.Write("Booting Phantasma Spook");
                     int dots = animationCounter % 4;
                     for (int i = 0; i < dots; i++)
                     {
