@@ -5,11 +5,61 @@ using Phantasma.Numerics;
 using Phantasma.AssemblerLib;
 using Phantasma.CodeGen.Core;
 using Phantasma.VM.Utils;
+using Phantasma.VM;
 
 namespace Phantasma.Spook.Modules
 {
     public static class CodeModule
     {
+        public static void DisassembleFile(string[] args)
+        {
+            string sourceFilePath = null;
+
+            try
+            {
+                sourceFilePath = args[0];
+            }
+            catch
+            {
+                throw new CommandException("Could not obtain input filename");
+            }
+
+            var extension = Path.GetExtension(sourceFilePath);
+            if (extension != Format.Extension)
+            {
+                throw new CommandException($"Only {Format.Extension} format supported!");
+            }
+
+            var outputName = sourceFilePath.Replace(extension, ".asm");
+
+            byte[] script;
+            try
+            {
+                script = File.ReadAllBytes(sourceFilePath);
+            }
+            catch
+            {
+                throw new CommandException("Error reading " + sourceFilePath);
+            }
+
+            var disasm = new Disassembler(script);
+
+            var lines = new List<string>();
+            foreach (var entry in disasm.Instructions)
+            {
+                lines.Add(entry.ToString());
+            }
+
+            try
+            {
+                File.WriteAllLines(outputName, lines);
+            }
+            catch
+            {
+                throw new CommandException("Error generating " + outputName);
+            }
+        }
+
         public static void AssembleFile(string[] args)
         {
             string sourceFilePath = null;

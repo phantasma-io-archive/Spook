@@ -389,10 +389,13 @@ namespace Phantasma.Spook
                 dispatcher.RegisterCommand("api."+method.Name, "API CALL", (args) => ExecuteAPI(method.Name, args));
             }
 
-            dispatcher.RegisterCommand("code.assemble", "Assembles a .asm file into Phantasma VM script format",
+            dispatcher.RegisterCommand("contract.assemble", "Assembles a .asm file into Phantasma VM script format",
                 (args) => CodeModule.AssembleFile(args));
 
-            dispatcher.RegisterCommand("code.compiler", "Compiles a .sol file into Phantasma VM script format",
+            dispatcher.RegisterCommand("contract.disassemble", $"Disassembles a {AssemblerLib.Format.Extension} file into readable Phantasma assembly",
+                (args) => CodeModule.DisassembleFile(args));
+
+            dispatcher.RegisterCommand("contract.compile", "Compiles a .sol file into Phantasma VM script format",
                 (args) => CodeModule.CompileFile(args));
         }
     }
