@@ -1,3 +1,4 @@
 .vs/*
-SpookCLI/obj/*
-SpookCLI/bin/*
+Spook.CLI/obj/*
+Spook.CLI/bin/*
+Spook.CLI/Publish/*
