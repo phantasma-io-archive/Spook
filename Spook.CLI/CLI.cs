@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Threading;
 using Phantasma.Blockchain;
 using Phantasma.Cryptography;
-using Phantasma.Core.Log;
 using Phantasma.Tests;
 using Phantasma.Core.Utils;
 using Phantasma.Numerics;
@@ -22,6 +21,17 @@ using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
 
 namespace Phantasma.Spook
 {
+    [AttributeUsage(AttributeTargets.Class)]
+    public class ModuleAttribute: Attribute
+    {
+        public readonly string Name;
+
+        public ModuleAttribute(string name)
+        {
+            Name = name;
+        }
+    }
+
     public class CLI
     {
         static void Main(string[] args)
@@ -455,14 +465,14 @@ namespace Phantasma.Spook
                 dispatcher.RegisterCommand("api."+method.Name, "API CALL", (args) => ExecuteAPI(method.Name, args));
             }
 
-            dispatcher.RegisterCommand("contract.assemble", "Assembles a .asm file into Phantasma VM script format",
-                (args) => CodeModule.AssembleFile(args));
+            dispatcher.RegisterCommand("script.assemble", "Assembles a .asm file into Phantasma VM script format",
+                (args) => ScriptModule.AssembleFile(args));
 
-            dispatcher.RegisterCommand("contract.disassemble", $"Disassembles a {AssemblerLib.Format.Extension} file into readable Phantasma assembly",
-                (args) => CodeModule.DisassembleFile(args));
+            dispatcher.RegisterCommand("script.disassemble", $"Disassembles a {AssemblerLib.Format.Extension} file into readable Phantasma assembly",
+                (args) => ScriptModule.DisassembleFile(args));
 
-            dispatcher.RegisterCommand("contract.compile", "Compiles a .sol file into Phantasma VM script format",
-                (args) => CodeModule.CompileFile(args));
+            dispatcher.RegisterCommand("script.compile", "Compiles a .sol file into Phantasma VM script format",
+                (args) => ScriptModule.CompileFile(args));
         }
     }
 }

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using Phantasma.Numerics;
 using Phantasma.AssemblerLib;
 using Phantasma.CodeGen.Core;
 using Phantasma.VM.Utils;
@@ -9,7 +8,8 @@ using Phantasma.VM;
 
 namespace Phantasma.Spook.Modules
 {
-    public static class CodeModule
+    [Module("script")]
+    public static class ScriptModule
     {
         public static void DisassembleFile(string[] args)
         {
