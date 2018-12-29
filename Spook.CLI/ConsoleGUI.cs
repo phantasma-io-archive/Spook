@@ -11,7 +11,7 @@ namespace Phantasma.Spook
         None = 0,
         Logo = 0x1,
         Prompt = 0x2,
-        Log = 0x4
+        Content = 0x4
     }
 
     public class ConsoleGUI: Logger
@@ -21,6 +21,7 @@ namespace Phantasma.Spook
         private List<KeyValuePair<LogEntryKind, string>> _text = new List<KeyValuePair<LogEntryKind, string>>();
         private int lastIndex;
         private RedrawFlags redrawFlags = RedrawFlags.None;
+        private Action<int> contentDisplayer;
 
         private bool ready = false;
         private bool initializing = true;
@@ -69,7 +70,7 @@ namespace Phantasma.Spook
             lock (_text)
             {
                 _text.Add(new KeyValuePair<LogEntryKind, string>(kind, msg));
-                redrawFlags |= RedrawFlags.Log;
+                redrawFlags |= RedrawFlags.Content;
             }
         }
 
@@ -169,62 +170,66 @@ namespace Phantasma.Spook
                 FillLine(' ');
             }
 
-            if (redrawFlags.HasFlag(RedrawFlags.Log))
+            if (redrawFlags.HasFlag(RedrawFlags.Content))
             {
-                redrawFlags &= ~RedrawFlags.Log;
-
+                redrawFlags &= ~RedrawFlags.Content;
                 int curY = Logo.Height + lY;
-                Console.SetCursorPosition(0, curY);
-                FillLine('.');
-
-                curY++;
-                int maxLines = (Console.WindowHeight - 1) - (curY + 1);
-
-                for (int i = 0; i < _text.Count; i++)
-                {
-                    if (i >= maxLines)
-                    {
-                        if (_text.Count > maxLines)
-                        {
-                            _text.RemoveAt(0);
-                            redrawFlags |= RedrawFlags.Log;
-
-                            if (_text.Count == maxLines && ready)
-                            {
-                                initializing = false;
-                                ready = false;
-                                redrawFlags |= RedrawFlags.Log | RedrawFlags.Logo | RedrawFlags.Prompt;
-                            }
-                        }
-                        break;
-                    }
-
-                    Console.SetCursorPosition(0, curY + i);
-
-                    var entry = _text[i];
-                    switch (entry.Key)
-                    {
-                        case LogEntryKind.Error: Console.ForegroundColor = ConsoleColor.Red; break;
-                        case LogEntryKind.Warning: Console.ForegroundColor = ConsoleColor.Yellow; break;
-                        case LogEntryKind.Sucess: Console.ForegroundColor = ConsoleColor.Green; break;
-                        case LogEntryKind.Debug: Console.ForegroundColor = ConsoleColor.Cyan; break;
-                        default: Console.ForegroundColor = ConsoleColor.Gray; break;
-                    }
-
-                    if (entry.Value.Length > Console.WindowWidth - 1)
-                    {
-                        var str = entry.Value.Substring(0, Console.WindowWidth-4)+"...";
-                        Console.Write(str);
-                    }
-                    else
-                    {
-                        Console.Write(entry.Value);
-                    }
-                    FillLine(' ');
-                }
+                contentDisplayer(curY);
             }
         }
-             
+
+        private void DisplayLog(int curY)
+        {
+            Console.SetCursorPosition(0, curY);
+            FillLine('.');
+
+            curY++;
+            int maxLines = (Console.WindowHeight - 1) - (curY + 1);
+
+            for (int i = 0; i < _text.Count; i++)
+            {
+                if (i >= maxLines)
+                {
+                    if (_text.Count > maxLines)
+                    {
+                        _text.RemoveAt(0);
+                        redrawFlags |= RedrawFlags.Content;
+
+                        if (_text.Count == maxLines && ready)
+                        {
+                            initializing = false;
+                            ready = false;
+                            redrawFlags |= RedrawFlags.Content | RedrawFlags.Logo | RedrawFlags.Prompt;
+                        }
+                    }
+                    break;
+                }
+
+                Console.SetCursorPosition(0, curY + i);
+
+                var entry = _text[i];
+                switch (entry.Key)
+                {
+                    case LogEntryKind.Error: Console.ForegroundColor = ConsoleColor.Red; break;
+                    case LogEntryKind.Warning: Console.ForegroundColor = ConsoleColor.Yellow; break;
+                    case LogEntryKind.Sucess: Console.ForegroundColor = ConsoleColor.Green; break;
+                    case LogEntryKind.Debug: Console.ForegroundColor = ConsoleColor.Cyan; break;
+                    default: Console.ForegroundColor = ConsoleColor.Gray; break;
+                }
+
+                if (entry.Value.Length > Console.WindowWidth - 1)
+                {
+                    var str = entry.Value.Substring(0, Console.WindowWidth - 4) + "...";
+                    Console.Write(str);
+                }
+                else
+                {
+                    Console.Write(entry.Value);
+                }
+                FillLine(' ');
+            }
+        }
+
         private void CheckKeys()
         {
             if (!Console.KeyAvailable)
