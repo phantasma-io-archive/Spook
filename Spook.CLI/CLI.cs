@@ -1,7 +1,7 @@
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Threading;
-using Phantasma.Blockchain.Consensus;
 using Phantasma.Blockchain;
 using Phantasma.Cryptography;
 using Phantasma.Core.Log;
@@ -13,6 +13,7 @@ using Phantasma.Blockchain.Tokens;
 using LunarLabs.Parser.JSON;
 using Phantasma.API;
 using Phantasma.Network.P2P;
+using Phantasma.Spook.Modules;
 
 namespace Phantasma.Spook
 {
@@ -381,10 +382,18 @@ namespace Phantasma.Spook
         {
             dispatcher.RegisterCommand("quit", "Stops the node and exits", (args) => Terminate());
 
+            dispatcher.RegisterCommand("help", "Lists available commands", (args) => dispatcher.Commands.ToList().ForEach(x => logger.Message($"{x.Name}\t{x.Description}")));
+
             foreach (var method in api.Methods)
             {
                 dispatcher.RegisterCommand("api."+method.Name, "API CALL", (args) => ExecuteAPI(method.Name, args));
             }
+
+            dispatcher.RegisterCommand("code.assemble", "Assembles a .asm file into Phantasma VM script format",
+                (args) => CodeModule.AssembleFile(args));
+
+            dispatcher.RegisterCommand("code.compiler", "Compiles a .sol file into Phantasma VM script format",
+                (args) => CodeModule.CompileFile(args));
         }
     }
 }

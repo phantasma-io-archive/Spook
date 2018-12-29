@@ -8,10 +8,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Publish\**" />
+    <EmbeddedResource Remove="Publish\**" />
+    <None Remove="Publish\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="LunarLabs.Parser" Version="1.2.5" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\PhantasmaAssembler\PhantasmaAssemblerLib\Phantasma.AssemblerLib.csproj" />
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.API\Phantasma.API.csproj" />
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.Blockchain\Phantasma.Blockchain.csproj" />
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.Core\Phantasma.Core.csproj" />
@@ -22,6 +29,7 @@
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.Storage\Phantasma.Storage.csproj" />
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.Tests\Phantasma.Tests.csproj" />
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.VM\Phantasma.VM.csproj" />
+    <ProjectReference Include="..\..\PhantasmaCompiler\Compiler.CodeGen\Compiler.CodeGen.csproj" />
   </ItemGroup>
 
 </Project>

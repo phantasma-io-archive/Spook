@@ -25,6 +25,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phantasma.P2P", "..\Phantas
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phantasma.API", "..\PhantasmaChain\Phantasma.API\Phantasma.API.csproj", "{51FC0A63-5A97-4877-8968-70120DCF82BF}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phantasma.AssemblerLib", "..\PhantasmaAssembler\PhantasmaAssemblerLib\Phantasma.AssemblerLib.csproj", "{4B968782-A431-4A45-BD08-BD50E1307A14}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Compiler.CodeGen", "..\PhantasmaCompiler\Compiler.CodeGen\Compiler.CodeGen.csproj", "{ADD0180A-B574-4CE3-9D63-2741A7BB1C6C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -75,6 +79,14 @@ Global
 		{51FC0A63-5A97-4877-8968-70120DCF82BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{51FC0A63-5A97-4877-8968-70120DCF82BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{51FC0A63-5A97-4877-8968-70120DCF82BF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4B968782-A431-4A45-BD08-BD50E1307A14}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4B968782-A431-4A45-BD08-BD50E1307A14}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4B968782-A431-4A45-BD08-BD50E1307A14}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4B968782-A431-4A45-BD08-BD50E1307A14}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ADD0180A-B574-4CE3-9D63-2741A7BB1C6C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ADD0180A-B574-4CE3-9D63-2741A7BB1C6C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ADD0180A-B574-4CE3-9D63-2741A7BB1C6C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ADD0180A-B574-4CE3-9D63-2741A7BB1C6C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

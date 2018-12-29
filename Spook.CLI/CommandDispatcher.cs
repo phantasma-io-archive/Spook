@@ -16,6 +16,8 @@ namespace Phantasma.Spook
     {
         private Dictionary<string, ConsoleCommand> _commands = new Dictionary<string, ConsoleCommand>();
 
+        public IEnumerable<ConsoleCommand> Commands => _commands.Values;
+
         public void RegisterCommand(string name, string description, Action<string[]> action)
         {
             _commands[name.ToLower()] = new ConsoleCommand(name, description, action);
