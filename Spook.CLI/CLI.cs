@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using Phantasma.Blockchain.Consensus;
@@ -35,7 +35,10 @@ namespace Phantasma.Spook
         private readonly Mempool mempool;
         private bool running = false;
 
+        private Nexus nexus;
         private NexusAPI api;
+
+        private List<Address> globalList;
 
         private static Hash SendTransfer(JSONRPC_Client rpc, Logger log, string host, KeyPair from, Address to, BigInteger amount)
         {
@@ -71,7 +74,7 @@ namespace Phantasma.Spook
             return Hash.Parse(hash);
         }
 
-        static bool ConfirmTransaction(JSONRPC_Client rpc, Logger log, string host, Hash hash, int maxTries = 99999)
+        private static bool ConfirmTransaction(JSONRPC_Client rpc, Logger log, string host, Hash hash, int maxTries = 99999)
         {
             var hashStr = hash.ToString();
 
@@ -109,11 +112,11 @@ namespace Phantasma.Spook
             } while (true);
         }
 
-        private void SenderSpawn(string wif, string host)
+        private void SenderSpawn(string wif, string host, LinkedList<KeyPair> addressList)
         {
             Thread.CurrentThread.IsBackground = true;
 
-            var currentKey = KeyPair.Generate();
+            var currentKey = addressList.First;
 
             var masterKeys = KeyPair.FromWIF(wif);
             logger.Message($"Connecting to host: {host} with address {masterKeys.Address.Text}");
@@ -121,7 +124,7 @@ namespace Phantasma.Spook
             var rpc = new JSONRPC_Client();
 
             var amount = TokenUtils.ToBigInteger(1000000, Nexus.NativeTokenDecimals);
-            var hash = SendTransfer(rpc, logger, host, masterKeys, currentKey.Address, amount);
+            var hash = SendTransfer(rpc, logger, host, masterKeys, currentKey.Value.Address, amount);
             if (hash == Hash.Null)
             {
                 return;
@@ -129,41 +132,46 @@ namespace Phantasma.Spook
 
             ConfirmTransaction(rpc, logger, host, hash);
 
-            var rnd = new Random();
-
             int totalTxs = 0;
 
-            var confirming = new Dictionary<Address, Hash>();
+            BigInteger currentKeyBalance = GetBalance(currentKey.Value.Address);
 
-            while (running)
+            while (currentKeyBalance > 9999)
             {
-                KeyPair destKey;
+                var destKey = currentKey.Next ?? addressList.First;
 
-                do
-                {
-                    destKey = KeyPair.Generate();
-                } while (destKey == currentKey);
+                amount = currentKeyBalance - 9999;
 
-                amount = 1;
-
-                var txHash = SendTransfer(rpc, null, host, currentKey, destKey.Address, amount);
+                var txHash = SendTransfer(rpc, null, host, currentKey.Value, destKey.Value.Address, amount);
                 if (txHash == Hash.Null)
                 {
-                    logger.Error($"Error sending {amount} SOUL from {currentKey.Address} to {destKey.Address}...");
+                    logger.Error($"Error sending {amount} SOUL from {currentKey.Value.Address} to {destKey.Value.Address}...");
                     return;
                 }
 
                 totalTxs++;
                 currentKey = destKey;
+                currentKeyBalance = GetBalance(currentKey.Value.Address);
+
+                Thread.Sleep(100);
+
+                var confirmation = ConfirmTransaction(rpc, null, host, hash);
 
                 if (totalTxs % 10 == 0)
                 {
                     logger.Message($"Sent {totalTxs} transactions");
                 }
             }
+
+            logger.Message($"*** Thread ran out of funds");
         }
 
-        private void RunSender(string wif, string host, int threadCount)
+        private BigInteger GetBalance(Address address)
+        {
+            return nexus.RootChain.GetTokenBalance(nexus.NativeToken, address);
+        }
+
+        private void RunSender(string wif, string host, int threadCount, int addressesListSize)
         {
             logger.Message("Running in sender mode.");
 
@@ -178,7 +186,20 @@ namespace Phantasma.Spook
                 logger.Message($"Starting thread #{i}...");
                 try
                 {
-                    new Thread(() => { SenderSpawn(wif, host); }).Start();
+                    LinkedList<KeyPair> addressList = new LinkedList<KeyPair>();
+
+                    for (int j = 0; j < addressesListSize; j++)
+                    {
+                        var key = KeyPair.Generate();
+
+                        if (!addressList.Contains(key) && !globalList.Contains(key.Address))
+                        {
+                            addressList.AddLast(key);
+                            globalList.Add(key.Address);
+                        }
+                    }
+
+                    new Thread(() => { SenderSpawn(wif, host, addressList); }).Start();
                 }
                 catch (Exception e) {
                     break;
@@ -225,7 +246,8 @@ namespace Phantasma.Spook
                 case "sender":
                     string host = settings.GetString("sender.host");
                     int threadCount = settings.GetInt("sender.threads", 8);
-                    RunSender(wif, host, threadCount);
+                    int addressesPerSender = settings.GetInt("sender.addressCount", 20);
+                    RunSender(wif, host, threadCount, addressesPerSender);
                     Console.WriteLine("Sender finished operations.");
                     return;
 
