@@ -17,6 +17,28 @@ namespace Phantasma.Spook.GUI
 
     public delegate void ContentDisplay(int curY, int maxLines);
 
+    public class ConsoleGraph
+    {
+        public int maxPoint { get; private set; }
+        public List<int> data { get; private set; }
+
+        public void Reset()
+        {
+            maxPoint = 0;
+            data.Clear();
+        }
+
+        public void Add(int val)
+        {
+            data.Add(val);
+
+            if (val > maxPoint)
+            {
+                maxPoint = val;
+            }
+        }
+    }
+
     public class WebLogger : LunarLabs.WebServer.Core.Logger
     {
         public readonly string channel;
@@ -30,7 +52,7 @@ namespace Phantasma.Spook.GUI
 
         protected override void Log(ConsoleColor c, string msg)
         {
-            gui.InternalWrite(channel, LogEntryKind.Message, msg);
+            gui.WriteToChannel(channel, LogEntryKind.Message, msg);
         }
     }
 
@@ -103,10 +125,10 @@ namespace Phantasma.Spook.GUI
 
         public override void Write(LogEntryKind kind, string msg)
         {
-            InternalWrite(DefaultChannel, kind, msg);
+            WriteToChannel(DefaultChannel, kind, msg);
         }
 
-        internal void InternalWrite(string channel, LogEntryKind kind, string msg)
+        public void WriteToChannel(string channel, LogEntryKind kind, string msg)
         {
             lock (_text)
             {
@@ -226,32 +248,53 @@ namespace Phantasma.Spook.GUI
             }
         }
 
-        private List<int> graphData = new List<int>();
-        private int maxPoint = 0;
+        private Dictionary<string, ConsoleGraph> graphs = new Dictionary<string, ConsoleGraph>();
 
-        public void ResetGraph()
+        public void ResetGraph(string channel)
         {
-            maxPoint = 0;
-            graphData.Clear();
+            if (graphs.ContainsKey(channel))
+            {
+                graphs[channel].Reset();
+            }
         }
 
-        public void AddGraphEntry(int val)
+        public void AddGraphEntry(string channel, int val)
         {
-            graphData.Add(val);
+            ConsoleGraph graph;
 
-            if (val > maxPoint)
+            if (graphs.ContainsKey(channel))
             {
-                maxPoint = val;
+                graph = graphs[channel];
             }
+            else
+            {
+                graph = new ConsoleGraph();
+                graphs[channel] = graph;
+            }
+
+            graph.Add(val);
         }
 
         private void DisplayGraph(int curY, int maxLines)
         {
-            int padLeft = maxPoint.ToString().Length + 1;
+            var graph = graphs.ContainsKey(currentChannel) ? graphs[currentChannel] : null;
+            if (graph == null)
+            {
+                Console.SetCursorPosition(0, curY);
+                Console.Write($"No graph data available for '{currentChannel}'.");
+                for (int j=1; j<maxLines; j++)
+                {
+                    Console.SetCursorPosition(0, curY +j);
+                    FillLine(' ');
+                }
+                return;
+            }
+            
+            int padLeft = graph.maxPoint.ToString().Length + 1;
 
             int graphWidth = Console.WindowWidth - padLeft;
 
-            int divisions = maxPoint / (maxLines+1);
+            int divisions = graph.maxPoint / (maxLines+1);
             if (divisions < 1)
             {
                 divisions = 1;
@@ -265,18 +308,18 @@ namespace Phantasma.Spook.GUI
                 Console.Write('|');
             }
 
-            int minPos = graphData.Count - graphWidth;
+            int minPos = graph.data.Count - graphWidth;
             if (minPos < 0)
             {
                 minPos = 0;
             }
 
-            int offset = graphWidth > graphData.Count ? graphWidth - graphData.Count : 0;
+            int offset = graphWidth > graph.data.Count ? graphWidth - graph.data.Count : 0;
 
             for (int i=0; i<graphWidth; i++)
             {
                 int index = i + minPos - offset;
-                int val = index >= 0 && index < graphData.Count ? graphData[index] : 0;
+                int val = index >= 0 && index < graph.data.Count ? graph.data[index] : 0;
                 val /= (divisions-1);
 
                 if (val > maxLines)
@@ -475,25 +518,38 @@ namespace Phantasma.Spook.GUI
             }
         }
 
-        public void ShowLog(string[] args)
+        public void SetChannel(string channel, ContentDisplay display)
+        {
+            if (currentChannel == channel && display == contentDisplayer)
+            {
+                return;
+            }
+            contentDisplayer = display;
+
+            currentChannel = channel;
+            redrawFlags |= RedrawFlags.Content;
+        }
+
+        public void SetChannel(string[] args, ContentDisplay display)
         {
             if (args.Length > 0)
             {
-                currentChannel = args[0];
+                SetChannel(args[0], display);
             }
             else
             {
-                currentChannel = DefaultChannel;
+                SetChannel(DefaultChannel, display);
             }
+        }
 
-            contentDisplayer = DisplayLog;
-            redrawFlags |= RedrawFlags.Content;
+        public void ShowLog(string[] args)
+        {
+            SetChannel(args, DisplayLog);
         }
 
         public void ShowGraph(string[] args)
         {
-            contentDisplayer = DisplayLog;
-            redrawFlags |= RedrawFlags.Content;
+            SetChannel(args, DisplayGraph);
         }
 
         public void Update()

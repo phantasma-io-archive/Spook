@@ -12,8 +12,6 @@ namespace Phantasma.Spook.Plugins
         private DateTime lastTime = DateTime.UtcNow;
         private Logger log;
 
-        private GraphRenderer renderer;
-
         public TPSPlugin(Logger log, int periodInSeconds)
         {
             this.log = log;
@@ -32,14 +30,17 @@ namespace Phantasma.Spook.Plugins
                 lastTime = currentTime;
                 var tps = txCount / (float)periodInSeconds;
 
+                var str = $"{tps.ToString("0.##")} TPS";
                 var gui = log as ConsoleGUI;
                 if (gui != null)
                 {
-                    gui.AddGraphEntry((int)tps);
+                    gui.AddGraphEntry("tps", (int)tps);
+                    gui.WriteToChannel("tps", LogEntryKind.Message, str);
                 }
-
-                log.Message($"{tps.ToString("0.##")} TPS");
-                
+                else
+                {
+                    log.Message(str);
+                }
                 txCount = 0;
             }
         }
