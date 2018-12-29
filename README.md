@@ -47,7 +47,7 @@ You can later move to the official test network where multiple nodes are running
 
 Spook can optionally expose a RPC-JSON API so that you can connect it to your Phantasma dapps.
 
-Documentation for this API can be found [here](/docs).
+Documentation for this API can be found [here](/Docs).
 
 To enable the API pass the following flag to Spook:
 
