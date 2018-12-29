@@ -34,6 +34,7 @@ namespace Phantasma.Spook
         public ConsoleGUI()
         {
             Console.ResetColor();
+            Console.Clear();
             this.defaultBG = Console.BackgroundColor;
             this.logo = Logo.GetPixels();
             this.redrawFlags = RedrawFlags.Logo | RedrawFlags.Prompt;
