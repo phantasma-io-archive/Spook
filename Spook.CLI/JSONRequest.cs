@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Phantasma.Core.Log;
+using System;
 using System.Net;
 
 namespace LunarLabs.Parser.JSON
@@ -18,7 +19,7 @@ namespace LunarLabs.Parser.JSON
             client = new WebClient() { Encoding = System.Text.Encoding.UTF8 }; 
         }
 
-        public DataNode SendRequest(RequestType kind, string url, string method, params object[] parameters)
+        public DataNode SendRequest(Logger logger, RequestType kind, string url, string method, params object[] parameters)
         {
             string contents;
 
@@ -68,7 +69,7 @@ namespace LunarLabs.Parser.JSON
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
+                logger.Error(e.ToString());
                 return null;
             }
 
@@ -78,7 +79,6 @@ namespace LunarLabs.Parser.JSON
             }
 
             //File.WriteAllText("response.json", contents);
-            //Console.WriteLine(contents);
 
             var root = JSONReader.ReadFromString(contents);
 

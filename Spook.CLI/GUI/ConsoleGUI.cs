@@ -1,9 +1,10 @@
 ﻿using Phantasma.Core.Log;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 
-namespace Phantasma.Spook
+namespace Phantasma.Spook.GUI
 {
     [Flags]
     public enum RedrawFlags
@@ -14,19 +15,55 @@ namespace Phantasma.Spook
         Content = 0x4
     }
 
+    public delegate void ContentDisplay(int curY, int maxLines);
+
+    public class WebLogger : LunarLabs.WebServer.Core.Logger
+    {
+        public readonly string channel;
+        public readonly ConsoleGUI gui;
+
+        public WebLogger(ConsoleGUI gui, string channel)
+        {
+            this.gui = gui;
+            this.channel = channel;
+        }
+
+        protected override void Log(ConsoleColor c, string msg)
+        {
+            gui.InternalWrite(channel, LogEntryKind.Message, msg);
+        }
+    }
+
     public class ConsoleGUI: Logger
     {
+        public struct LogEntry
+        {
+            public string Channel;
+            public LogEntryKind Kind;
+            public string Text;
+
+            public LogEntry(string channel, LogEntryKind kind, string text)
+            {
+                this.Channel = channel;
+                this.Kind = kind;
+                this.Text = text;
+            }
+        }
+
         private byte[] logo;
         private ConsoleColor defaultBG;
-        private List<KeyValuePair<LogEntryKind, string>> _text = new List<KeyValuePair<LogEntryKind, string>>();
-        private int lastIndex;
+        private List<LogEntry> _text = new List<LogEntry>();
         private RedrawFlags redrawFlags = RedrawFlags.None;
-        private Action<int> contentDisplayer;
+        private ContentDisplay contentDisplayer;
 
         private bool ready = false;
         private bool initializing = true;
         private int animationCounter = 0;
         private DateTime lastRedraw;
+
+        private static readonly string DefaultChannel = "main";
+        private string currentChannel = DefaultChannel;
+        private int _logIndex;
 
         private CommandDispatcher dispatcher;
 
@@ -40,6 +77,8 @@ namespace Phantasma.Spook
             this.logo = Logo.GetPixels();
             this.redrawFlags = RedrawFlags.Logo | RedrawFlags.Prompt;
 
+            this.contentDisplayer = DisplayLog;
+
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 var colors = ColorMapper.GetBufferColors();
@@ -48,6 +87,8 @@ namespace Phantasma.Spook
                 colors[ConsoleColor.Yellow] = new COLORREF(245, 237, 186);
                 colors[ConsoleColor.Red] = new COLORREF(210, 100, 103);
                 colors[ConsoleColor.Green] = new COLORREF(192, 199, 65);
+                colors[ConsoleColor.Blue] = new COLORREF(140, 143, 174);
+                colors[ConsoleColor.DarkBlue] = new COLORREF(88, 69, 99);
                 ColorMapper.SetBatchBufferColors(colors);
             }
 
@@ -62,14 +103,14 @@ namespace Phantasma.Spook
 
         public override void Write(LogEntryKind kind, string msg)
         {
-            InternalWrite(kind, msg);
+            InternalWrite(DefaultChannel, kind, msg);
         }
 
-        private void InternalWrite(LogEntryKind kind, string msg)
+        internal void InternalWrite(string channel, LogEntryKind kind, string msg)
         {
             lock (_text)
             {
-                _text.Add(new KeyValuePair<LogEntryKind, string>(kind, msg));
+                _text.Add(new LogEntry(channel, kind, msg));
                 redrawFlags |= RedrawFlags.Content;
             }
         }
@@ -174,41 +215,183 @@ namespace Phantasma.Spook
             {
                 redrawFlags &= ~RedrawFlags.Content;
                 int curY = Logo.Height + lY;
-                contentDisplayer(curY);
+
+                Console.SetCursorPosition(0, curY);
+                FillLine('.');
+
+                curY++;
+                int maxLines = (Console.WindowHeight - 1) - (curY + 1);
+
+                contentDisplayer(curY, maxLines);
             }
         }
 
-        private void DisplayLog(int curY)
+        private List<int> graphData = new List<int>();
+        private int maxPoint = 0;
+
+        public void ResetGraph()
         {
-            Console.SetCursorPosition(0, curY);
-            FillLine('.');
+            maxPoint = 0;
+            graphData.Clear();
+        }
 
-            curY++;
-            int maxLines = (Console.WindowHeight - 1) - (curY + 1);
+        public void AddGraphEntry(int val)
+        {
+            graphData.Add(val);
 
-            for (int i = 0; i < _text.Count; i++)
+            if (val > maxPoint)
             {
-                if (i >= maxLines)
-                {
-                    if (_text.Count > maxLines)
-                    {
-                        _text.RemoveAt(0);
-                        redrawFlags |= RedrawFlags.Content;
+                maxPoint = val;
+            }
+        }
 
-                        if (_text.Count == maxLines && ready)
-                        {
-                            initializing = false;
-                            ready = false;
-                            redrawFlags |= RedrawFlags.Content | RedrawFlags.Logo | RedrawFlags.Prompt;
-                        }
-                    }
-                    break;
+        private void DisplayGraph(int curY, int maxLines)
+        {
+            int padLeft = maxPoint.ToString().Length + 1;
+
+            int graphWidth = Console.WindowWidth - padLeft;
+
+            int divisions = maxPoint / (maxLines+1);
+            if (divisions < 1)
+            {
+                divisions = 1;
+            }
+
+            for (int j=0; j<maxLines; j++)
+            {
+                int n = (maxLines-j) * divisions;
+                Console.SetCursorPosition(0, curY + j);
+                Console.Write(n.ToString().PadRight(padLeft - 1));
+                Console.Write('|');
+            }
+
+            int minPos = graphData.Count - graphWidth;
+            if (minPos < 0)
+            {
+                minPos = 0;
+            }
+
+            int offset = graphWidth > graphData.Count ? graphWidth - graphData.Count : 0;
+
+            for (int i=0; i<graphWidth; i++)
+            {
+                int index = i + minPos - offset;
+                int val = index >= 0 && index < graphData.Count ? graphData[index] : 0;
+                val /= (divisions-1);
+
+                if (val > maxLines)
+                {
+                    val = maxLines;
                 }
 
-                Console.SetCursorPosition(0, curY + i);
+                if (val < maxLines / 3)
+                {
+                    Console.ForegroundColor = ConsoleColor.DarkBlue;
+                }
+                else
+                if (val < maxLines / 2)
+                {
+                    Console.ForegroundColor = ConsoleColor.Blue;
+                }
+                else
+                if (val < (maxLines / 3) * 2)
+                {
+                    Console.ForegroundColor = ConsoleColor.DarkCyan;
+                }
+                else
+                {
+                    Console.ForegroundColor = ConsoleColor.Cyan;
+                }
 
-                var entry = _text[i];
-                switch (entry.Key)
+                for (int j=0; j<maxLines; j++)
+                {
+                    char ch;
+                    if (j < val)
+                    {
+                        if (i > graphWidth / 2)
+                        {
+                            ch = '█';
+                        }
+                        else
+                        if (i > graphWidth / 3)
+                        {
+                            ch = '▓';
+                        }
+                        else
+                        if (i > graphWidth / 4)
+                        {
+                            ch = '▒';
+                        }
+                        else
+                        {
+                            ch = '░';
+                        }
+                    }
+                    else
+                    {
+                        ch = ' ';
+                    }
+
+                    Console.SetCursorPosition(i + padLeft, curY + (maxLines - ( 1+ j)));
+                    Console.Write(ch);
+                }
+           }
+
+            redrawFlags |= RedrawFlags.Content;
+        }
+
+        private void DisplayLog(int curY, int maxLines)
+        {
+            int availableCount = _text.Sum(x => x.Channel == currentChannel ? 1 : 0);
+            int maxIndex =  availableCount - maxLines;
+            if (maxIndex < 0)
+            {
+                maxIndex = 0;
+            }
+
+            if (_logIndex > maxIndex)
+            {
+                _logIndex = maxIndex;
+            }
+
+            int srcIndex = _logIndex;
+            int count = 0;
+            var leftovers = new LogEntry(null, LogEntryKind.Debug, null);
+            int maxWidth = Console.WindowWidth - 1;
+
+            while (count < maxLines)
+            {
+                LogEntry entry;
+
+                if (leftovers.Text != null)
+                {
+                    entry = leftovers;
+                    leftovers.Text = null;
+                }
+                else 
+                if (srcIndex < _text.Count)
+                {
+                    entry = _text[srcIndex];
+                    srcIndex++;
+                    if (entry.Channel != currentChannel)
+                    {
+                        continue;
+                    }
+                }
+                else
+                {
+                    entry = new LogEntry(DefaultChannel, LogEntryKind.Message, "");
+                }
+
+                if (entry.Text.Length > maxWidth)
+                {
+                    entry.Text = entry.Text.Substring(0, maxWidth);
+                    leftovers = new LogEntry(entry.Channel, entry.Kind, entry.Text.Substring(maxWidth));
+                }
+
+                Console.SetCursorPosition(0, curY + count);
+
+                switch (entry.Kind)
                 {
                     case LogEntryKind.Error: Console.ForegroundColor = ConsoleColor.Red; break;
                     case LogEntryKind.Warning: Console.ForegroundColor = ConsoleColor.Yellow; break;
@@ -217,16 +400,22 @@ namespace Phantasma.Spook
                     default: Console.ForegroundColor = ConsoleColor.Gray; break;
                 }
 
-                if (entry.Value.Length > Console.WindowWidth - 1)
-                {
-                    var str = entry.Value.Substring(0, Console.WindowWidth - 4) + "...";
-                    Console.Write(str);
-                }
-                else
-                {
-                    Console.Write(entry.Value);
-                }
+                Console.Write(entry.Text);
                 FillLine(' ');
+                count++;
+            }
+
+            if (_logIndex < maxIndex)
+            {
+                _logIndex++;
+                redrawFlags |= RedrawFlags.Content;
+
+                if (_logIndex == maxIndex && ready)
+                {
+                    initializing = false;
+                    ready = false;
+                    redrawFlags |= RedrawFlags.Content | RedrawFlags.Logo | RedrawFlags.Prompt;
+                }
             }
         }
 
@@ -268,6 +457,7 @@ namespace Phantasma.Spook
                                     }
                                 }
                                 prompt = "";
+                                redrawFlags |= RedrawFlags.Prompt;
                             }
                             break;
                         }
@@ -283,6 +473,27 @@ namespace Phantasma.Spook
                         }
                 }
             }
+        }
+
+        public void ShowLog(string[] args)
+        {
+            if (args.Length > 0)
+            {
+                currentChannel = args[0];
+            }
+            else
+            {
+                currentChannel = DefaultChannel;
+            }
+
+            contentDisplayer = DisplayLog;
+            redrawFlags |= RedrawFlags.Content;
+        }
+
+        public void ShowGraph(string[] args)
+        {
+            contentDisplayer = DisplayLog;
+            redrawFlags |= RedrawFlags.Content;
         }
 
         public void Update()

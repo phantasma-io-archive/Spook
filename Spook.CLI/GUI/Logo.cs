@@ -1,4 +1,4 @@
-﻿namespace Phantasma.Spook
+﻿namespace Phantasma.Spook.GUI
 {
     public static class Logo
     {
