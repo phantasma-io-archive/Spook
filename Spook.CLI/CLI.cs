@@ -275,6 +275,30 @@ namespace Phantasma.Spook
             this.Run();
         }
 
+        private void WebLogMapper(string channel, LogLevel level, string text)
+        {
+            if (gui != null)
+            {
+                switch (level)
+                {
+                    case LogLevel.Debug: gui.WriteToChannel(channel, Core.Log.LogEntryKind.Debug, text); break;
+                    case LogLevel.Error: gui.WriteToChannel(channel, Core.Log.LogEntryKind.Error, text); break;
+                    case LogLevel.Warning: gui.WriteToChannel(channel, Core.Log.LogEntryKind.Warning, text); break;
+                    default: gui.WriteToChannel(channel, Core.Log.LogEntryKind.Message, text); break;
+                }
+
+                return;
+            }
+
+            switch (level)
+            {
+                case LogLevel.Debug: logger.Debug(text); break;
+                case LogLevel.Error: logger.Error(text); break;
+                case LogLevel.Warning: logger.Warning(text); break;
+                default: logger.Message(text); break;
+            }
+        }
+
         public CLI(string[] args) { 
             var seeds = new List<string>();
 
@@ -367,18 +391,8 @@ namespace Phantasma.Spook
             {
                 int rpcPort = settings.GetInt("rpc.port", 7077);
 
-                LunarLabs.WebServer.Core.Logger webLogger;
-
-                if (gui != null) {
-                    webLogger = new WebLogger(gui, "rpc");
-                }
-                else
-                {
-                    webLogger = new NullLogger(); // TODO ConsoleLogger is not working properly here, why?
-                }
-
                 logger.Message($"RPC server listening on port {rpcPort}...");
-                var rpcServer = new RPCServer(api, "rpc", rpcPort, webLogger);
+                var rpcServer = new RPCServer(api, "rpc", rpcPort, (level, text) => WebLogMapper("rpc", level, text));
                 new Thread(() => { rpcServer.Start(); }).Start();
             }
 

@@ -17,23 +17,6 @@ namespace Phantasma.Spook.GUI
 
     public delegate void ContentDisplay(int curY, int maxLines);
 
-    public class WebLogger : LunarLabs.WebServer.Core.Logger
-    {
-        public readonly string channel;
-        public readonly ConsoleGUI gui;
-
-        public WebLogger(ConsoleGUI gui, string channel)
-        {
-            this.gui = gui;
-            this.channel = channel;
-        }
-
-        protected override void Log(ConsoleColor c, string msg)
-        {
-            gui.WriteToChannel(channel, LogEntryKind.Message, msg);
-        }
-    }
-
     public class ConsoleGUI: Logger
     {
         public struct LogEntry
