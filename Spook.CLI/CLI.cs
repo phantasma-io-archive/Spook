@@ -386,7 +386,7 @@ namespace Phantasma.Spook
             this.node = new Node(nexus, node_keys, port, seeds, logger);           
             node.Start();
 
-            int pluginPeriod = 10; // in seconds
+            int pluginPeriod = settings.GetInt("plugin.refresh", 10); // in seconds
             RegisterPlugin(new TPSPlugin(logger, pluginPeriod));
             RegisterPlugin(new RAMPlugin(logger, pluginPeriod));
             RegisterPlugin(new MempoolPlugin(mempool, logger, pluginPeriod));
