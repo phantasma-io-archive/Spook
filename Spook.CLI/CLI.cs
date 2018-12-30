@@ -32,6 +32,12 @@ namespace Phantasma.Spook
         }
     }
 
+    public interface IPlugin
+    {
+        string Channel { get; }
+        void Update();
+    }
+
     public class CLI
     {
         static void Main(string[] args)
@@ -56,6 +62,8 @@ namespace Phantasma.Spook
         private NexusAPI api;
 
         private ConsoleGUI gui;
+
+        private List<IPlugin> plugins = new List<IPlugin>();
 
         private static BigInteger FetchBalance(JSONRPC_Client rpc, Logger logger, string host, Address address)
         {
@@ -330,8 +338,6 @@ namespace Phantasma.Spook
 
             var node_keys = KeyPair.FromWIF(wif);
 
-            Nexus nexus;
-
             if (wif == validatorWIFs[0])
             {
                 var simulator = new ChainSimulator(node_keys, 1234, logger);
@@ -359,6 +365,8 @@ namespace Phantasma.Spook
             // RPC setup
             if (hasRPC)
             {
+                int rpcPort = settings.GetInt("rpc.port", 7077);
+
                 LunarLabs.WebServer.Core.Logger webLogger;
 
                 if (gui != null) {
@@ -369,16 +377,18 @@ namespace Phantasma.Spook
                     webLogger = new NullLogger(); // TODO ConsoleLogger is not working properly here, why?
                 }
 
-                var rpcServer = new RPCServer(api, "rpc", 7077, webLogger);
+                logger.Message($"RPC server listening on port {rpcPort}...");
+                var rpcServer = new RPCServer(api, "rpc", rpcPort, webLogger);
                 new Thread(() => { rpcServer.Start(); }).Start();
             }
 
             // node setup
-            this.node = new Node(nexus, node_keys, port, seeds, gui);           
-            logger.Message("Phantasma Node address: " + node_keys.Address.Text);
+            this.node = new Node(nexus, node_keys, port, seeds, logger);           
             node.Start();
 
-            nexus.AddPlugin(new TPSPlugin(gui, 10));
+            int pluginPeriod = 10; // in seconds
+            RegisterPlugin(new TPSPlugin(logger, pluginPeriod));
+            RegisterPlugin(new RAMPlugin(logger, pluginPeriod));
 
             Console.CancelKeyPress += delegate {
                 Terminate();
@@ -404,13 +414,15 @@ namespace Phantasma.Spook
                 while (running)
                 {
                     gui.Update();
+                    this.plugins.ForEach(x => x.Update());
                 }
             }
             else
             {
                 while (running)
                 {
-                    Thread.Sleep(5000);
+                    Thread.Sleep(1000);
+                    this.plugins.ForEach(x => x.Update());
                 }
             }
         }
@@ -428,6 +440,22 @@ namespace Phantasma.Spook
             if (mempool.IsRunning)
             {
                 mempool.Stop();
+            }
+        }
+
+        private void RegisterPlugin(IPlugin plugin)
+        {
+            var name = plugin.GetType().Name.Replace("Plugin", "");
+            logger.Message("Plugin enabled: " + name);
+            plugins.Add(plugin);
+
+            if (nexus != null)
+            {
+                var nexusPlugin = plugin as IChainPlugin;
+                if (nexusPlugin != null)
+                {
+                    nexus.AddPlugin(nexusPlugin);
+                }
             }
         }
 

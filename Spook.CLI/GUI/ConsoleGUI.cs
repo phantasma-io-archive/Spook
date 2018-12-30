@@ -19,17 +19,24 @@ namespace Phantasma.Spook.GUI
 
     public class ConsoleGraph
     {
-        public int maxPoint { get; private set; }
-        public List<int> data { get; private set; }
+        public float maxPoint { get; private set; }
+        public List<float> data { get; private set; } = new List<float>();
+        public Func<float, string> formatter;
 
         public void Reset()
         {
             maxPoint = 0;
             data.Clear();
+            formatter = (x) => x.ToString();
         }
 
-        public void Add(int val)
+        public void Add(float val)
         {
+            if (data.Count > 1024)
+            {
+                data.RemoveAt(0);
+            }
+
             data.Add(val);
 
             if (val > maxPoint)
@@ -76,7 +83,7 @@ namespace Phantasma.Spook.GUI
         private ConsoleColor defaultBG;
         private List<LogEntry> _text = new List<LogEntry>();
         private RedrawFlags redrawFlags = RedrawFlags.None;
-        private ContentDisplay contentDisplayer;
+        private ContentDisplay currentDisplay;
 
         private bool ready = false;
         private bool initializing = true;
@@ -99,7 +106,7 @@ namespace Phantasma.Spook.GUI
             this.logo = Logo.GetPixels();
             this.redrawFlags = RedrawFlags.Logo | RedrawFlags.Prompt;
 
-            this.contentDisplayer = DisplayLog;
+            this.currentDisplay = DisplayLog;
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
@@ -132,7 +139,24 @@ namespace Phantasma.Spook.GUI
         {
             lock (_text)
             {
-                _text.Add(new LogEntry(channel, kind, msg));
+                int maxWidth = Console.WindowWidth - 1;
+                while (msg != null)
+                {
+                    string str;
+
+                    if (msg.Length <= maxWidth)
+                    {
+                        str = msg;
+                        msg = null;
+                    }
+                    else
+                    {
+                        str = msg.Substring(0, maxWidth);
+                        msg = msg.Substring(maxWidth);
+                    }
+
+                    _text.Add(new LogEntry(channel, kind, str));
+                }
                 redrawFlags |= RedrawFlags.Content;
             }
         }
@@ -214,6 +238,11 @@ namespace Phantasma.Spook.GUI
                     {
                         Console.Write(".");
                     }
+                }                
+                else
+                if (currentDisplay == DisplayGraph)
+                {
+                    Console.Write("Press ESC to close graph...");
                 }
                 else
                 {
@@ -244,35 +273,15 @@ namespace Phantasma.Spook.GUI
                 curY++;
                 int maxLines = (Console.WindowHeight - 1) - (curY + 1);
 
-                contentDisplayer(curY, maxLines);
+                currentDisplay(curY, maxLines);
             }
         }
 
         private Dictionary<string, ConsoleGraph> graphs = new Dictionary<string, ConsoleGraph>();
 
-        public void ResetGraph(string channel)
+        public void SetChannelGraph(string channel, ConsoleGraph graph)
         {
-            if (graphs.ContainsKey(channel))
-            {
-                graphs[channel].Reset();
-            }
-        }
-
-        public void AddGraphEntry(string channel, int val)
-        {
-            ConsoleGraph graph;
-
-            if (graphs.ContainsKey(channel))
-            {
-                graph = graphs[channel];
-            }
-            else
-            {
-                graph = new ConsoleGraph();
-                graphs[channel] = graph;
-            }
-
-            graph.Add(val);
+            graphs[channel] = graph;
         }
 
         private void DisplayGraph(int curY, int maxLines)
@@ -290,11 +299,11 @@ namespace Phantasma.Spook.GUI
                 return;
             }
             
-            int padLeft = graph.maxPoint.ToString().Length + 1;
+            int padLeft = graph.formatter(graph.maxPoint).Length + 1;
 
-            int graphWidth = Console.WindowWidth - padLeft;
+            int graphWidth = Console.WindowWidth - (padLeft + 1);
 
-            int divisions = graph.maxPoint / (maxLines+1);
+            int divisions = (int)(graph.maxPoint / (maxLines+1));
             if (divisions < 1)
             {
                 divisions = 1;
@@ -304,7 +313,7 @@ namespace Phantasma.Spook.GUI
             {
                 int n = (maxLines-j) * divisions;
                 Console.SetCursorPosition(0, curY + j);
-                Console.Write(n.ToString().PadRight(padLeft - 1));
+                Console.Write(graph.formatter(n).PadRight(padLeft - 1));
                 Console.Write('|');
             }
 
@@ -319,8 +328,8 @@ namespace Phantasma.Spook.GUI
             for (int i=0; i<graphWidth; i++)
             {
                 int index = i + minPos - offset;
-                int val = index >= 0 && index < graph.data.Count ? graph.data[index] : 0;
-                val /= (divisions-1);
+                int val = index >= 0 && index < graph.data.Count ? (int)graph.data[index] : 0;
+                val /= divisions;
 
                 if (val > maxLines)
                 {
@@ -399,19 +408,11 @@ namespace Phantasma.Spook.GUI
 
             int srcIndex = _logIndex;
             int count = 0;
-            var leftovers = new LogEntry(null, LogEntryKind.Debug, null);
-            int maxWidth = Console.WindowWidth - 1;
 
             while (count < maxLines)
             {
                 LogEntry entry;
 
-                if (leftovers.Text != null)
-                {
-                    entry = leftovers;
-                    leftovers.Text = null;
-                }
-                else 
                 if (srcIndex < _text.Count)
                 {
                     entry = _text[srcIndex];
@@ -424,12 +425,6 @@ namespace Phantasma.Spook.GUI
                 else
                 {
                     entry = new LogEntry(DefaultChannel, LogEntryKind.Message, "");
-                }
-
-                if (entry.Text.Length > maxWidth)
-                {
-                    entry.Text = entry.Text.Substring(0, maxWidth);
-                    leftovers = new LogEntry(entry.Channel, entry.Kind, entry.Text.Substring(maxWidth));
                 }
 
                 Console.SetCursorPosition(0, curY + count);
@@ -471,6 +466,16 @@ namespace Phantasma.Spook.GUI
 
             var press = Console.ReadKey();
 
+            if (currentDisplay == DisplayGraph)
+            {
+                if (press.Key == ConsoleKey.Escape)
+                {
+                    SetChannel(currentChannel, DisplayLog);
+                    redrawFlags |= RedrawFlags.Prompt | RedrawFlags.Content;
+                }
+                return;
+            }
+
             if (press.KeyChar >= 32 && press.KeyChar <= 127)
             {
                 prompt += press.KeyChar;
@@ -484,6 +489,7 @@ namespace Phantasma.Spook.GUI
                         {
                             if (!string.IsNullOrEmpty(prompt))
                             {
+                                WriteToChannel(currentChannel, LogEntryKind.Message, prompt);
                                 if (dispatcher != null)
                                 {
                                     try
@@ -520,14 +526,22 @@ namespace Phantasma.Spook.GUI
 
         public void SetChannel(string channel, ContentDisplay display)
         {
-            if (currentChannel == channel && display == contentDisplayer)
+            if (currentChannel == channel && display == currentDisplay)
             {
                 return;
             }
-            contentDisplayer = display;
 
-            currentChannel = channel;
-            redrawFlags |= RedrawFlags.Content;
+            if (currentDisplay != display)
+            {
+                currentDisplay = display;
+                redrawFlags |= RedrawFlags.Prompt;
+            }
+
+            if (currentChannel != channel)
+            {
+                currentChannel = channel;
+                redrawFlags |= RedrawFlags.Content;
+            }
         }
 
         public void SetChannel(string[] args, ContentDisplay display)
