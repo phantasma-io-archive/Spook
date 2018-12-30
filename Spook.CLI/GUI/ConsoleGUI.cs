@@ -17,35 +17,6 @@ namespace Phantasma.Spook.GUI
 
     public delegate void ContentDisplay(int curY, int maxLines);
 
-    public class ConsoleGraph
-    {
-        public float maxPoint { get; private set; }
-        public List<float> data { get; private set; } = new List<float>();
-        public Func<float, string> formatter;
-
-        public void Reset()
-        {
-            maxPoint = 0;
-            data.Clear();
-            formatter = (x) => x.ToString();
-        }
-
-        public void Add(float val)
-        {
-            if (data.Count > 1024)
-            {
-                data.RemoveAt(0);
-            }
-
-            data.Add(val);
-
-            if (val > maxPoint)
-            {
-                maxPoint = val;
-            }
-        }
-    }
-
     public class WebLogger : LunarLabs.WebServer.Core.Logger
     {
         public readonly string channel;
@@ -277,9 +248,9 @@ namespace Phantasma.Spook.GUI
             }
         }
 
-        private Dictionary<string, ConsoleGraph> graphs = new Dictionary<string, ConsoleGraph>();
+        private Dictionary<string, Graph> graphs = new Dictionary<string, Graph>();
 
-        public void SetChannelGraph(string channel, ConsoleGraph graph)
+        public void SetChannelGraph(string channel, Graph graph)
         {
             graphs[channel] = graph;
         }

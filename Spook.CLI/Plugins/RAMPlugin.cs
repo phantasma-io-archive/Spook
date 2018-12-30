@@ -11,7 +11,7 @@ namespace Phantasma.Spook.Plugins
         private int periodInSeconds;
         private DateTime lastTime = DateTime.MinValue;
         private Logger logger;
-        private ConsoleGraph graph;
+        private Graph graph;
         private ConsoleGUI gui;
 
         private long maxMemoryInPeriod = 0;
@@ -24,7 +24,7 @@ namespace Phantasma.Spook.Plugins
 
             if (gui != null)
             {
-                this.graph = new ConsoleGraph();
+                this.graph = new Graph();
                 graph.formatter = FormatMemoryAmount;
                 gui.SetChannelGraph(Channel, graph);
             }

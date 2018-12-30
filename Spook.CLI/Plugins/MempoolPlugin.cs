@@ -5,19 +5,23 @@ using System;
 
 namespace Phantasma.Spook.Plugins
 {
-    public class TPSPlugin : IChainPlugin, IPlugin
+    public class MempoolPlugin : IPlugin
     {
-        public string Channel => "tps";
+        public string Channel => "mempool";
+
+        public readonly Mempool Mempool;
 
         private int periodInSeconds;
-        private DateTime lastTime = DateTime.UtcNow;
-        private int txCount;
+        private DateTime lastTime = DateTime.MinValue;
         private Logger logger;
         private Graph graph;
         private ConsoleGUI gui;
 
-        public TPSPlugin(Logger logger, int periodInSeconds)
+        private long maxTxInPeriod = 0;
+
+        public MempoolPlugin(Mempool mempool, Logger logger, int periodInSeconds)
         {
+            this.Mempool = mempool;
             this.logger = logger;
             this.periodInSeconds = periodInSeconds;
             this.gui = logger as ConsoleGUI;
@@ -29,39 +33,34 @@ namespace Phantasma.Spook.Plugins
             }
         }
 
-        public override void OnTransaction(Chain chain, Block block, Transaction transaction)
-        {
-            lock (this)
-            {
-                txCount++;
-            }
-        }
-
         public void Update()
         {
+            var txs = Mempool.Size;
+
+            if (txs > maxTxInPeriod)
+            {
+                maxTxInPeriod = txs;
+            }
+
             var currentTime = DateTime.UtcNow;
             var diff = (currentTime - lastTime).TotalSeconds;
 
             if (diff >= periodInSeconds)
             {
                 lastTime = currentTime;
-                var tps = txCount / (float)periodInSeconds;
 
-                var str = $"{tps.ToString("0.##")} TPS";
+                var str = $"{maxTxInPeriod} txs";
+                var gui = logger as ConsoleGUI;
                 if (gui != null)
                 {
-                    graph.Add(tps);
+                    graph.Add(maxTxInPeriod);
                     gui.WriteToChannel(Channel, LogEntryKind.Message, str);
                 }
                 else
                 {
                     logger.Message(str);
                 }
-
-                lock (this)
-                {
-                    txCount = 0;
-                }
+                maxTxInPeriod = 0;
             }
         }
     }

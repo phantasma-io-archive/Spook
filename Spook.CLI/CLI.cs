@@ -389,6 +389,7 @@ namespace Phantasma.Spook
             int pluginPeriod = 10; // in seconds
             RegisterPlugin(new TPSPlugin(logger, pluginPeriod));
             RegisterPlugin(new RAMPlugin(logger, pluginPeriod));
+            RegisterPlugin(new MempoolPlugin(mempool, logger, pluginPeriod));
 
             Console.CancelKeyPress += delegate {
                 Terminate();
