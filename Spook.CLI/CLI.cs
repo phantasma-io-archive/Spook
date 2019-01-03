@@ -483,7 +483,8 @@ namespace Phantasma.Spook
                 return;
             }
 
-            var json = JSONWriter.WriteToString(result);
+            var node = APIUtils.FromAPIResult(result);
+            var json = JSONWriter.WriteToString(node);
             var lines = json.Split('\n');
             foreach (var line in lines)
             {
