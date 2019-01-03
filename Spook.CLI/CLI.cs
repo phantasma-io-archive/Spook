@@ -485,11 +485,7 @@ namespace Phantasma.Spook
 
             var node = APIUtils.FromAPIResult(result);
             var json = JSONWriter.WriteToString(node);
-            var lines = json.Split('\n');
-            foreach (var line in lines)
-            {
-                logger.Message(line);
-            }
+            logger.Message(json);
         }
 
         private void SetupCommands(CommandDispatcher dispatcher)

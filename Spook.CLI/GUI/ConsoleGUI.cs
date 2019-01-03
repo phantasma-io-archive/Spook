@@ -89,28 +89,35 @@ namespace Phantasma.Spook.GUI
             WriteToChannel(DefaultChannel, kind, msg);
         }
 
-        public void WriteToChannel(string channel, LogEntryKind kind, string msg)
+        public void WriteToChannel(string channel, LogEntryKind kind, string input)
         {
             lock (_text)
             {
-                int maxWidth = Console.WindowWidth - 1;
-                while (msg != null)
+                var lines = input.Split('\n');
+                foreach (var temp in lines)
                 {
-                    string str;
+                    int maxWidth = Console.WindowWidth - 1;
 
-                    if (msg.Length <= maxWidth)
+                    var msg = temp;
+                    while (msg != null)
                     {
-                        str = msg;
-                        msg = null;
-                    }
-                    else
-                    {
-                        str = msg.Substring(0, maxWidth);
-                        msg = msg.Substring(maxWidth);
-                    }
+                        string str;
 
-                    _text.Add(new LogEntry(channel, kind, str));
+                        if (msg.Length <= maxWidth)
+                        {
+                            str = msg;
+                            msg = null;
+                        }
+                        else
+                        {
+                            str = msg.Substring(0, maxWidth);
+                            msg = msg.Substring(maxWidth);
+                        }
+
+                        _text.Add(new LogEntry(channel, kind, str));
+                    }
                 }
+
                 redrawFlags |= RedrawFlags.Content;
             }
         }
