@@ -29,8 +29,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phantasma.AssemblerLib", ".
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Compiler.CodeGen", "..\PhantasmaCompiler\Compiler.CodeGen\Compiler.CodeGen.csproj", "{ADD0180A-B574-4CE3-9D63-2741A7BB1C6C}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LunarServer", "..\LunarServer\LunarServer\LunarServer.csproj", "{2AF47F09-6535-49F3-A540-8929D74A400B}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phantasma.Pay", "..\PhantasmaChain\Phantasma.Pay\Phantasma.Pay.csproj", "{7CFB23C5-44E9-4F64-AA43-9E92A79CF101}"
 EndProject
 Global
@@ -91,10 +89,6 @@ Global
 		{ADD0180A-B574-4CE3-9D63-2741A7BB1C6C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{ADD0180A-B574-4CE3-9D63-2741A7BB1C6C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{ADD0180A-B574-4CE3-9D63-2741A7BB1C6C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{2AF47F09-6535-49F3-A540-8929D74A400B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{2AF47F09-6535-49F3-A540-8929D74A400B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{2AF47F09-6535-49F3-A540-8929D74A400B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{2AF47F09-6535-49F3-A540-8929D74A400B}.Release|Any CPU.Build.0 = Release|Any CPU
 		{7CFB23C5-44E9-4F64-AA43-9E92A79CF101}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{7CFB23C5-44E9-4F64-AA43-9E92A79CF101}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7CFB23C5-44E9-4F64-AA43-9E92A79CF101}.Release|Any CPU.ActiveCfg = Release|Any CPU
