@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using Phantasma.AssemblerLib;
 using Phantasma.CodeGen.Core;
 using Phantasma.VM.Utils;
 using Phantasma.VM;
+using Phantasma.CodeGen.Assembler;
 
 namespace Phantasma.Spook.Modules
 {
@@ -25,9 +25,9 @@ namespace Phantasma.Spook.Modules
             }
 
             var extension = Path.GetExtension(sourceFilePath);
-            if (extension != Format.Extension)
+            if (extension != ScriptFormat.Extension)
             {
-                throw new CommandException($"Only {Format.Extension} format supported!");
+                throw new CommandException($"Only {ScriptFormat.Extension} format supported!");
             }
 
             var outputName = sourceFilePath.Replace(extension, ".asm");
@@ -111,7 +111,7 @@ namespace Phantasma.Spook.Modules
             }
 
             var extension = Path.GetExtension(sourceFilePath);
-            var outputName = sourceFilePath.Replace(extension, Format.Extension);
+            var outputName = sourceFilePath.Replace(extension, ScriptFormat.Extension);
 
             try
             {
@@ -154,7 +154,7 @@ namespace Phantasma.Spook.Modules
             var instructions = compiler.Execute(tree);
             var generator = new ByteCodeGenerator(tree, instructions);
 
-            var outputName = sourceFilePath.Replace(extension, Format.Extension);
+            var outputName = sourceFilePath.Replace(extension, ScriptFormat.Extension);
 
             try
             {

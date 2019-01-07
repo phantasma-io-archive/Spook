@@ -14,9 +14,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\PhantasmaAssembler\PhantasmaAssemblerLib\Phantasma.AssemblerLib.csproj" />
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.API\Phantasma.API.csproj" />
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.Blockchain\Phantasma.Blockchain.csproj" />
+    <ProjectReference Include="..\..\PhantasmaChain\Phantasma.CodeGen\Phantasma.CodeGen.csproj" />
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.Core\Phantasma.Core.csproj" />
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.Cryptography\Phantasma.Cryptography.csproj" />
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.IO\Phantasma.IO.csproj" />
@@ -25,7 +25,6 @@
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.Storage\Phantasma.Storage.csproj" />
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.Tests\Phantasma.Tests.csproj" />
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.VM\Phantasma.VM.csproj" />
-    <ProjectReference Include="..\..\PhantasmaCompiler\Compiler.CodeGen\Compiler.CodeGen.csproj" />
   </ItemGroup>
 
 </Project>

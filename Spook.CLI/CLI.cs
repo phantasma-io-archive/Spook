@@ -18,6 +18,7 @@ using Phantasma.Spook.GUI;
 using LunarLabs.WebServer.Core;
 using Logger = Phantasma.Core.Log.Logger;
 using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
+using Phantasma.CodeGen.Assembler;
 
 namespace Phantasma.Spook
 {
@@ -508,7 +509,7 @@ namespace Phantasma.Spook
             dispatcher.RegisterCommand("script.assemble", "Assembles a .asm file into Phantasma VM script format",
                 (args) => ScriptModule.AssembleFile(args));
 
-            dispatcher.RegisterCommand("script.disassemble", $"Disassembles a {AssemblerLib.Format.Extension} file into readable Phantasma assembly",
+            dispatcher.RegisterCommand("script.disassemble", $"Disassembles a {ScriptFormat.Extension} file into readable Phantasma assembly",
                 (args) => ScriptModule.DisassembleFile(args));
 
             dispatcher.RegisterCommand("script.compile", "Compiles a .sol file into Phantasma VM script format",
