@@ -16,9 +16,11 @@ using Phantasma.Spook.Modules;
 using Phantasma.Spook.Plugins;
 using Phantasma.Spook.GUI;
 using LunarLabs.WebServer.Core;
+using Phantasma.Blockchain.Contracts;
 using Logger = Phantasma.Core.Log.Logger;
 using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
 using Phantasma.CodeGen.Assembler;
+using Phantasma.VM.Utils;
 
 namespace Phantasma.Spook
 {
