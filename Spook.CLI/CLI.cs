@@ -17,6 +17,7 @@ using Phantasma.Spook.GUI;
 using LunarLabs.WebServer.Core;
 using Phantasma.Blockchain.Contracts;
 using Phantasma.Blockchain.Utils;
+using Phantasma.Blockchain.Plugins;
 using Logger = Phantasma.Core.Log.Logger;
 using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
 using Phantasma.CodeGen.Assembler;
@@ -365,20 +366,32 @@ namespace Phantasma.Spook
 
             var node_keys = KeyPair.FromWIF(wif);
 
+            ChainSimulator simulator;
+
             if (wif == validatorWIFs[0])
             {
-                var simulator = new ChainSimulator(node_keys, 1234, logger);
+                simulator = new ChainSimulator(node_keys, 1234, logger);
                 nexus = simulator.Nexus;
-
-                for (int i=0; i< 100; i++)
-                {
-                    simulator.GenerateRandomBlock();
-                }
             }
             else
             {
+                simulator = null;
                 nexus = new Nexus(nexusName, genesisAddress, logger);
                 seeds.Add("127.0.0.1:7073");
+            }
+
+            // TODO this should be later optional to enable
+            nexus.AddPlugin(new ChainAddressesPlugin());
+            nexus.AddPlugin(new TokenTransactionsPlugin());
+            nexus.AddPlugin(new AddressTransactionsPlugin());
+            nexus.AddPlugin(new UnclaimedTransactionsPlugin());
+
+            if (simulator != null)
+            {
+                for (int i = 0; i < 100; i++)
+                {
+                    simulator.GenerateRandomBlock();
+                }
             }
 
             running = true;
