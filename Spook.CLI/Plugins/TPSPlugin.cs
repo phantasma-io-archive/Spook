@@ -2,6 +2,7 @@
 using Phantasma.Core.Log;
 using Phantasma.Spook.GUI;
 using System;
+using System.Threading;
 
 namespace Phantasma.Spook.Plugins
 {
@@ -31,10 +32,7 @@ namespace Phantasma.Spook.Plugins
 
         public override void OnTransaction(Chain chain, Block block, Transaction transaction)
         {
-            lock (this)
-            {
-                txCount++;
-            }
+            Interlocked.Increment(ref txCount);
         }
 
         public void Update()
@@ -45,7 +43,8 @@ namespace Phantasma.Spook.Plugins
             if (diff >= periodInSeconds)
             {
                 lastTime = currentTime;
-                var tps = txCount / (float)periodInSeconds;
+                var currentCount = Interlocked.Exchange(ref txCount, 0);
+                var tps = currentCount / (float)periodInSeconds;
 
                 var str = $"{tps.ToString("0.##")} TPS";
                 if (gui != null)
@@ -56,11 +55,6 @@ namespace Phantasma.Spook.Plugins
                 else
                 {
                     logger.Message(str);
-                }
-
-                lock (this)
-                {
-                    txCount = 0;
                 }
             }
         }
