@@ -22,6 +22,7 @@ using Logger = Phantasma.Core.Log.Logger;
 using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
 using Phantasma.CodeGen.Assembler;
 using Phantasma.VM.Utils;
+using Phantasma.Core;
 
 namespace Phantasma.Spook
 {
@@ -71,7 +72,7 @@ namespace Phantasma.Spook
 
         private static BigInteger FetchBalance(JSONRPC_Client rpc, Logger logger, string host, Address address)
         {
-            var response = rpc.SendRequest(logger, RequestType.POST, host, "getAccount", address.ToString());
+            var response = rpc.SendRequest(logger, host, "getAccount", address.ToString());
             if (response == null)
             {
                 logger.Error($"Error fetching balance of {address}...");
@@ -94,45 +95,42 @@ namespace Phantasma.Spook
 
                 if (symbol == "SOUL")
                 {
-                    total += TokenUtils.ToBigInteger(entry.GetDecimal("amount"), Nexus.NativeTokenDecimals);
+                    total += BigInteger.Parse(entry.GetString("amount"));
                 }
             }
 
             return total;
         }
 
-
         private static Hash SendTransfer(JSONRPC_Client rpc, Logger logger, string host, KeyPair from, Address to, BigInteger amount)
         {
+            Throw.IfNull(rpc, nameof(rpc));
+            Throw.IfNull(logger, nameof(logger));
+
             var script = ScriptUtils.BeginScript().AllowGas(from.Address, 1, 9999).TransferTokens("SOUL", from.Address, to, amount).SpendGas(from.Address).EndScript();
 
-            var tx = new Transaction("simnet", "main", script, Timestamp.Now + TimeSpan.FromMinutes(30), 0);
+            var tx = new Transaction("simnet", "main", script, Timestamp.Now + TimeSpan.FromMinutes(30));
             tx.Sign(from);
 
             var bytes = tx.ToByteArray(true);
 
             //log.Debug("RAW: " + Base16.Encode(bytes));
 
-            var response = rpc.SendRequest(logger, RequestType.POST, host, "sendRawTransaction", Base16.Encode(bytes));
+            var response = rpc.SendRequest(logger, host, "sendRawTransaction", Base16.Encode(bytes));
             if (response == null)
             {
-                if (logger != null)
-                {
-                    logger.Error($"Error sending {amount} SOUL from {from.Address} to {to}...");
-                }
+                logger.Error($"Error sending {amount} SOUL from {from.Address} to {to}...");
                 return Hash.Null;
             }
 
-            var hash = response.GetString("hash");
-            if (string.IsNullOrEmpty(hash))
+            if (response.HasNode("error"))
             {
-                if (logger != null)
-                {
-                    logger.Error("Hash not found");
-                }
+                var error = response.GetString("error");
+                logger.Error("Error: " + error);
                 return Hash.Null;
             }
 
+            var hash = response.Value;
             return Hash.Parse(hash);
         }
 
@@ -142,25 +140,20 @@ namespace Phantasma.Spook
 
             int tryCount = 0;
 
+            int delay = 250;
             do
             {
-                var response = rpc.SendRequest(logger, RequestType.POST, host, "getConfirmations", hashStr);
+                var response = rpc.SendRequest(logger, host, "getConfirmations", hashStr);
                 if (response == null)
                 {
-                    if (logger != null)
-                    {
-                        logger.Error("Transfer request failed");
-                    }
+                    logger.Error("Transfer request failed");
                     return false;
                 }
 
                 var confirmations = response.GetInt32("confirmations");
                 if (confirmations > 0)
                 {
-                    if (logger != null)
-                    {
-                        logger.Success("Confirmations: " + confirmations);
-                    }
+                    //logger.Success("Confirmations: " + confirmations);
                     return true;
                 }
 
@@ -170,12 +163,15 @@ namespace Phantasma.Spook
                     return false;
                 }
 
-                Thread.Sleep(1000);
+                Thread.Sleep(delay);
+                delay *= 2;
             } while (true);
         }
 
-        private void SenderSpawn(KeyPair masterKeys, string host, BigInteger initialAmount, int addressesListSize)
+        private void SenderSpawn(int ID, KeyPair masterKeys, string host, BigInteger initialAmount, int addressesListSize)
         {
+            Throw.IfNull(logger, nameof(logger));
+
             Thread.CurrentThread.IsBackground = true;
 
             var addressList = new Queue<KeyPair>();
@@ -188,17 +184,21 @@ namespace Phantasma.Spook
 
             var currentKey = addressList.Dequeue();
 
-            logger.Message($"Connecting to host: {host} with address {masterKeys.Address.Text}");
+            logger.Message($"#{ID}: Connecting to host: {host} with address {currentKey.Address.Text}");
 
             var rpc = new JSONRPC_Client();
 
-            var hash = SendTransfer(rpc, logger, host, masterKeys, currentKey.Address, initialAmount);
-            if (hash == Hash.Null)
             {
-                return;
+                var hash = SendTransfer(rpc, logger, host, masterKeys, currentKey.Address, initialAmount);
+                if (hash == Hash.Null)
+                {
+                    logger.Error($"#{ID}:Stopping");
+                    return;
+                }
+
+                ConfirmTransaction(rpc, logger, host, hash);
             }
 
-            ConfirmTransaction(rpc, logger, host, hash);
 
             int totalTxs = 0;
 
@@ -206,35 +206,46 @@ namespace Phantasma.Spook
 
             BigInteger fee = 9999; // TODO calculate the real fee
 
-            while (true)
+            BigInteger amount = initialAmount;
+
+            while (amount > fee)
             {
                 var destKey = addressList.Dequeue();
 
-                BigInteger amount = initialAmount - fee;
+                amount -= fee;
 
-                var txHash = SendTransfer(rpc, null, host, currentKey, destKey.Address, amount);
-                if (txHash == Hash.Null)
+                Hash txHash;
+                try
                 {
-                    logger.Error($"Error sending {amount} SOUL from {currentKey.Address} to {destKey.Address}...");
+                    txHash = SendTransfer(rpc, logger, host, currentKey, destKey.Address, amount);
+                }
+                catch (Exception e)
+                {
+                    logger.Error($"#{ID}:Fatal error : {e}");
                     return;
                 }
 
-                totalTxs++;
+                if (txHash == Hash.Null)
+                {
+                    logger.Error($"#{ID}:Error sending {amount} SOUL from {currentKey.Address} to {destKey.Address}...");
+                    return;
+                }
 
                 addressList.Enqueue(currentKey);
                 currentKey = destKey;
 
                 Thread.Sleep(100);
 
-                var confirmation = ConfirmTransaction(rpc, null, host, hash);
+                var confirmation = ConfirmTransaction(rpc, logger, host, txHash);
 
+                totalTxs++;
                 if (totalTxs % 10 == 0)
                 {
-                    logger.Message($"Sent {totalTxs} transactions");
+                    logger.Message($"#{ID}:Sent {totalTxs} transactions");
                 }
             }
 
-            logger.Message($"*** Thread ran out of funds");
+            logger.Message($"#{ID}: Thread ran out of funds");
         }
 
         private void RunSender(string wif, string host, int threadCount, int addressesListSize)
@@ -250,7 +261,7 @@ namespace Phantasma.Spook
             var masterKeys = KeyPair.FromWIF(wif);
 
             var rpc = new JSONRPC_Client();
-            logger.Message($"Fetch initial balance...");
+            logger.Message($"Fetch initial balance from {masterKeys.Address}...");
             BigInteger initialAmount = FetchBalance(rpc, logger, host, masterKeys.Address);
             if (initialAmount <= 0)
             {
@@ -260,15 +271,18 @@ namespace Phantasma.Spook
 
             logger.Message($"Initial balance: {TokenUtils.ToDecimal(initialAmount, Nexus.NativeTokenDecimals)} SOUL");
 
-            initialAmount /= 4; // 25%
+            initialAmount /= 10; // 10%
             initialAmount /= threadCount;
+
+            logger.Message($"Estimated amount per thread: {TokenUtils.ToDecimal(initialAmount, Nexus.NativeTokenDecimals)} SOUL");
 
             for (int i=1; i<= threadCount; i++)
             {
                 logger.Message($"Starting thread #{i}...");
                 try
                 {
-                    new Thread(() => { SenderSpawn(masterKeys, host, initialAmount, addressesListSize); }).Start();
+                    new Thread(() => { SenderSpawn(i, masterKeys, host, initialAmount, addressesListSize); }).Start();
+                    Thread.Sleep(200);
                 }
                 catch (Exception e) {
                     logger.Error(e.ToString());
@@ -400,6 +414,8 @@ namespace Phantasma.Spook
             this.mempool = new Mempool(node_keys, nexus);
             mempool.Start();
 
+            mempool.OnTransactionFailed += Mempool_OnTransactionFailed;
+
             api = new NexusAPI(nexus, mempool);
 
             // RPC setup
@@ -436,6 +452,11 @@ namespace Phantasma.Spook
             }
 
             this.Run();
+        }
+
+        private void Mempool_OnTransactionFailed(Transaction tx)
+        {
+            logger.Warning($"Rejected transaction {tx.Hash}!");
         }
 
         private void Run()

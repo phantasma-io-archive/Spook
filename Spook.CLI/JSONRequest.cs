@@ -1,15 +1,11 @@
-﻿using Phantasma.Core.Log;
+﻿using Phantasma.Core;
+using Phantasma.Core.Log;
 using System;
 using System.Net;
+using System.Threading;
 
 namespace LunarLabs.Parser.JSON
 {
-    public enum RequestType
-    {
-        GET,
-        POST
-    }
-
     public class JSONRPC_Client
     {
         private WebClient client;
@@ -19,23 +15,18 @@ namespace LunarLabs.Parser.JSON
             client = new WebClient() { Encoding = System.Text.Encoding.UTF8 }; 
         }
 
-        public DataNode SendRequest(Logger logger, RequestType kind, string url, string method, params object[] parameters)
+        public DataNode SendRequest(Logger logger, string url, string method, params object[] parameters)
         {
-            string contents;
+            Throw.IfNull(logger, nameof(logger));
 
-            DataNode paramData;
+            DataNode paramData = DataNode.CreateArray("params");
 
             if (parameters!=null && parameters.Length > 0)
             {
-                paramData = DataNode.CreateArray("params");
                 foreach (var obj in parameters)
                 {
                     paramData.AddField(null, obj);
                 }
-            }
-            else
-            {
-                paramData = null;
             }
 
             var jsonRpcData = DataNode.CreateObject(null);
@@ -43,34 +34,39 @@ namespace LunarLabs.Parser.JSON
             jsonRpcData.AddField("method", method);
             jsonRpcData.AddField("id", "1");
 
-            if (paramData != null)
-            {
-                jsonRpcData.AddNode(paramData);
-            }
+            jsonRpcData.AddNode(paramData);
 
-            try
-            {
-                client.Headers.Add("Content-Type", "application/json-rpc");
+            int retries = 5;
+            string contents = null;
 
-                switch (kind)
+            int retryDelay = 500;
+
+            while (retries > 0)
+            {
+                try
                 {
-                    case RequestType.GET:
-                        {
-                            contents = client.DownloadString(url); break;
-                        }
-                    case RequestType.POST:
-                        {
-                            var json = JSONWriter.WriteToString(jsonRpcData);
-                            contents = client.UploadString(url, json);
-                            break;
-                        }
-                    default: return null;
+                    client.Headers.Add("Content-Type", "application/json-rpc");
+                    var json = JSONWriter.WriteToString(jsonRpcData);
+                    contents = client.UploadString(url, json);
                 }
-            }
-            catch (Exception e)
-            {
-                logger.Error(e.ToString());
-                return null;
+                catch (Exception e)
+                {
+                    retries--;
+                    if (retries <= 0)
+                    {
+                        logger.Error(e.ToString());
+                        return null;
+                    }
+                    else
+                    {
+                        logger.Warning($"Retrying connection to {url} after {retryDelay}ms...");
+                        Thread.Sleep(retryDelay);
+                        retryDelay *= 2;
+                        continue;
+                    }
+                }
+
+                break;
             }
 
             if (string.IsNullOrEmpty(contents))
