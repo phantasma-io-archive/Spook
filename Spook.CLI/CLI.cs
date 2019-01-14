@@ -23,6 +23,8 @@ using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
 using Phantasma.CodeGen.Assembler;
 using Phantasma.VM.Utils;
 using Phantasma.Core;
+using System.Net.Sockets;
+using Phantasma.Network.P2P.Messages;
 
 namespace Phantasma.Spook
 {
@@ -153,7 +155,7 @@ namespace Phantasma.Spook
                 var confirmations = response.GetInt32("confirmations");
                 if (confirmations > 0)
                 {
-                    //logger.Success("Confirmations: " + confirmations);
+                    logger.Success("Confirmations: " + confirmations);
                     return true;
                 }
 
@@ -174,50 +176,104 @@ namespace Phantasma.Spook
 
             Thread.CurrentThread.IsBackground = true;
 
-            var addressList = new Queue<KeyPair>();
-
-            for (int j = 0; j < addressesListSize; j++)
-            {
-                var key = KeyPair.Generate();
-                addressList.Enqueue(key);
-            }
-
-            var currentKey = addressList.Dequeue();
-
-            logger.Message($"#{ID}: Connecting to host: {host} with address {currentKey.Address.Text}");
-
-            var rpc = new JSONRPC_Client();
-
-            {
-                var hash = SendTransfer(rpc, logger, host, masterKeys, currentKey.Address, initialAmount);
-                if (hash == Hash.Null)
-                {
-                    logger.Error($"#{ID}:Stopping");
-                    return;
-                }
-
-                ConfirmTransaction(rpc, logger, host, hash);
-            }
-
-
-            int totalTxs = 0;
-
-            addressList.Enqueue(currentKey);
-
             BigInteger fee = 9999; // TODO calculate the real fee
 
             BigInteger amount = initialAmount;
 
-            while (amount > fee)
+            var tcp = new TcpClient("localhost", 7073);
+            var peer = new TCPPeer(tcp.Client);
+
+            var peerKey = KeyPair.Generate();
+            logger.Message($"#{ID}: Connecting to peer: {host} with address {peerKey.Address.Text}");
+            var request = new RequestMessage(RequestKind.None, "simnet", peerKey.Address);
+            request.Sign(peerKey);
+            peer.Send(request);
+
+            int batchCount = 0;
+
+            var rpc = new JSONRPC_Client();
             {
-                var destKey = addressList.Dequeue();
+                logger.Message($"#{ID}: Sending funds to address {peerKey.Address.Text}");
+                var hash = SendTransfer(rpc, logger, host, masterKeys, peerKey.Address, initialAmount);
+                if (hash == Hash.Null)
+                {
+                    logger.Error($"#{ID}:Stopping, fund transfer failed");
+                    return;
+                }
 
-                amount -= fee;
+                if (!ConfirmTransaction(rpc, logger, host, hash))
+                {
+                    logger.Error($"#{ID}:Stopping, fund confirmation failed");
+                    return;
+                }
+            }
 
-                Hash txHash;
+            logger.Message($"#{ID}: Beginning send mode");
+            bool returnPhase = false;
+            var txs = new List<Transaction>();
+
+            var addressList = new List<KeyPair>();
+            int waveCount = 0;
+            while (true)
+            {
+                bool shouldConfirm;
+
                 try
                 {
-                    txHash = SendTransfer(rpc, logger, host, currentKey, destKey.Address, amount);
+                    txs.Clear();
+
+                    
+                    if (returnPhase)
+                    {
+                        foreach (var target in addressList)
+                        {
+                            var script = ScriptUtils.BeginScript().AllowGas(target.Address, 1, 9999).TransferTokens("SOUL", target.Address, peerKey.Address, 1).SpendGas(target.Address).EndScript();
+                            var tx = new Transaction("simnet", "main", script, Timestamp.Now + TimeSpan.FromMinutes(30));
+                            tx.Sign(target);
+                            txs.Add(tx);
+                        }
+
+                        addressList.Clear();
+                        returnPhase = false;
+                        waveCount = 0;
+                        shouldConfirm = true;
+                    }
+                    else
+                    { 
+                        amount -= fee * 2 * addressesListSize;
+                        if (amount <= 0)
+                        {
+                            break;
+                        }
+
+                        for (int j = 0; j < addressesListSize; j++)
+                        {
+                            var target = KeyPair.Generate();
+                            addressList.Add(target);
+                       
+                            var script = ScriptUtils.BeginScript().AllowGas(peerKey.Address, 1, 9999).TransferTokens("SOUL", peerKey.Address, target.Address, 1 + fee).SpendGas(peerKey.Address).EndScript();
+                            var tx = new Transaction("simnet", "main", script, Timestamp.Now + TimeSpan.FromMinutes(30));
+                            tx.Sign(peerKey);
+                            txs.Add(tx);
+                        }
+
+                        waveCount++;
+                        if (waveCount > 10)
+                        {
+                            returnPhase = true;
+                            shouldConfirm = true;
+                        }
+                        else
+                        {
+                            shouldConfirm = false;
+                        }
+                    }
+
+                    returnPhase = !returnPhase;
+
+                    var msg = new MempoolAddMessage(peerKey.Address, txs);
+                    msg.Sign(peerKey);
+                    peer.Send(msg);
                 }
                 catch (Exception e)
                 {
@@ -225,24 +281,30 @@ namespace Phantasma.Spook
                     return;
                 }
 
-                if (txHash == Hash.Null)
+                if (txs.Any())
                 {
-                    logger.Error($"#{ID}:Error sending {amount} SOUL from {currentKey.Address} to {destKey.Address}...");
+                    if (shouldConfirm)
+                    {
+                        var confirmation = ConfirmTransaction(rpc, logger, host, txs.Last().Hash);
+                        if (!confirmation)
+                        {
+                            logger.Error($"#{ID}:Confirmation failed, aborting...");
+                        }
+                    }
+                    else
+                    {
+                        Thread.Sleep(500);
+                    }
+
+                    batchCount++;
+                    logger.Message($"#{ID}:Sent {txs.Count} transactions (batch #{batchCount})");
+                }
+                else
+                {
+                    logger.Message($"#{ID}: No transactions left");
                     return;
                 }
 
-                addressList.Enqueue(currentKey);
-                currentKey = destKey;
-
-                Thread.Sleep(100);
-
-                var confirmation = ConfirmTransaction(rpc, logger, host, txHash);
-
-                totalTxs++;
-                if (totalTxs % 10 == 0)
-                {
-                    logger.Message($"#{ID}:Sent {totalTxs} transactions");
-                }
             }
 
             logger.Message($"#{ID}: Thread ran out of funds");
@@ -349,7 +411,7 @@ namespace Phantasma.Spook
                 case "sender":
                     string host = settings.GetString("sender.host");
                     int threadCount = settings.GetInt("sender.threads", 8);
-                    int addressesPerSender = settings.GetInt("sender.addressCount", 20);
+                    int addressesPerSender = settings.GetInt("sender.addressCount", 100);
                     RunSender(wif, host, threadCount, addressesPerSender);
                     Console.WriteLine("Sender finished operations.");
                     return;
@@ -412,7 +474,7 @@ namespace Phantasma.Spook
 
             // mempool setup
             this.mempool = new Mempool(node_keys, nexus);
-            mempool.Start();
+            mempool.Start(ThreadPriority.AboveNormal);
 
             mempool.OnTransactionFailed += Mempool_OnTransactionFailed;
 
@@ -425,14 +487,14 @@ namespace Phantasma.Spook
 
                 logger.Message($"RPC server listening on port {rpcPort}...");
                 var rpcServer = new RPCServer(api, "rpc", rpcPort, (level, text) => WebLogMapper("rpc", level, text));
-                new Thread(() => { rpcServer.Start(); }).Start();
+                new Thread(() => { rpcServer.Start(ThreadPriority.AboveNormal); }).Start();
             }
 
             // node setup
-            this.node = new Node(nexus, node_keys, port, seeds, logger);           
+            this.node = new Node(nexus, mempool, node_keys, port, seeds, logger);           
             node.Start();
 
-            int pluginPeriod = settings.GetInt("plugin.refresh", 10); // in seconds
+            int pluginPeriod = settings.GetInt("plugin.refresh", 1); // in seconds
             RegisterPlugin(new TPSPlugin(logger, pluginPeriod));
             RegisterPlugin(new RAMPlugin(logger, pluginPeriod));
             RegisterPlugin(new MempoolPlugin(mempool, logger, pluginPeriod));
