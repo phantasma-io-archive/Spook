@@ -487,7 +487,21 @@ namespace Phantasma.Spook
 
                 logger.Message($"RPC server listening on port {rpcPort}...");
                 var rpcServer = new RPCServer(api, "rpc", rpcPort, (level, text) => WebLogMapper("rpc", level, text));
-                new Thread(() => { rpcServer.Start(ThreadPriority.AboveNormal); }).Start();
+                rpcServer.Start(ThreadPriority.AboveNormal);
+            }
+
+            if (simulator != null && settings.GetBool("simulator", false))
+            {
+                new Thread(() =>
+                {
+                    Thread.CurrentThread.IsBackground = true;
+                    while (running)
+                    {
+                        Thread.Sleep(3000);
+                        simulator.CurrentTime = Timestamp.Now;
+                        simulator.GenerateRandomBlock(mempool);
+                    }
+                }).Start();
             }
 
             // node setup
