@@ -490,6 +490,20 @@ namespace Phantasma.Spook
                 rpcServer.Start(ThreadPriority.AboveNormal);
             }
 
+            if (simulator != null && settings.GetBool("simulator", false))
+            {
+                new Thread(() =>
+                {
+                    Thread.CurrentThread.IsBackground = true;
+                    while (running)
+                    {
+                        Thread.Sleep(3000);
+                        simulator.CurrentTime = Timestamp.Now;
+                        simulator.GenerateRandomBlock(mempool);
+                    }
+                }).Start();
+            }
+
             // node setup
             this.node = new Node(nexus, mempool, node_keys, port, seeds, logger);           
             node.Start();
