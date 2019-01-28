@@ -497,7 +497,7 @@ namespace Phantasma.Spook
                     Thread.CurrentThread.IsBackground = true;
                     while (running)
                     {
-                        Thread.Sleep(Mempool.MinimumBlockTime);
+                        Thread.Sleep(Mempool.MinimumBlockTime + 1000);
                         simulator.CurrentTime = Timestamp.Now;
                         simulator.GenerateRandomBlock(mempool);
                     }
