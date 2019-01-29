@@ -424,21 +424,21 @@ namespace Phantasma.Spook
                     }
             }
 
-            string defaultPort = null;
+            int defaultPort = 0;
             for (int i=0; i<validatorWIFs.Length; i++)
             {
                 if (validatorWIFs[i] == wif)
                 {
-                    defaultPort = (7073 + i).ToString();
+                    defaultPort = (7073 + i);
                 }
             }
 
-            if (defaultPort == null)
+            if (defaultPort == 0)
             {
-                defaultPort = (7073 + validatorWIFs.Length).ToString();
+                defaultPort = (7073 + validatorWIFs.Length);
             }
 
-            int port = int.Parse(settings.GetString("node.port", defaultPort));
+            int port = settings.GetInt("node.port", defaultPort);
 
             var node_keys = KeyPair.FromWIF(wif);
 
@@ -473,7 +473,8 @@ namespace Phantasma.Spook
             running = true;
 
             // mempool setup
-            this.mempool = new Mempool(node_keys, nexus);
+            int blockTime = settings.GetInt("node.blocktime", Mempool.MinimumBlockTime);            
+            this.mempool = new Mempool(node_keys, nexus, blockTime);
             mempool.Start(ThreadPriority.AboveNormal);
 
             mempool.OnTransactionFailed += Mempool_OnTransactionFailed;
