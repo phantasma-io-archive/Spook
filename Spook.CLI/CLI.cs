@@ -400,6 +400,7 @@ namespace Phantasma.Spook
             string mode = settings.GetString("node.mode", "validator");
 
             bool hasRPC = settings.GetBool("rpc.enabled", false);
+            bool hasREST = settings.GetBool("rest.enabled", false);
 
             string wif = settings.GetString("node.wif");
 
@@ -487,8 +488,18 @@ namespace Phantasma.Spook
                 int rpcPort = settings.GetInt("rpc.port", 7077);
 
                 logger.Message($"RPC server listening on port {rpcPort}...");
-                var rpcServer = new RPCServer(api, "rpc", rpcPort, (level, text) => WebLogMapper("rpc", level, text));
+                var rpcServer = new RPCServer(api, "/rpc", rpcPort, (level, text) => WebLogMapper("rpc", level, text));
                 rpcServer.Start(ThreadPriority.AboveNormal);
+            }
+
+            // REST setup
+            if (hasREST)
+            {
+                int restPort = settings.GetInt("rest.port", 7078);
+
+                logger.Message($"REST server listening on port {restPort}...");
+                var restServer = new RESTServer(api, "/api", restPort, (level, text) => WebLogMapper("rest", level, text));
+                restServer.Start(ThreadPriority.AboveNormal);
             }
 
             if (simulator != null && settings.GetBool("simulator", false))
