@@ -109,7 +109,7 @@ namespace Phantasma.Spook
             Throw.IfNull(rpc, nameof(rpc));
             Throw.IfNull(logger, nameof(logger));
 
-            var script = ScriptUtils.BeginScript().AllowGas(from.Address, 1, 9999).TransferTokens("SOUL", from.Address, to, amount).SpendGas(from.Address).EndScript();
+            var script = ScriptUtils.BeginScript().AllowGas(from.Address, Address.Null, 1, 9999).TransferTokens("SOUL", from.Address, to, amount).SpendGas(from.Address).EndScript();
 
             var tx = new Transaction("simnet", "main", script, Timestamp.Now + TimeSpan.FromMinutes(30));
             tx.Sign(from);
@@ -227,7 +227,7 @@ namespace Phantasma.Spook
                     {
                         foreach (var target in addressList)
                         {
-                            var script = ScriptUtils.BeginScript().AllowGas(target.Address, 1, 9999).TransferTokens("SOUL", target.Address, peerKey.Address, 1).SpendGas(target.Address).EndScript();
+                            var script = ScriptUtils.BeginScript().AllowGas(target.Address, Address.Null, 1, 9999).TransferTokens("SOUL", target.Address, peerKey.Address, 1).SpendGas(target.Address).EndScript();
                             var tx = new Transaction("simnet", "main", script, Timestamp.Now + TimeSpan.FromMinutes(30));
                             tx.Sign(target);
                             txs.Add(tx);
@@ -251,7 +251,7 @@ namespace Phantasma.Spook
                             var target = KeyPair.Generate();
                             addressList.Add(target);
                        
-                            var script = ScriptUtils.BeginScript().AllowGas(peerKey.Address, 1, 9999).TransferTokens("SOUL", peerKey.Address, target.Address, 1 + fee).SpendGas(peerKey.Address).EndScript();
+                            var script = ScriptUtils.BeginScript().AllowGas(peerKey.Address, Address.Null, 1, 9999).TransferTokens("SOUL", peerKey.Address, target.Address, 1 + fee).SpendGas(peerKey.Address).EndScript();
                             var tx = new Transaction("simnet", "main", script, Timestamp.Now + TimeSpan.FromMinutes(30));
                             tx.Sign(peerKey);
                             txs.Add(tx);
