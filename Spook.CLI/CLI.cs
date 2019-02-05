@@ -331,12 +331,12 @@ namespace Phantasma.Spook
                 return;
             }
 
-            logger.Message($"Initial balance: {TokenUtils.ToDecimal(initialAmount, Nexus.NativeTokenDecimals)} SOUL");
+            logger.Message($"Initial balance: {TokenUtils.ToDecimal(initialAmount, Nexus.FuelTokenDecimals)} SOUL");
 
             initialAmount /= 10; // 10%
             initialAmount /= threadCount;
 
-            logger.Message($"Estimated amount per thread: {TokenUtils.ToDecimal(initialAmount, Nexus.NativeTokenDecimals)} SOUL");
+            logger.Message($"Estimated amount per thread: {TokenUtils.ToDecimal(initialAmount, Nexus.FuelTokenDecimals)} SOUL");
 
             for (int i=1; i<= threadCount; i++)
             {
@@ -447,7 +447,7 @@ namespace Phantasma.Spook
 
             if (wif == validatorWIFs[0])
             {
-                simulator = new ChainSimulator(node_keys, 1234, logger);
+                simulator = new ChainSimulator(node_keys, 1235, logger);
                 nexus = simulator.Nexus;
             }
             else
