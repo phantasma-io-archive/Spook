@@ -95,7 +95,7 @@ namespace Phantasma.Spook
                 var chain = entry.GetString("chain");
                 var symbol = entry.GetString("symbol");
 
-                if (symbol == "SOUL")
+                if (symbol == Nexus.NativeTokenSymbol)
                 {
                     total += BigInteger.Parse(entry.GetString("amount"));
                 }
@@ -121,7 +121,7 @@ namespace Phantasma.Spook
             var response = rpc.SendRequest(logger, host, "sendRawTransaction", Base16.Encode(bytes));
             if (response == null)
             {
-                logger.Error($"Error sending {amount} SOUL from {from.Address} to {to}...");
+                logger.Error($"Error sending {amount} {Nexus.NativeTokenSymbol} from {from.Address} to {to}...");
                 return Hash.Null;
             }
 
