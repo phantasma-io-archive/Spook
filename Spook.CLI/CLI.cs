@@ -1,30 +1,32 @@
 using System;
+using System.Net.Sockets;
 using System.Linq;
 using System.Collections.Generic;
 using System.Threading;
+
+using LunarLabs.Parser.JSON;
+using LunarLabs.WebServer.Core;
+
 using Phantasma.Blockchain;
 using Phantasma.Cryptography;
 using Phantasma.Core.Utils;
 using Phantasma.Numerics;
 using Phantasma.Core.Types;
-using Phantasma.Blockchain.Tokens;
-using LunarLabs.Parser.JSON;
+using Phantasma.Spook.GUI;
 using Phantasma.API;
 using Phantasma.Network.P2P;
 using Phantasma.Spook.Modules;
 using Phantasma.Spook.Plugins;
-using Phantasma.Spook.GUI;
-using LunarLabs.WebServer.Core;
 using Phantasma.Blockchain.Contracts;
 using Phantasma.Blockchain.Utils;
 using Phantasma.Blockchain.Plugins;
-using Logger = Phantasma.Core.Log.Logger;
-using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
 using Phantasma.CodeGen.Assembler;
 using Phantasma.VM.Utils;
 using Phantasma.Core;
-using System.Net.Sockets;
 using Phantasma.Network.P2P.Messages;
+
+using Logger = Phantasma.Core.Log.Logger;
+using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
 
 namespace Phantasma.Spook
 {
@@ -95,7 +97,7 @@ namespace Phantasma.Spook
                 var chain = entry.GetString("chain");
                 var symbol = entry.GetString("symbol");
 
-                if (symbol == Nexus.NativeTokenSymbol)
+                if (symbol == Nexus.FuelTokenSymbol)
                 {
                     total += BigInteger.Parse(entry.GetString("amount"));
                 }
@@ -121,7 +123,7 @@ namespace Phantasma.Spook
             var response = rpc.SendRequest(logger, host, "sendRawTransaction", Base16.Encode(bytes));
             if (response == null)
             {
-                logger.Error($"Error sending {amount} {Nexus.NativeTokenSymbol} from {from.Address} to {to}...");
+                logger.Error($"Error sending {amount} {Nexus.FuelTokenSymbol} from {from.Address} to {to}...");
                 return Hash.Null;
             }
 
@@ -331,12 +333,12 @@ namespace Phantasma.Spook
                 return;
             }
 
-            logger.Message($"Initial balance: {TokenUtils.ToDecimal(initialAmount, Nexus.FuelTokenDecimals)} SOUL");
+            logger.Message($"Initial balance: {UnitConversion.ToDecimal(initialAmount, Nexus.FuelTokenDecimals)} SOUL");
 
             initialAmount /= 10; // 10%
             initialAmount /= threadCount;
 
-            logger.Message($"Estimated amount per thread: {TokenUtils.ToDecimal(initialAmount, Nexus.FuelTokenDecimals)} SOUL");
+            logger.Message($"Estimated amount per thread: {UnitConversion.ToDecimal(initialAmount, Nexus.FuelTokenDecimals)} SOUL");
 
             for (int i=1; i<= threadCount; i++)
             {
