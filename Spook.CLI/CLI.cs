@@ -27,6 +27,8 @@ using Phantasma.Network.P2P.Messages;
 
 using Logger = Phantasma.Core.Log.Logger;
 using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
+using Phantasma.IO;
+using System.Runtime.InteropServices;
 
 namespace Phantasma.Spook
 {
@@ -583,6 +585,9 @@ namespace Phantasma.Spook
             {
                 mempool.Stop();
             }
+
+            // make sure that all pending data is written to disk
+            DiskStore.FlushAll();
         }
 
         private void RegisterPlugin(IPlugin plugin)
