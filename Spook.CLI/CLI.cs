@@ -449,15 +449,18 @@ namespace Phantasma.Spook
 
             ChainSimulator simulator;
 
+            // TODO increase this later
+            int cacheSize = 32;
+
             if (wif == validatorWIFs[0])
             {
-                simulator = new ChainSimulator(node_keys, 1235, logger);
+                simulator = new ChainSimulator(node_keys, 1235, cacheSize, logger);
                 nexus = simulator.Nexus;
             }
             else
             {
                 simulator = null;
-                nexus = new Nexus(nexusName, genesisAddress, logger);
+                nexus = new Nexus(nexusName, genesisAddress, cacheSize, logger);
                 seeds.Add("127.0.0.1:7073");
             }
 
