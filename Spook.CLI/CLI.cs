@@ -447,20 +447,12 @@ namespace Phantasma.Spook
 
             var node_keys = KeyPair.FromWIF(wif);
 
-            ChainSimulator simulator;
-
             // TODO increase this later
             int cacheSize = 32;
 
-            if (wif == validatorWIFs[0])
+            nexus = new Nexus(nexusName, genesisAddress, cacheSize, logger);
+            if (wif != validatorWIFs[0])
             {
-                simulator = new ChainSimulator(node_keys, 1235, cacheSize, logger);
-                nexus = simulator.Nexus;
-            }
-            else
-            {
-                simulator = null;
-                nexus = new Nexus(nexusName, genesisAddress, cacheSize, logger);
                 seeds.Add("127.0.0.1:7073");
             }
 
@@ -470,13 +462,13 @@ namespace Phantasma.Spook
             nexus.AddPlugin(new AddressTransactionsPlugin());
             nexus.AddPlugin(new UnclaimedTransactionsPlugin());
 
-            if (simulator != null)
+            /*if (simulator != null)
             {
                 for (int i = 0; i < 100; i++)
                 {
                     simulator.GenerateRandomBlock();
                 }
-            }
+            }*/
 
             running = true;
 
@@ -509,7 +501,7 @@ namespace Phantasma.Spook
                 restServer.Start(ThreadPriority.AboveNormal);
             }
 
-            if (simulator != null && settings.GetBool("simulator", false))
+            /*if (simulator != null && settings.GetBool("simulator", false))
             {
                 new Thread(() =>
                 {
@@ -521,7 +513,7 @@ namespace Phantasma.Spook
                         simulator.GenerateRandomBlock(mempool);
                     }
                 }).Start();
-            }
+            }*/
 
             // node setup
             this.node = new Node(nexus, mempool, node_keys, port, seeds, logger);           
