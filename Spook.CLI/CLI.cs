@@ -522,10 +522,13 @@ namespace Phantasma.Spook
             this.node = new Node(nexus, mempool, node_keys, port, seeds, logger);           
             node.Start();
 
-            int pluginPeriod = settings.GetInt("plugin.refresh", 1); // in seconds
-            RegisterPlugin(new TPSPlugin(logger, pluginPeriod));
-            RegisterPlugin(new RAMPlugin(logger, pluginPeriod));
-            RegisterPlugin(new MempoolPlugin(mempool, logger, pluginPeriod));
+            if (gui != null)
+            {
+                int pluginPeriod = settings.GetInt("plugin.refresh", 1); // in seconds
+                RegisterPlugin(new TPSPlugin(logger, pluginPeriod));
+                RegisterPlugin(new RAMPlugin(logger, pluginPeriod));
+                RegisterPlugin(new MempoolPlugin(mempool, logger, pluginPeriod));
+            }
 
             Console.CancelKeyPress += delegate {
                 Terminate();
