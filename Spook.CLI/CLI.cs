@@ -549,7 +549,9 @@ namespace Phantasma.Spook
 
         private void Mempool_OnTransactionFailed(Transaction tx)
         {
-            logger.Warning($"Rejected transaction {tx.Hash}!");
+            var status = mempool.GetTransactionStatus(tx.Hash, out string reason);
+
+            logger.Warning($"Rejected transaction {tx.Hash} => "+reason);
         }
 
         private void Run()
