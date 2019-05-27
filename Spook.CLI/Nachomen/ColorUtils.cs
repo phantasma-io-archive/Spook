@@ -1,8 +1,5 @@
-
-
-using LunarLabs.Sprites;
 using System;
-using UnityEngine;
+using System.Drawing;
 
 namespace LunarLabs.Utils
 {
@@ -45,18 +42,18 @@ namespace LunarLabs.Utils
             result.h = 0;
             result.s = 0;
             result.l = 0;
-            result.a = input.a;
+            result.a = input.A;
 
-            v = input.r;
-            if (input.g > v)
-                v = input.g;
-            if (input.b > v)
-                v = input.b;
-            m = input.r;
-            if (input.g < m)
-                m = input.g;
-            if (input.b < m)
-                m = input.b;
+            v = input.R;
+            if (input.G > v)
+                v = input.G;
+            if (input.B > v)
+                v = input.B;
+            m = input.R;
+            if (input.G < m)
+                m = input.G;
+            if (input.B < m)
+                m = input.B;
 
             l = (m + v) / 2.0f;
 
@@ -75,32 +72,32 @@ namespace LunarLabs.Utils
             }
             else
             {
-                result.l = input.r;
+                result.l = input.R;
                 return result;
             }
 
-            r2 = (v - input.r) / vm;
-            g2 = (v - input.g) / vm;
-            b2 = (v - input.b) / vm;
+            r2 = (v - input.R) / vm;
+            g2 = (v - input.G) / vm;
+            b2 = (v - input.B) / vm;
 
-            if (input.r == v)
+            if (input.R == v)
             {
-                if (input.g == m)
+                if (input.G == m)
                     h = 5.0f + b2;
                 else
                     h = 1.0f - g2;
             }
             else
-                if (input.g == v)
+                if (input.G == v)
             {
-                if (input.b == m)
+                if (input.B == m)
                     h = 1.0f + r2;
                 else
                     h = 3.0f - b2;
             }
             else
             {
-                if (input.r == m)
+                if (input.R == m)
                     h = 3.0f + g2;
                 else
                     h = 5.0f - r2;
@@ -122,10 +119,10 @@ namespace LunarLabs.Utils
             float fract, vsf, mid1, mid2;
 
             Color result;
-            result.r = input.l;   // default to gray
-            result.g = input.l;
-            result.b = input.l;
-            result.a = input.a;
+            //result.R = input.l;   // default to gray
+            //result.G = input.l;
+            //result.B = input.l;
+            //result.A = input.a;
 
             if (input.l < 0.5f)
                 v = (input.l * (1.0f + input.s));
@@ -137,63 +134,63 @@ namespace LunarLabs.Utils
                 m = input.l + input.l - v;
                 sv = (v - m) / v;
                 input.h *= 6.0f;
-                sextant = (int)Mathf.Floor(input.h);
+                sextant = (int)Math.Floor(input.h);
                 fract = input.h - sextant;
 
                 vsf = v * sv * fract;
                 mid1 = m + vsf;
                 mid2 = v - vsf;
 
-                switch (sextant)
-                {
-                    case 0:
-                        {
-                            result.r = v;
-                            result.g = mid1;
-                            result.b = m;
-                            break;
-                        }
+                //switch (sextant)
+                //{
+                //    case 0:
+                //        {
+                //            result.R = v;
+                //            result.G = mid1;
+                //            result.B = m;
+                //            break;
+                //        }
 
-                    case 1:
-                        {
-                            result.r = mid2;
-                            result.g = v;
-                            result.b = m;
-                            break;
-                        }
+                //    case 1:
+                //        {
+                //            result.R = mid2;
+                //            result.G = v;
+                //            result.B = m;
+                //            break;
+                //        }
 
-                    case 2:
-                        {
-                            result.r = m;
-                            result.g = v;
-                            result.b = mid1;
-                            break;
-                        }
+                //    case 2:
+                //        {
+                //            result.R = m;
+                //            result.G = v;
+                //            result.B = mid1;
+                //            break;
+                //        }
 
-                    case 3:
-                        {
-                            result.r = m;
-                            result.g = mid2;
-                            result.b = v;
-                            break;
-                        }
+                //    case 3:
+                //        {
+                //            result.R = m;
+                //            result.G = mid2;
+                //            result.B = v;
+                //            break;
+                //        }
 
-                    case 4:
-                        {
-                            result.r = mid1;
-                            result.g = m;
-                            result.b = v;
-                            break;
-                        }
+                //    case 4:
+                //        {
+                //            result.R = mid1;
+                //            result.G = m;
+                //            result.B = v;
+                //            break;
+                //        }
 
-                    case 5:
-                        {
-                            result.r = v;
-                            result.g = m;
-                            result.b = mid2;
-                            break;
-                        }
-                }
+                //    case 5:
+                //        {
+                //            result.R = v;
+                //            result.G = m;
+                //            result.B = mid2;
+                //            break;
+                //        }
+                //}
             }
 
             return result;
@@ -204,14 +201,14 @@ namespace LunarLabs.Utils
 
     public static class ColorUtils
     {
-        public static Color GetGreyscaleColor(float greyValue, float alpha =1)
-        {
-            return new Color(greyValue, greyValue, greyValue, alpha);
-        }
+        //public static Color GetGreyscaleColor(float greyValue, float alpha =1)
+        //{
+        //    return new Color(greyValue, greyValue, greyValue); //, alpha);
+        //}
 
         public static float GetGreyScaleValue(Color c)
         {
-            return c.r * 0.3f + c.g * 0.59f + c.b * 0.11f;
+            return c.R * 0.3f + c.G * 0.59f + c.B * 0.11f;
         }
 
         public enum CombineMode
@@ -239,28 +236,30 @@ namespace LunarLabs.Utils
 
         public static Color ColorAdd(Color A, Color B)
         {
-            return A + B;
+            return A; // + B;
         }
 
         public static Color ColorMultiply(Color A, Color B)
         {
-            return A * B;
+            return A; // * B;
         }
 
 
         public static Color ColorSubtract(Color A, Color B)
         {
-            return A - B;
+            return A; // - B;
         }
 
         public static Color ColorDifference(Color A, Color B)
         {
-            Color result;
-            result.r = Mathf.Abs(A.r - B.r);
-            result.g = Mathf.Abs(A.g - B.g);
-            result.b = Mathf.Abs(A.b - B.b);
-            result.a = Mathf.Abs(A.a - B.a);
-            return result;
+            //Color result;
+            //result.R = Mathf.Abs(A.R - B.R);
+            //result.G = Mathf.Abs(A.G - B.G);
+            //result.B = Mathf.Abs(A.B - B.B);
+            //result.A = Mathf.Abs(A.A - B.A);
+            //return result;
+
+            return A;
         }
 
         private static float Screen(float x, float y)
@@ -270,12 +269,14 @@ namespace LunarLabs.Utils
 
         public static Color ColorScreen(Color A, Color B)
         {
-            Color result;
-            result.r = Screen(A.r, B.r);
-            result.g = Screen(A.g, B.g);
-            result.b = Screen(A.b, B.b);
-            result.a = Screen(A.a, B.a);
-            return result;
+            //Color result;
+            //result.R = Screen(A.R, B.R);
+            //result.G = Screen(A.G, B.G);
+            //result.B = Screen(A.B, B.B);
+            //result.A = Screen(A.A, B.A);
+            //return result;
+
+            return A;
         }
 
         private static float Overlay(float x, float y)
@@ -292,12 +293,14 @@ namespace LunarLabs.Utils
 
         public static Color ColorOverlay(Color A, Color B)
         {
-            Color result;
-            result.r = Overlay(A.r, B.r);
-            result.g = Overlay(A.g, B.g);
-            result.b = Overlay(A.b, B.b);
-            result.a = Overlay(A.a, B.a);
-            return result;
+            //Color result;
+            //result.R = Overlay(A.R, B.R);
+            //result.G = Overlay(A.G, B.G);
+            //result.B = Overlay(A.B, B.B);
+            //result.A = Overlay(A.A, B.A);
+            //return result;
+
+            return A;
         }
 
         public static float HardLight(float y, float x)
@@ -315,12 +318,14 @@ namespace LunarLabs.Utils
           Equivalent to Overlay, but with the bottom and top images swapped. */
         public static Color ColorHardLight(Color A, Color B)
         {
-            Color result;
-            result.r = HardLight(A.r, B.r);
-            result.g = HardLight(A.g, B.g);
-            result.b = HardLight(A.b, B.b);
-            result.a = HardLight(A.a, B.a);
-            return result;
+            //Color result;
+            //result.R = HardLight(A.R, B.R);
+            //result.G = HardLight(A.G, B.G);
+            //result.B = HardLight(A.B, B.B);
+            //result.A = HardLight(A.A, B.A);
+            //return result;
+
+            return A;
         }
 
         public static float SoftLight(float y, float x)
@@ -330,12 +335,14 @@ namespace LunarLabs.Utils
 
         public static Color ColorSoftLight(Color A, Color B)
         {
-            Color result;
-            result.r = SoftLight(A.r, B.r);
-            result.g = SoftLight(A.g, B.g);
-            result.b = SoftLight(A.b, B.b);
-            result.a = SoftLight(A.a, B.a);
-            return result;
+            //Color result;
+            //result.R = SoftLight(A.R, B.R);
+            //result.G = SoftLight(A.G, B.G);
+            //result.B = SoftLight(A.B, B.B);
+            //result.A = SoftLight(A.A, B.A);
+            //return result;
+
+            return A;
         }
 
         private static float Darken(float x, float y)
@@ -348,12 +355,14 @@ namespace LunarLabs.Utils
 
         public static Color ColorDarken(Color A, Color B)
         {
-            Color result;
-            result.r = Darken(A.r, B.r);
-            result.g = Darken(A.g, B.g);
-            result.b = Darken(A.b, B.b);
-            result.a = Darken(A.a, B.a);
-            return result;
+            //Color result;
+            //result.R = Darken(A.R, B.R);
+            //result.G = Darken(A.G, B.G);
+            //result.B = Darken(A.B, B.B);
+            //result.A = Darken(A.A, B.A);
+            //return result;
+
+            return A;
         }
 
         private static float Lighten(float x, float y)
@@ -366,12 +375,14 @@ namespace LunarLabs.Utils
 
         public static Color ColorLighten(Color A, Color B)
         {
-            Color result;
-            result.r = Lighten(A.r, B.r);
-            result.g = Lighten(A.g, B.g);
-            result.b = Lighten(A.b, B.b);
-            result.a = Lighten(A.a, B.a);
-            return result;
+            //Color result;
+            //result.R = Lighten(A.R, B.R);
+            //result.G = Lighten(A.G, B.G);
+            //result.B = Lighten(A.B, B.B);
+            //result.A = Lighten(A.A, B.A);
+            //return result;
+
+            return A;
         }
 
         public static float Dodge(float x, float y)
@@ -384,12 +395,14 @@ namespace LunarLabs.Utils
 
         public static Color ColorDodge(Color A, Color B)
         {
-            Color result;
-            result.r = Dodge(A.r, B.r);
-            result.g = Dodge(A.g, B.g);
-            result.b = Dodge(A.b, B.b);
-            result.a = Dodge(A.a, B.a);
-            return result;
+            //Color result;
+            //result.R = Dodge(A.R, B.R);
+            //result.G = Dodge(A.G, B.G);
+            //result.B = Dodge(A.B, B.B);
+            //result.A = Dodge(A.A, B.A);
+            //return result;
+
+            return A;
         }
 
         public static float Burn(float x, float y)
@@ -403,12 +416,14 @@ namespace LunarLabs.Utils
 
         public static Color ColorBurn(Color A, Color B)
         {
-            Color result;
-            result.r = Burn(A.r, B.r);
-            result.g = Burn(A.g, B.g);
-            result.b = Burn(A.b, B.b);
-            result.a = Burn(A.a, B.a);
-            return result;
+            //Color result;
+            //result.R = Burn(A.R, B.R);
+            //result.G = Burn(A.G, B.G);
+            //result.B = Burn(A.B, B.B);
+            //result.A = Burn(A.A, B.A);
+            //return result;
+
+            return A;
         }
 
         public static Color ColorCombineColor(Color A, Color B)
@@ -473,7 +488,7 @@ namespace LunarLabs.Utils
 
                 case CombineMode.Multiply:
                     {
-                        return A * B;
+                        return A; // * B;
                     }
 
                 case CombineMode.Add:
@@ -563,7 +578,8 @@ namespace LunarLabs.Utils
 
         public static Hue RandomHue()
         {
-            return (Hue)MathUtils.RandomInt((int)Hue.Gray, (int)(Hue.Beige) + 1);
+            //return (Hue)MathUtils.RandomInt((int)Hue.Gray, (int)(Hue.Beige) + 1);
+            return Hue.Blue;
         }
 
         public static Hue GetComplementaryColor(Hue primary)

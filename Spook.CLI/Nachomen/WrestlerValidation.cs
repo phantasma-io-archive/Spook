@@ -1,4 +1,6 @@
-﻿namespace Nacho.Men.Core.Gameplay
+﻿using Phantasma.Blockchain.Contracts.Native;
+
+namespace Nacho.Men.Core.Gameplay
 {
     public static class WrestlerValidation
     {
