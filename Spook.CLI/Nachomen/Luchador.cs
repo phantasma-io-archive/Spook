@@ -136,11 +136,11 @@ namespace Nacho.Men.Core.Gameplay
             },
             (genes) =>
             {
-                genes[Constants.GENE_RARITY] = (byte)((genes[Constants.GENE_RARITY] / 6) * 6);
-                genes[Constants.GENE_STAMINA] = (byte)(targetStat - 5 + rnd.Next() % 10);
-                genes[Constants.GENE_ATK] = (byte)(targetStat - 5 + rnd.Next() % 10);
-                genes[Constants.GENE_DEF] = (byte)(targetStat - 5 + rnd.Next() % 10);
-                genes[Constants.GENE_COUNTRY] = (byte)Country.Mexico;
+                genes[NachoConstants.GENE_RARITY] = (byte)((genes[NachoConstants.GENE_RARITY] / 6) * 6);
+                genes[NachoConstants.GENE_STAMINA] = (byte)(targetStat - 5 + rnd.Next() % 10);
+                genes[NachoConstants.GENE_ATK] = (byte)(targetStat - 5 + rnd.Next() % 10);
+                genes[NachoConstants.GENE_DEF] = (byte)(targetStat - 5 + rnd.Next() % 10);
+                genes[NachoConstants.GENE_COUNTRY] = (byte)Country.Mexico;
 
                 /*if (movesList != null)
                 {
@@ -309,7 +309,7 @@ namespace Nacho.Men.Core.Gameplay
                     return Rarity.Common;
                 }
 
-                var n = (data.genes[Constants.GENE_RARITY] % 6);
+                var n = (data.genes[NachoConstants.GENE_RARITY] % 6);
                 return (Rarity)n;
             }
         }
@@ -327,7 +327,7 @@ namespace Nacho.Men.Core.Gameplay
         public static byte[] MineGenes(Random rnd, Func<Luchador, bool> filter, Action<byte[]> geneSplicer = null, int limit = 0)
         {
             int amount = 0;
-            var luchador = new Luchador(Constants.BASE_LUCHADOR_ID);
+            var luchador = new Luchador(NachoConstants.BASE_LUCHADOR_ID);
             do
             {
                 var temp = luchador.data;
@@ -427,8 +427,8 @@ namespace Nacho.Men.Core.Gameplay
             };
 
             int XP = 0;
-            int curLevel = Constants.MIN_LEVEL;
-            while (curLevel < Constants.MAX_LEVEL)
+            int curLevel = NachoConstants.MIN_LEVEL;
+            while (curLevel < NachoConstants.MAX_LEVEL)
             {
                 XP++;
                 int oldLevel = curLevel;
@@ -444,12 +444,12 @@ namespace Nacho.Men.Core.Gameplay
 
         public static int GetExperienceAt(int level)
         {
-            if (level > Constants.MAX_LEVEL)
+            if (level > NachoConstants.MAX_LEVEL)
             {
-                level = Constants.MAX_LEVEL;
+                level = NachoConstants.MAX_LEVEL;
             }
 
-            return Constants.EXPERIENCE_MAP[level];
+            return NachoConstants.EXPERIENCE_MAP[level];
         }
 
         public PraticeLevel praticeLevel => data.praticeLevel;
@@ -460,14 +460,14 @@ namespace Nacho.Men.Core.Gameplay
             {
                 if (Rarity == Rarity.Bot)
                 {
-                    return (Hue)((data.genes[Constants.GENE_SKIN] + data.genes[Constants.GENE_RARITY]) % 10);
+                    return (Hue)((data.genes[NachoConstants.GENE_SKIN] + data.genes[NachoConstants.GENE_RARITY]) % 10);
                 }
 
                 var pal = GetSkinPalette(this.Country);
-                return pal[(data.genes[Constants.GENE_SKIN] + data.genes[Constants.GENE_RARITY]) % pal.Length];
+                return pal[(data.genes[NachoConstants.GENE_SKIN] + data.genes[NachoConstants.GENE_RARITY]) % pal.Length];
             }
         }
-        public sbyte SkinShade => (sbyte)(-1 + ((data.genes[Constants.GENE_SKIN] + data.genes[Constants.GENE_RANDOM]) % 4));
+        public sbyte SkinShade => (sbyte)(-1 + ((data.genes[NachoConstants.GENE_SKIN] + data.genes[NachoConstants.GENE_RANDOM]) % 4));
 
         public LeagueRank League => LeagueRank.None;
 
@@ -475,7 +475,7 @@ namespace Nacho.Men.Core.Gameplay
         {
             get
             {
-                var result = (Country)data.genes[Constants.GENE_COUNTRY];
+                var result = (Country)data.genes[NachoConstants.GENE_COUNTRY];
                 if (IsInvalidCountry(result))
                 {
                     return Country.United_States;
@@ -873,7 +873,7 @@ namespace Nacho.Men.Core.Gameplay
             }
         }
 
-        public uint Generation => (uint)(1 + ((this.ID - Constants.BASE_LUCHADOR_ID) / Constants.LUCHADOR_GENERATION_SIZE));
+        public uint Generation => (uint)(1 + ((this.ID - NachoConstants.BASE_LUCHADOR_ID) / NachoConstants.LUCHADOR_GENERATION_SIZE));
 
         public string GetDescription(LuchadorDescriptionKind kind)
         {
