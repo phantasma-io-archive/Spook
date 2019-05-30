@@ -24,6 +24,7 @@ using Phantasma.Blockchain.Plugins;
 using Phantasma.CodeGen.Assembler;
 using Phantasma.VM.Utils;
 using Phantasma.Core;
+using Phantasma.IO;
 using Phantasma.Network.P2P.Messages;
 using Phantasma.Spook.Nachomen;
 using Logger = Phantasma.Core.Log.Logger;
@@ -660,7 +661,7 @@ namespace Phantasma.Spook
 
         public BigInteger lastItemID;
 
-        public void InitialNachoFill()
+        public void InitialNachoFill(ChainSimulator chainSimulator, KeyPair ownerKeys)
         {
             // generate genes for bots
             //GenerateBotGenes();
@@ -771,11 +772,13 @@ namespace Phantasma.Spook
             //}
 
             Console.WriteLine("Filling initial market");
-            FillNachoMarket();
+            FillNachoMarket(chainSimulator, ownerKeys);
         }
 
-        public void FillNachoMarket()
+        public void FillNachoMarket(ChainSimulator chainSimulator, KeyPair ownerKeys)
         {
+            var nachoChain = chainSimulator.Nexus.FindChainByName("nacho");
+
             var luchadorCounts = new Dictionary<Rarity, int>();
             luchadorCounts[Rarity.Common] = 65;
             luchadorCounts[Rarity.Uncommon] = 25;
@@ -784,6 +787,8 @@ namespace Phantasma.Spook
             luchadorCounts[Rarity.Legendary] = 1;
 
             Console.WriteLine("Filling the market with luchadores...");
+
+            Timestamp endAuctionDate = Timestamp.Now + TimeSpan.FromDays(2);
 
             foreach (var rarity in luchadorCounts.Keys)
             {
@@ -802,17 +807,62 @@ namespace Phantasma.Spook
 
                 var count = luchadorCounts[rarity];
 
-                for (int i = 1; i <= count; i++)
+                for (var i = 1; i <= count; i++)
                 {
-                    var luchador = DequeueLuchador(rarity);
+                    var luchador        = DequeueLuchador(rarity);
+                    var luchadorBytes   = luchador.Serialize();
 
                     var rand = new Random();
                     var isWrapped = rand.Next(0, 100) < 50;
 
-                    /* TODO fix
-                    var tx = this.CallContract(owner_keys, "GenerateWrestler", new object[] { owner_keys.Address, luchador.data.genes, 0, isWrapped });
-                    var ID = Serialization.Unserialize<BigInteger>(tx.content);
-                    */
+                    //var tx = this.CallContract(owner_eys, "GenerateWrestler", new object[] { owner_keys.Address, luchador.data.genes, 0, isWrapped });
+                    //var ID = Serialization.Unserialize<BigInteger>(tx.content);
+
+                    var wrestlerToken = chainSimulator.Nexus.FindTokenBySymbol(NachoConstants.WRESTLER_SYMBOL);
+
+                    //var newWrestler = new NachoWrestler()
+                    //{
+                    //    auctionID = 0,
+                    //    battleCount = 0,
+                    //    comments = new string[0],
+                    //    currentMojo = 10,
+                    //    experience = 10000,
+                    //    flags = WrestlerFlags.None,
+                    //    genes = new byte[] { 115, 169, 73, 21, 111, 3, 174, 90, 137, 58 }, //"Piece, 115, 169, 73, 21, 111, 3, 174, 90, 137, 58"
+                    //    gymBoostAtk = byte.MaxValue,
+                    //    gymBoostDef = byte.MaxValue,
+                    //    gymBoostStamina = byte.MaxValue,
+                    //    gymTime = 0,
+                    //    itemID = 0,
+                    //    location = WrestlerLocation.None,
+                    //    maskOverrideCheck = byte.MaxValue,
+                    //    maskOverrideID = byte.MaxValue,
+                    //    maskOverrideRarity = byte.MaxValue,
+                    //    maxMojo = 10,
+                    //    mojoTime = 0,
+                    //    moveOverrides = new byte[0],
+                    //    nickname = "Wrestler " + i,
+                    //    owner = ownerKeys.Address,
+                    //    perfumeTime = 0,
+                    //    praticeLevel = PraticeLevel.Gold,
+                    //    roomTime = 0,
+                    //    score = 0,
+                    //    stakeAmount = 0,
+                    //    trainingStat = StatKind.None,
+                    //    ua1 = byte.MaxValue,
+                    //    ua2 = byte.MaxValue,
+                    //    ua3 = byte.MaxValue,
+                    //    us1 = byte.MaxValue,
+                    //    us2 = byte.MaxValue,
+                    //    us3 = byte.MaxValue
+                    //};
+
+                    //var wrestlerBytes = newWrestler.Serialize();
+                    //chainSimulator.GenerateNft(ownerKeys, ownerKeys.Address, nachoChain, wrestlerToken, new byte[0], wrestlerBytes);
+
+                    chainSimulator.BeginBlock();
+                    chainSimulator.GenerateNft(ownerKeys, ownerKeys.Address, nachoChain, wrestlerToken, new byte[0], luchadorBytes);
+                    chainSimulator.EndBlock();
 
                     decimal minPrice, maxPrice;
 
@@ -835,20 +885,31 @@ namespace Phantasma.Spook
                     //    randomCurrency = AuctionCurrency.NACHO;
                     //}
 
-                    /* TODO fix
-                    CallContract(owner_keys, "SellWrestler", new object[] { owner_keys.Address, ID, TokenUtils.ToBigInteger(price), TokenUtils.ToBigInteger(price), AuctionCurrency.NACHO, NachoConstants.MAXIMUM_AUCTION_SECONDS_DURATION, "" });
-                    */
+                    //CallContract(owner_keys, "SellWrestler", new object[] { owner_keys.Address, ID, TokenUtils.ToBigInteger(price), TokenUtils.ToBigInteger(price),
+                    //              AuctionCurrency.NACHO, NachoConstants.MAXIMUM_AUCTION_SECONDS_DURATION, "" });
 
+                    chainSimulator.BeginBlock();
+                    chainSimulator.GenerateCustomTransaction(ownerKeys, () =>
+                        ScriptUtils.
+                            BeginScript().
+                            AllowGas(ownerKeys.Address, Address.Null, 1, 9999).
+                            CallContract("market", "SellToken", ownerKeys.Address, NachoConstants.WRESTLER_SYMBOL, Nexus.FuelTokenSymbol, 
+                                            luchador.ID, TokenUtils.ToBigInteger(price), endAuctionDate).
+                            SpendGas(ownerKeys.Address).
+                            EndScript()
+                    );
+                    chainSimulator.EndBlock();                    
                 }
             }
 
-            // TODO que valores são estes? se isto está hardcoded então está desactualizado pq já existem mais items
-            var itemCounts = new Dictionary<Rarity, int>();
-            itemCounts[Rarity.Common] = 16;
-            itemCounts[Rarity.Uncommon] = 12;
-            itemCounts[Rarity.Rare] = 8;
-            itemCounts[Rarity.Epic] = 2;
-            itemCounts[Rarity.Legendary] = 1;
+            var itemCounts = new Dictionary<Rarity, int>
+            {
+                [Rarity.Common]     = 16,
+                [Rarity.Uncommon]   = 12,
+                [Rarity.Rare]       = 8,
+                [Rarity.Epic]       = 2,
+                [Rarity.Legendary]  = 1
+            };
 
             Console.WriteLine("Generating items for market...");
 
@@ -871,14 +932,20 @@ namespace Phantasma.Spook
 
                 for (int i = 1; i <= count; i++)
                 {
-                    var itemID = DequeueItem(rarity);
+                    var itemID      = DequeueItem(rarity);
+                    var itemBytes   = itemID.Serialize();
 
                     var rand = new Random();
                     var isWrapped = rand.Next(0, 100) < 50;
 
-                    /* TODO fix
-                    var tx = this.CallContract(owner_keys, "GenerateItem", new object[] { owner_keys.Address, itemID, isWrapped });
-                    */
+                    //var tx = this.CallContract(owner_keys, "GenerateItem", new object[] { owner_keys.Address, itemID, isWrapped });
+
+                    var itemToken = chainSimulator.Nexus.FindTokenBySymbol(NachoConstants.ITEM_SYMBOL);
+
+                    chainSimulator.BeginBlock();
+                    chainSimulator.GenerateNft(ownerKeys, ownerKeys.Address, nachoChain, itemToken, new byte[0], itemBytes);
+                    chainSimulator.EndBlock();
+
                     decimal minPrice, maxPrice;
 
                     GetItemPriceRange(rarity, out minPrice, out maxPrice);
@@ -900,9 +967,20 @@ namespace Phantasma.Spook
                     //    randomCurrency = AuctionCurrency.NACHO;
                     //}
 
-                    /* TODO FIX
-                    CallContract(owner_keys, "SellItem", new object[] { owner_keys.Address, itemID, TokenUtils.ToBigInteger(price), TokenUtils.ToBigInteger(price), AuctionCurrency.NACHO, NachoConstants.MAXIMUM_AUCTION_SECONDS_DURATION, "" });
-                    */
+                    //CallContract(owner_keys, "SellItem", new object[] { owner_keys.Address, itemID, TokenUtils.ToBigInteger(price), TokenUtils.ToBigInteger(price),
+                    //              AuctionCurrency.NACHO, NachoConstants.MAXIMUM_AUCTION_SECONDS_DURATION, "" });
+
+                    chainSimulator.BeginBlock();
+                    chainSimulator.GenerateCustomTransaction(ownerKeys, () =>
+                        ScriptUtils.
+                            BeginScript().
+                            AllowGas(ownerKeys.Address, Address.Null, 1, 9999).
+                            CallContract("market", "SellToken", ownerKeys.Address, NachoConstants.WRESTLER_SYMBOL, Nexus.FuelTokenSymbol, 
+                                            itemID, TokenUtils.ToBigInteger(price), endAuctionDate).
+                            SpendGas(ownerKeys.Address).
+                            EndScript()
+                    );
+                    chainSimulator.EndBlock();
                 }
             }
         }
