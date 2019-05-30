@@ -6,7 +6,7 @@ using System.Threading;
 
 using LunarLabs.Parser.JSON;
 using LunarLabs.WebServer.Core;
-
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Phantasma.Blockchain;
 using Phantasma.Cryptography;
 using Phantasma.Core.Utils;
@@ -546,6 +546,8 @@ namespace Phantasma.Spook
                 gui.MakeReady(dispatcher);
             }
 
+            InitialNachoFill(simulator, node_keys);
+
             this.Run();
         }
 
@@ -651,11 +653,11 @@ namespace Phantasma.Spook
 
         #region Nacho Server
 
-        private int legendaryLuchadorDelay = 0;
-        private int legendaryItemDelay = 0;
+        private int legendaryWrestlerDelay  = 0;
+        private int legendaryItemDelay      = 0;
 
-        private Dictionary<Rarity, Queue<BigInteger>> itemQueue = new Dictionary<Rarity, Queue<BigInteger>>();
-        private Dictionary<Rarity, Queue<Luchador>> luchadorQueue = new Dictionary<Rarity, Queue<Luchador>>();
+        private Dictionary<Rarity, Queue<BigInteger>>       itemQueue       = new Dictionary<Rarity, Queue<BigInteger>>();
+        private Dictionary<Rarity, Queue<NachoWrestler>>    wrestlerQueue   = new Dictionary<Rarity, Queue<NachoWrestler>>();
 
         private Random rnd = new Random();
 
@@ -788,20 +790,25 @@ namespace Phantasma.Spook
 
             Console.WriteLine("Filling the market with luchadores...");
 
-            Timestamp endAuctionDate = Timestamp.Now + TimeSpan.FromDays(2);
+            Timestamp endAuctionDate = chainSimulator.CurrentTime + TimeSpan.FromDays(2);
+            
+            var auctions = (MarketAuction[])chainSimulator.Nexus.RootChain.InvokeContract("market", "GetAuctions");
+            var previousAuctionCount = auctions.Length;
+
+            var createdAuctions = 0;
 
             foreach (var rarity in luchadorCounts.Keys)
             {
                 if (rarity == Rarity.Legendary)
                 {
-                    if (legendaryLuchadorDelay > 0)
+                    if (legendaryWrestlerDelay > 0)
                     {
-                        legendaryLuchadorDelay--;
+                        legendaryWrestlerDelay--;
                         continue;
                     }
                     else
                     {
-                        legendaryLuchadorDelay = 10;
+                        legendaryWrestlerDelay = 10;
                     }
                 }
 
@@ -809,8 +816,8 @@ namespace Phantasma.Spook
 
                 for (var i = 1; i <= count; i++)
                 {
-                    var luchador        = DequeueLuchador(rarity);
-                    var luchadorBytes   = luchador.Serialize();
+                    var wrestler        = DequeueNachoWrestler(ownerKeys, rarity);
+                    var wrestlerBytes   = wrestler.Serialize();
 
                     var rand = new Random();
                     var isWrapped = rand.Next(0, 100) < 50;
@@ -819,50 +826,13 @@ namespace Phantasma.Spook
                     //var ID = Serialization.Unserialize<BigInteger>(tx.content);
 
                     var wrestlerToken = chainSimulator.Nexus.FindTokenBySymbol(NachoConstants.WRESTLER_SYMBOL);
-
-                    //var newWrestler = new NachoWrestler()
-                    //{
-                    //    auctionID = 0,
-                    //    battleCount = 0,
-                    //    comments = new string[0],
-                    //    currentMojo = 10,
-                    //    experience = 10000,
-                    //    flags = WrestlerFlags.None,
-                    //    genes = new byte[] { 115, 169, 73, 21, 111, 3, 174, 90, 137, 58 }, //"Piece, 115, 169, 73, 21, 111, 3, 174, 90, 137, 58"
-                    //    gymBoostAtk = byte.MaxValue,
-                    //    gymBoostDef = byte.MaxValue,
-                    //    gymBoostStamina = byte.MaxValue,
-                    //    gymTime = 0,
-                    //    itemID = 0,
-                    //    location = WrestlerLocation.None,
-                    //    maskOverrideCheck = byte.MaxValue,
-                    //    maskOverrideID = byte.MaxValue,
-                    //    maskOverrideRarity = byte.MaxValue,
-                    //    maxMojo = 10,
-                    //    mojoTime = 0,
-                    //    moveOverrides = new byte[0],
-                    //    nickname = "Wrestler " + i,
-                    //    owner = ownerKeys.Address,
-                    //    perfumeTime = 0,
-                    //    praticeLevel = PraticeLevel.Gold,
-                    //    roomTime = 0,
-                    //    score = 0,
-                    //    stakeAmount = 0,
-                    //    trainingStat = StatKind.None,
-                    //    ua1 = byte.MaxValue,
-                    //    ua2 = byte.MaxValue,
-                    //    ua3 = byte.MaxValue,
-                    //    us1 = byte.MaxValue,
-                    //    us2 = byte.MaxValue,
-                    //    us3 = byte.MaxValue
-                    //};
-
-                    //var wrestlerBytes = newWrestler.Serialize();
-                    //chainSimulator.GenerateNft(ownerKeys, ownerKeys.Address, nachoChain, wrestlerToken, new byte[0], wrestlerBytes);
-
+                    
                     chainSimulator.BeginBlock();
-                    chainSimulator.GenerateNft(ownerKeys, ownerKeys.Address, nachoChain, wrestlerToken, new byte[0], luchadorBytes);
+                    chainSimulator.GenerateNft(ownerKeys, ownerKeys.Address, nachoChain, wrestlerToken, wrestlerBytes, new byte[0]);
                     chainSimulator.EndBlock();
+
+                    var ownedTokenList  = nachoChain.GetTokenOwnerships(wrestlerToken).Get(nachoChain.Storage, ownerKeys.Address);
+                    var wrestlerTokenId = ownedTokenList.ElementAt(0);
 
                     decimal minPrice, maxPrice;
 
@@ -888,19 +858,24 @@ namespace Phantasma.Spook
                     //CallContract(owner_keys, "SellWrestler", new object[] { owner_keys.Address, ID, TokenUtils.ToBigInteger(price), TokenUtils.ToBigInteger(price),
                     //              AuctionCurrency.NACHO, NachoConstants.MAXIMUM_AUCTION_SECONDS_DURATION, "" });
 
+                    createdAuctions++;
+
                     chainSimulator.BeginBlock();
                     chainSimulator.GenerateCustomTransaction(ownerKeys, () =>
                         ScriptUtils.
                             BeginScript().
                             AllowGas(ownerKeys.Address, Address.Null, 1, 9999).
                             CallContract("market", "SellToken", ownerKeys.Address, NachoConstants.WRESTLER_SYMBOL, Nexus.FuelTokenSymbol, 
-                                            luchador.ID, TokenUtils.ToBigInteger(price), endAuctionDate).
+                                            wrestlerTokenId, TokenUtils.ToBigInteger(price), endAuctionDate).
                             SpendGas(ownerKeys.Address).
                             EndScript()
                     );
                     chainSimulator.EndBlock();                    
                 }
             }
+
+            auctions = (MarketAuction[])chainSimulator.Nexus.RootChain.InvokeContract("market", "GetAuctions");
+            Assert.IsTrue(auctions.Length == createdAuctions + previousAuctionCount, "wrestler auction ids missing");
 
             var itemCounts = new Dictionary<Rarity, int>
             {
@@ -970,6 +945,8 @@ namespace Phantasma.Spook
                     //CallContract(owner_keys, "SellItem", new object[] { owner_keys.Address, itemID, TokenUtils.ToBigInteger(price), TokenUtils.ToBigInteger(price),
                     //              AuctionCurrency.NACHO, NachoConstants.MAXIMUM_AUCTION_SECONDS_DURATION, "" });
 
+                    createdAuctions++;
+
                     chainSimulator.BeginBlock();
                     chainSimulator.GenerateCustomTransaction(ownerKeys, () =>
                         ScriptUtils.
@@ -983,6 +960,9 @@ namespace Phantasma.Spook
                     chainSimulator.EndBlock();
                 }
             }
+
+            auctions = (MarketAuction[])chainSimulator.Nexus.RootChain.InvokeContract("market", "GetAuctions");
+            Assert.IsTrue(auctions.Length == createdAuctions + previousAuctionCount, "items auction ids missing");
         }
 
         public static void GenerateBotGenes()
@@ -1076,7 +1056,6 @@ namespace Phantasma.Spook
                     EnqueueItem(lastItemID, rarity);
                     amount--;
                 }
-
             }
         }
 
@@ -1107,19 +1086,52 @@ namespace Phantasma.Spook
             return itemQueue[rarity].Dequeue();
         }
 
-        private void MineRandomLuchadores(int amount)
+        private void MineRandomLuchadores(KeyPair ownerKey, int amount)
         {
             while (amount > 0)
             {
-                var genes = Luchador.MineGenes(rnd, null);
-
-                var luchador = Luchador.FromGenes(0, genes);
-
-                if (WrestlerValidation.IsValidWrestler(luchador))
+                var wrestler = new NachoWrestler()
                 {
+                    auctionID = 0,
+                    battleCount = 0,
+                    comments = new string[0],
+                    currentMojo = 10,
+                    experience = 10000,
+                    flags = WrestlerFlags.None,
+                    genes = Luchador.MineGenes(rnd, null),
+                    gymBoostAtk = byte.MaxValue,
+                    gymBoostDef = byte.MaxValue,
+                    gymBoostStamina = byte.MaxValue,
+                    gymTime = 0,
+                    itemID = 0,
+                    location = WrestlerLocation.None,
+                    maskOverrideCheck = byte.MaxValue,
+                    maskOverrideID = byte.MaxValue,
+                    maskOverrideRarity = byte.MaxValue,
+                    maxMojo = 10,
+                    mojoTime = 0,
+                    moveOverrides = new byte[0],
+                    nickname = "WrestlerName",
+                    owner = ownerKey.Address,
+                    perfumeTime = 0,
+                    praticeLevel = PraticeLevel.Gold,
+                    roomTime = 0,
+                    score = 0,
+                    stakeAmount = 0,
+                    trainingStat = StatKind.None,
+                    ua1 = byte.MaxValue,
+                    ua2 = byte.MaxValue,
+                    ua3 = byte.MaxValue,
+                    us1 = byte.MaxValue,
+                    us2 = byte.MaxValue,
+                    us3 = byte.MaxValue
+                };
+
+                //if (WrestlerValidation.IsValidWrestler(wrestler))
+                //{
                     amount--;
-                    EnqueueLuchador(luchador);
-                }
+                    EnqueueNachoWrestler(wrestler);
+                //}
             }
         }
 
@@ -1129,33 +1141,45 @@ namespace Phantasma.Spook
             WrestlingMove.Hyper_Slam,
         });
 
-        private void EnqueueLuchador(Luchador luchador)
+        private void EnqueueNachoWrestler( NachoWrestler wrestler)
         {
-            Queue<Luchador> queue;
+            Queue<NachoWrestler> queue;
 
-            var rarity = luchador.Rarity;
-            if (luchadorQueue.ContainsKey(rarity))
+            var rarity = GetWrestlerRarity(wrestler);
+            if (wrestlerQueue.ContainsKey(rarity))
             {
-                queue = luchadorQueue[rarity];
+                queue = wrestlerQueue[rarity];
             }
             else
             {
-                queue = new Queue<Luchador>();
-                luchadorQueue[rarity] = queue;
+                queue = new Queue<NachoWrestler>();
+                wrestlerQueue[rarity] = queue;
             }
 
-            queue.Enqueue(luchador);
+            queue.Enqueue(wrestler);
         }
 
-        private Luchador DequeueLuchador(Rarity rarity)
+        private NachoWrestler DequeueNachoWrestler(KeyPair ownerKeys, Rarity rarity)
         {
-            while (!luchadorQueue.ContainsKey(rarity) || luchadorQueue[rarity].Count == 0)
+            while (!wrestlerQueue.ContainsKey(rarity) || wrestlerQueue[rarity].Count == 0)
             {
-                MineRandomLuchadores(10);
+                MineRandomLuchadores(ownerKeys, 10);
             }
 
-            return luchadorQueue[rarity].Dequeue();
+            return wrestlerQueue[rarity].Dequeue();
         }
+
+        public Rarity GetWrestlerRarity(NachoWrestler wrestler)
+        {
+            if (wrestler.genes == null)
+            {
+                return Rarity.Common;
+            }
+
+            var n = (wrestler.genes[NachoConstants.GENE_RARITY] % 6);
+            return (Rarity)n;
+        }
+
 
         #endregion
     }
