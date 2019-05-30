@@ -1,7 +1,7 @@
 using System;
 using System.Drawing;
 
-namespace LunarLabs.Utils
+namespace Phantasma.Spook.Nachomen
 {
     public enum Hue
     {

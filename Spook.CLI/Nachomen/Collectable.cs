@@ -1,9 +1,8 @@
 ﻿using Phantasma.Numerics;
-using LunarLabs.Utils;
 using Phantasma.Blockchain.Contracts.Native;
 using Phantasma.Cryptography;
 
-namespace Nacho.Men.Core.Gameplay
+namespace Phantasma.Spook.Nachomen
 {
     public interface IIndexable
     {

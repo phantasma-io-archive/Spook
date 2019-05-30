@@ -4,10 +4,9 @@ using System;
 using System.Collections.Generic;
 using Phantasma.Cryptography;
 
-using LunarLabs.Utils;
 using Phantasma.Blockchain.Contracts.Native;
 
-namespace Nacho.Men.Core.Gameplay
+namespace Phantasma.Spook.Nachomen
 {
     public enum LuchadorDescriptionKind
     {

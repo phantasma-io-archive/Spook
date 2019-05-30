@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace LunarLabs.Utils
+namespace Phantasma.Spook.Nachomen
 {
     public enum Continent
     {
@@ -496,5 +496,6 @@ namespace LunarLabs.Utils
             AddCountry(Country.Zimbabwe, "ZW", Continent.Africa);
         }
     }
-
+
+
 }

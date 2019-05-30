@@ -2,7 +2,7 @@
 using System.Text.RegularExpressions;
 using System.Text;
 
-namespace Nacho.Men.Core.Gameplay
+namespace Phantasma.Spook.Nachomen
 {
     public enum EWRESTLER_NAME_ERRORS
     {

@@ -1,6 +1,6 @@
 ﻿using Phantasma.Blockchain.Contracts.Native;
 
-namespace Nacho.Men.Core.Gameplay
+namespace Phantasma.Spook.Nachomen
 {
     public static class WrestlerValidation
     {
