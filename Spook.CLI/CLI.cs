@@ -21,12 +21,13 @@ using Phantasma.Blockchain.Contracts;
 using Phantasma.Blockchain.Contracts.Native;
 using Phantasma.Blockchain.Utils;
 using Phantasma.Blockchain.Plugins;
+using Phantasma.Blockchain.Tokens;
 using Phantasma.CodeGen.Assembler;
 using Phantasma.VM.Utils;
 using Phantasma.Core;
-using Phantasma.IO;
 using Phantasma.Network.P2P.Messages;
 using Phantasma.Spook.Nachomen;
+using Phantasma.Storage;
 using Logger = Phantasma.Core.Log.Logger;
 using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
 
@@ -457,7 +458,8 @@ namespace Phantasma.Spook
             else
             {
                 simulator = null;
-                nexus = new Nexus(nexusName, genesisAddress, logger);
+                //nexus = new Nexus(nexusName, genesisAddress, logger);
+                nexus = new Nexus(logger);
                 seeds.Add("127.0.0.1:7073");
             }
 
@@ -781,6 +783,8 @@ namespace Phantasma.Spook
         {
             var nachoChain = chainSimulator.Nexus.FindChainByName("nacho");
 
+            var testUser = KeyPair.Generate();
+
             var luchadorCounts = new Dictionary<Rarity, int>();
             luchadorCounts[Rarity.Common] = 65;
             luchadorCounts[Rarity.Uncommon] = 25;
@@ -825,6 +829,9 @@ namespace Phantasma.Spook
                     //var tx = this.CallContract(owner_eys, "GenerateWrestler", new object[] { owner_keys.Address, luchador.data.genes, 0, isWrapped });
                     //var ID = Serialization.Unserialize<BigInteger>(tx.content);
 
+                    /*
+                     // Old chain logic
+
                     var wrestlerToken = chainSimulator.Nexus.FindTokenBySymbol(NachoConstants.WRESTLER_SYMBOL);
                     
                     chainSimulator.BeginBlock();
@@ -833,41 +840,53 @@ namespace Phantasma.Spook
 
                     var ownedTokenList  = nachoChain.GetTokenOwnerships(wrestlerToken).Get(nachoChain.Storage, ownerKeys.Address);
                     var wrestlerTokenId = ownedTokenList.ElementAt(0);
+                    */
 
+                    // Create the token NachomenWrestlerToken as an NFT
+                    chainSimulator.BeginBlock();
+                    chainSimulator.GenerateTransfer(ownerKeys, testUser.Address, nexus.RootChain, Nexus.FuelTokenSymbol, 1000000);
+                    //chainSimulator.GenerateToken(ownerKeys, Constants.WRESTLER_SYMBOL, "NachomenWrestlerToken", 0, 0, Blockchain.Tokens.TokenFlags.Transferable);
+                    chainSimulator.EndBlock();
+
+                    var wrestlerToken = chainSimulator.Nexus.GetTokenInfo(Constants.WRESTLER_SYMBOL);
+                    Assert.IsTrue(nexus.TokenExists(Constants.WRESTLER_SYMBOL), "Can't find the token symbol");
+
+                    // verify nft presence on the user pre-mint
+                    var ownerships = new OwnershipSheet(Constants.WRESTLER_SYMBOL);
+                    var ownedTokenList = ownerships.Get(nexus.RootChain.Storage, testUser.Address);
+                    Assert.IsTrue(!ownedTokenList.Any(), "How does the sender already have a CoolToken?");
+
+                    // Mint a new CoolToken directly on the user
+                    var tokenROM = wrestlerBytes;
+                    var tokenRAM = new byte[0];
+
+                    chainSimulator.BeginBlock();
+                    chainSimulator.GenerateNft(ownerKeys, testUser.Address, Constants.WRESTLER_SYMBOL, tokenROM, tokenRAM);
+                    chainSimulator.EndBlock();
+
+                    // verify nft presence on the user post-mint
+                    ownedTokenList = ownerships.Get(nexus.RootChain.Storage, testUser.Address);
+                    Assert.IsTrue(ownedTokenList.Count() == 1, "How does the sender not have one now?");
+                    var tokenID = ownedTokenList.First();
+
+                    // Create auction
                     decimal minPrice, maxPrice;
 
                     GetLuchadorPriceRange(rarity, out minPrice, out maxPrice);
                     var diff = (int)(maxPrice - minPrice);
-                    var price = (decimal)(minPrice + rnd.Next() % diff);
+                    var price = (int)(minPrice + rnd.Next() % diff);
 
                     if (price < 0) price *= -1; // HACK
-
-                    //var random = new Random();
-                    //var randomInt = random.Next(1, 101);
-                    //var randomCurrency = AuctionCurrency.SOUL;
-
-                    //if (randomInt > 66)
-                    //{
-                    //    randomCurrency = AuctionCurrency.USD;
-                    //}
-                    //else if (randomInt > 33)
-                    //{
-                    //    randomCurrency = AuctionCurrency.NACHO;
-                    //}
-
-                    //CallContract(owner_keys, "SellWrestler", new object[] { owner_keys.Address, ID, TokenUtils.ToBigInteger(price), TokenUtils.ToBigInteger(price),
-                    //              AuctionCurrency.NACHO, NachoConstants.MAXIMUM_AUCTION_SECONDS_DURATION, "" });
 
                     createdAuctions++;
 
                     chainSimulator.BeginBlock();
-                    chainSimulator.GenerateCustomTransaction(ownerKeys, () =>
+                    chainSimulator.GenerateCustomTransaction(testUser, () =>
                         ScriptUtils.
                             BeginScript().
-                            AllowGas(ownerKeys.Address, Address.Null, 1, 9999).
-                            CallContract("market", "SellToken", ownerKeys.Address, NachoConstants.WRESTLER_SYMBOL, Nexus.FuelTokenSymbol, 
-                                            wrestlerTokenId, TokenUtils.ToBigInteger(price), endAuctionDate).
-                            SpendGas(ownerKeys.Address).
+                            AllowGas(testUser.Address, Address.Null, 1, 9999).
+                            CallContract("market", "SellToken", testUser.Address, wrestlerToken.Symbol, Nexus.FuelTokenSymbol, tokenID, price, endAuctionDate).
+                            SpendGas(testUser.Address).
                             EndScript()
                     );
                     chainSimulator.EndBlock();                    
@@ -915,12 +934,44 @@ namespace Phantasma.Spook
 
                     //var tx = this.CallContract(owner_keys, "GenerateItem", new object[] { owner_keys.Address, itemID, isWrapped });
 
+                    /*
+                    // Old chain logic
                     var itemToken = chainSimulator.Nexus.FindTokenBySymbol(NachoConstants.ITEM_SYMBOL);
 
                     chainSimulator.BeginBlock();
                     chainSimulator.GenerateNft(ownerKeys, ownerKeys.Address, nachoChain, itemToken, new byte[0], itemBytes);
                     chainSimulator.EndBlock();
 
+                    */
+
+                    // Create the token CoolToken as an NFT
+                    chainSimulator.BeginBlock();
+                    chainSimulator.GenerateTransfer(ownerKeys, testUser.Address, nexus.RootChain, Nexus.FuelTokenSymbol, 1000000);
+                    chainSimulator.GenerateToken(ownerKeys, Constants.ITEM_SYMBOL, "LuchadorToken", 0, 0, Blockchain.Tokens.TokenFlags.Transferable);
+                    chainSimulator.EndBlock();
+
+                    var itemToken = chainSimulator.Nexus.GetTokenInfo(Constants.ITEM_SYMBOL);
+                    Assert.IsTrue(nexus.TokenExists(Constants.ITEM_SYMBOL), "Can't find the token symbol");
+
+                    // verify nft presence on the user pre-mint
+                    var ownerships = new OwnershipSheet(Constants.ITEM_SYMBOL);
+                    var ownedTokenList = ownerships.Get(nexus.RootChain.Storage, testUser.Address);
+                    Assert.IsTrue(!ownedTokenList.Any(), "How does the sender already have a CoolToken?");
+
+                    // Mint a new CoolToken directly on the user
+                    var tokenROM = itemBytes;
+                    var tokenRAM = new byte[0];
+
+                    chainSimulator.BeginBlock();
+                    chainSimulator.GenerateNft(ownerKeys, testUser.Address, Constants.ITEM_SYMBOL, tokenROM, tokenRAM);
+                    chainSimulator.EndBlock();
+
+                    // verify nft presence on the user post-mint
+                    ownedTokenList = ownerships.Get(nexus.RootChain.Storage, testUser.Address);
+                    Assert.IsTrue(ownedTokenList.Count() == 1, "How does the sender not have one now?");
+                    var tokenID = ownedTokenList.First();
+
+                    // Create auction
                     decimal minPrice, maxPrice;
 
                     GetItemPriceRange(rarity, out minPrice, out maxPrice);
@@ -929,32 +980,15 @@ namespace Phantasma.Spook
 
                     if (price < 0) price *= -1; // HACK
 
-                    //var random = new Random();
-                    //var randomInt = random.Next(1, 101);
-                    //var randomCurrency = AuctionCurrency.SOUL;
-
-                    //if (randomInt > 66)
-                    //{
-                    //    randomCurrency = AuctionCurrency.USD;
-                    //}
-                    //else if (randomInt > 33)
-                    //{
-                    //    randomCurrency = AuctionCurrency.NACHO;
-                    //}
-
-                    //CallContract(owner_keys, "SellItem", new object[] { owner_keys.Address, itemID, TokenUtils.ToBigInteger(price), TokenUtils.ToBigInteger(price),
-                    //              AuctionCurrency.NACHO, NachoConstants.MAXIMUM_AUCTION_SECONDS_DURATION, "" });
-
                     createdAuctions++;
 
                     chainSimulator.BeginBlock();
                     chainSimulator.GenerateCustomTransaction(ownerKeys, () =>
                         ScriptUtils.
                             BeginScript().
-                            AllowGas(ownerKeys.Address, Address.Null, 1, 9999).
-                            CallContract("market", "SellToken", ownerKeys.Address, NachoConstants.WRESTLER_SYMBOL, Nexus.FuelTokenSymbol, 
-                                            itemID, TokenUtils.ToBigInteger(price), endAuctionDate).
-                            SpendGas(ownerKeys.Address).
+                            AllowGas(testUser.Address, Address.Null, 1, 9999).
+                            CallContract("market", "SellToken", testUser.Address, itemToken.Symbol, Nexus.FuelTokenSymbol, tokenID, price, endAuctionDate).
+                            SpendGas(testUser.Address).
                             EndScript()
                     );
                     chainSimulator.EndBlock();
@@ -1176,7 +1210,7 @@ namespace Phantasma.Spook
                 return Rarity.Common;
             }
 
-            var n = (wrestler.genes[NachoConstants.GENE_RARITY] % 6);
+            var n = (wrestler.genes[Constants.GENE_RARITY] % 6);
             return (Rarity)n;
         }
 
