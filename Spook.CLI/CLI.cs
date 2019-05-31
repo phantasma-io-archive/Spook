@@ -793,9 +793,7 @@ namespace Phantasma.Spook
             luchadorCounts[Rarity.Legendary] = 1;
 
             Console.WriteLine("Filling the market with luchadores...");
-
-            Timestamp endAuctionDate = chainSimulator.CurrentTime + TimeSpan.FromDays(2);
-            
+           
             var auctions = (MarketAuction[])chainSimulator.Nexus.RootChain.InvokeContract("market", "GetAuctions");
             var previousAuctionCount = auctions.Length;
 
@@ -830,7 +828,7 @@ namespace Phantasma.Spook
                     //var ID = Serialization.Unserialize<BigInteger>(tx.content);
 
                     /*
-                     // Old chain logic
+                     // Old chain logic -> Nacho Branch
 
                     var wrestlerToken = chainSimulator.Nexus.FindTokenBySymbol(NachoConstants.WRESTLER_SYMBOL);
                     
@@ -842,10 +840,9 @@ namespace Phantasma.Spook
                     var wrestlerTokenId = ownedTokenList.ElementAt(0);
                     */
 
-                    // Create the token NachomenWrestlerToken as an NFT
+                    // Transfer Fuel Tokens to the test user address
                     chainSimulator.BeginBlock();
                     chainSimulator.GenerateTransfer(ownerKeys, testUser.Address, nexus.RootChain, Nexus.FuelTokenSymbol, 1000000);
-                    //chainSimulator.GenerateToken(ownerKeys, Constants.WRESTLER_SYMBOL, "NachomenWrestlerToken", 0, 0, Blockchain.Tokens.TokenFlags.Transferable);
                     chainSimulator.EndBlock();
 
                     var wrestlerToken = chainSimulator.Nexus.GetTokenInfo(Constants.WRESTLER_SYMBOL);
@@ -880,12 +877,14 @@ namespace Phantasma.Spook
 
                     createdAuctions++;
 
+                    Timestamp endWrestlerAuctionDate = chainSimulator.CurrentTime + TimeSpan.FromDays(2);
+
                     chainSimulator.BeginBlock();
                     chainSimulator.GenerateCustomTransaction(testUser, () =>
                         ScriptUtils.
                             BeginScript().
                             AllowGas(testUser.Address, Address.Null, 1, 9999).
-                            CallContract("market", "SellToken", testUser.Address, wrestlerToken.Symbol, Nexus.FuelTokenSymbol, tokenID, price, endAuctionDate).
+                            CallContract("market", "SellToken", testUser.Address, wrestlerToken.Symbol, Nexus.FuelTokenSymbol, tokenID, price, endWrestlerAuctionDate).
                             SpendGas(testUser.Address).
                             EndScript()
                     );
@@ -943,13 +942,7 @@ namespace Phantasma.Spook
                     chainSimulator.EndBlock();
 
                     */
-
-                    // Create the token CoolToken as an NFT
-                    chainSimulator.BeginBlock();
-                    chainSimulator.GenerateTransfer(ownerKeys, testUser.Address, nexus.RootChain, Nexus.FuelTokenSymbol, 1000000);
-                    chainSimulator.GenerateToken(ownerKeys, Constants.ITEM_SYMBOL, "LuchadorToken", 0, 0, Blockchain.Tokens.TokenFlags.Transferable);
-                    chainSimulator.EndBlock();
-
+                    
                     var itemToken = chainSimulator.Nexus.GetTokenInfo(Constants.ITEM_SYMBOL);
                     Assert.IsTrue(nexus.TokenExists(Constants.ITEM_SYMBOL), "Can't find the token symbol");
 
@@ -976,18 +969,20 @@ namespace Phantasma.Spook
 
                     GetItemPriceRange(rarity, out minPrice, out maxPrice);
                     var diff = (int)(maxPrice - minPrice);
-                    var price = (decimal)(minPrice + rnd.Next() % diff);
+                    var price = (int)(minPrice + rnd.Next() % diff);
 
                     if (price < 0) price *= -1; // HACK
 
                     createdAuctions++;
 
+                    Timestamp endItemAuctionDate = chainSimulator.CurrentTime + TimeSpan.FromDays(2);
+
                     chainSimulator.BeginBlock();
-                    chainSimulator.GenerateCustomTransaction(ownerKeys, () =>
+                    chainSimulator.GenerateCustomTransaction(testUser, () =>
                         ScriptUtils.
                             BeginScript().
                             AllowGas(testUser.Address, Address.Null, 1, 9999).
-                            CallContract("market", "SellToken", testUser.Address, itemToken.Symbol, Nexus.FuelTokenSymbol, tokenID, price, endAuctionDate).
+                            CallContract("market", "SellToken", testUser.Address, itemToken.Symbol, Nexus.FuelTokenSymbol, tokenID, price, endItemAuctionDate).
                             SpendGas(testUser.Address).
                             EndScript()
                     );
