@@ -536,16 +536,15 @@ namespace Phantasma.Spook
             bool useSimulator = settings.GetBool("simulator.enabled", false);
             if (useSimulator)
             {
+                logger.Message("Initializing simulator...");
                 var simulator = new ChainSimulator(this.nexus, node_keys, 1234);
-                if (simulator != null)
+                for (int i = 0; i < 10; i++)
                 {
-                    for (int i = 0; i < 100; i++)
-                    {
-                        simulator.GenerateRandomBlock();
-                    }
+                    logger.Message("Generating sim block #" + i);
+                    simulator.GenerateRandomBlock();
                 }
 
-                InitialNachoFill(simulator, node_keys);
+                InitialNachoFill(simulator, node_keys, logger);
             }
 
             this.Run();
@@ -670,7 +669,7 @@ namespace Phantasma.Spook
 
         public BigInteger lastItemID;
 
-        public void InitialNachoFill(ChainSimulator simulator, KeyPair ownerKeys)
+        public void InitialNachoFill(ChainSimulator simulator, KeyPair ownerKeys, Logger logger)
         {
             // generate genes for bots
             //GenerateBotGenes();
@@ -781,10 +780,10 @@ namespace Phantasma.Spook
             //}
 
             Console.WriteLine("Filling initial market");
-            FillNachoMarket(simulator, ownerKeys);
+            FillNachoMarket(simulator, ownerKeys, logger);
         }
 
-        public void FillNachoMarket(ChainSimulator chainSimulator, KeyPair ownerKeys)
+        public void FillNachoMarket(ChainSimulator chainSimulator, KeyPair ownerKeys, Logger logger)
         {
             var nachoChain = chainSimulator.Nexus.FindChainByName("nacho");
 
@@ -797,7 +796,7 @@ namespace Phantasma.Spook
             luchadorCounts[Rarity.Epic] = 1;
             luchadorCounts[Rarity.Legendary] = 1;
 
-            Console.WriteLine("Filling the market with luchadores...");
+            logger.Message("Filling the market with luchadores...");
            
             var auctions = (MarketAuction[])chainSimulator.Nexus.RootChain.InvokeContract("market", "GetAuctions");
             var previousAuctionCount = auctions.Length;
@@ -909,7 +908,7 @@ namespace Phantasma.Spook
                 [Rarity.Legendary]  = 1
             };
 
-            Console.WriteLine("Generating items for market...");
+            logger.Message("Generating items for market...");
 
             foreach (var rarity in itemCounts.Keys)
             {
@@ -997,6 +996,8 @@ namespace Phantasma.Spook
 
             auctions = (MarketAuction[])chainSimulator.Nexus.RootChain.InvokeContract("market", "GetAuctions");
             Assert.IsTrue(auctions.Length == createdAuctions + previousAuctionCount, "items auction ids missing");
+
+            logger.Success("Nacho Market is ready!");
         }
 
         public static void GenerateBotGenes()
