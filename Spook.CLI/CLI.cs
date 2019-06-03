@@ -27,6 +27,7 @@ using Phantasma.Network.P2P.Messages;
 
 using Logger = Phantasma.Core.Log.Logger;
 using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
+using Phantasma.Storage;
 
 namespace Phantasma.Spook
 {
@@ -407,7 +408,6 @@ namespace Phantasma.Spook
             string wif = settings.GetString("node.wif");
 
             var nexusName = settings.GetString("nexus.name", "simnet");
-            var genesisAddress = Address.FromText(settings.GetString("nexus.genesis", KeyPair.FromWIF(validatorWIFs[0]).Address.Text));
 
             switch (mode)
             {
@@ -445,17 +445,23 @@ namespace Phantasma.Spook
 
             var node_keys = KeyPair.FromWIF(wif);
 
-            ChainSimulator simulator;
+            nexus = new Nexus(logger, (name) => new BasicDiskStore("Storage\\"+name+".txt"));
 
             if (wif == validatorWIFs[0])
             {
-                simulator = new ChainSimulator(node_keys, 1235, logger);
-                nexus = simulator.Nexus;
+                if (!nexus.Ready)
+                {
+                    logger.Debug("Boostraping nexus...");
+                    if (!nexus.CreateGenesisBlock(nexusName, node_keys, Timestamp.Now))
+                    {
+                        throw new ChainException("Genesis block failure");
+                    }
+
+                    logger.Debug("Genesis block created: "+nexus.GenesisHash);
+                }
             }
             else
             {
-                simulator = null;
-                nexus = new Nexus(nexusName, genesisAddress, logger);
                 seeds.Add("127.0.0.1:7073");
             }
 
@@ -465,13 +471,14 @@ namespace Phantasma.Spook
             nexus.AddPlugin(new AddressTransactionsPlugin());
             nexus.AddPlugin(new UnclaimedTransactionsPlugin());
 
+            /*
             if (simulator != null)
             {
                 for (int i = 0; i < 100; i++)
                 {
                     simulator.GenerateRandomBlock();
                 }
-            }
+            }*/
 
             running = true;
 
@@ -502,20 +509,6 @@ namespace Phantasma.Spook
                 logger.Message($"REST server listening on port {restPort}...");
                 var restServer = new RESTServer(api, "/api", restPort, (level, text) => WebLogMapper("rest", level, text));
                 restServer.Start(ThreadPriority.AboveNormal);
-            }
-
-            if (simulator != null && settings.GetBool("simulator", false))
-            {
-                new Thread(() =>
-                {
-                    Thread.CurrentThread.IsBackground = true;
-                    while (running)
-                    {
-                        Thread.Sleep(Mempool.MinimumBlockTime + 1000);
-                        simulator.CurrentTime = Timestamp.Now;
-                        simulator.GenerateRandomBlock(mempool);
-                    }
-                }).Start();
             }
 
             // node setup
@@ -577,17 +570,24 @@ namespace Phantasma.Spook
         private void Terminate()
         {
             running = false;
-            logger.Message("Phantasma Node stopping...");
 
-            if (node.IsRunning)
-            {
-                node.Stop();
-            }
+            logger.Message("Termination started...");
 
             if (mempool.IsRunning)
             {
+                logger.Message("Stopping mempool...");
                 mempool.Stop();
             }
+
+            if (node.IsRunning)
+            {
+                logger.Message("Stopping node...");
+                node.Stop();
+            }
+            
+            logger.Message("Termination complete...");
+            Thread.Sleep(3000);
+            Environment.Exit(0);
         }
 
         private void RegisterPlugin(IPlugin plugin)
