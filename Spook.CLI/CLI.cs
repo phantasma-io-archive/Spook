@@ -31,6 +31,8 @@ using Phantasma.Storage;
 using Logger = Phantasma.Core.Log.Logger;
 using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
 using Phantasma.Storage;
+using System.Reflection;
+using System.IO;
 
 namespace Phantasma.Spook
 {
@@ -445,10 +447,35 @@ namespace Phantasma.Spook
             }
 
             int port = settings.GetInt("node.port", defaultPort);
+            var defaultStoragePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/Storage";
+            var storagePath = settings.GetString("storage.path", defaultStoragePath);
+            storagePath = storagePath.Replace("\\", "/");
+            if (!storagePath.EndsWith('/'))
+            {
+                storagePath += '/';
+            }
 
+            var storageFix = settings.GetBool("storage.fix", false);
+
+            // TODO remove this later
+            if (storageFix)
+            {
+                if (Directory.Exists(storagePath))
+                {
+                    logger.Warning("Storage fix enabled... Cleaning up all storage...");
+                    var di = new DirectoryInfo(storagePath);
+                    foreach (FileInfo file in di.EnumerateFiles())
+                    {
+                        file.Delete();
+                    }
+                }
+            }
+
+            logger.Message("Storage path: " + storagePath);
+                
             var node_keys = KeyPair.FromWIF(wif);
 
-            nexus = new Nexus(logger, (name) => new BasicDiskStore("Storage\\"+name+".txt"));
+            nexus = new Nexus(logger, (name) => new BasicDiskStore(storagePath+name+".txt"));
 
             if (wif == validatorWIFs[0])
             {
