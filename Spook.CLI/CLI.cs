@@ -816,12 +816,14 @@ namespace Phantasma.Spook
 
             var testUser = KeyPair.Generate();
 
-            var luchadorCounts = new Dictionary<Rarity, int>();
-            luchadorCounts[Rarity.Common] = 65;
-            luchadorCounts[Rarity.Uncommon] = 25;
-            luchadorCounts[Rarity.Rare] = 9;
-            luchadorCounts[Rarity.Epic] = 1;
-            luchadorCounts[Rarity.Legendary] = 1;
+            var luchadorCounts = new Dictionary<Rarity, int>
+            {
+                [Rarity.Common]     = 65,
+                [Rarity.Uncommon]   = 25,
+                [Rarity.Rare]       = 9,
+                [Rarity.Epic]       = 1,
+                [Rarity.Legendary]  = 1
+            };
 
             logger.Message("Filling the market with luchadores...");
            
@@ -1189,11 +1191,11 @@ namespace Phantasma.Spook
                     us3 = byte.MaxValue
                 };
 
-                //if (WrestlerValidation.IsValidWrestler(wrestler))
-                //{
+                if (WrestlerValidation.IsValidWrestler(wrestler))
+                {
                     amount--;
                     EnqueueNachoWrestler(wrestler);
-                //}
+                }
             }
         }
 

@@ -205,6 +205,48 @@ namespace Phantasma.Spook.Nachomen
             index = (index + 5) % (_hash.Length - 5);
         }
 
+        private static LuchadorPiece GeneratePart(NachoWrestler nachoWrestler, BodyPart part)
+        {
+            var hash = nachoWrestler.genes.Sha256();
+
+            int index = (int)part;
+
+            int max;
+
+            switch (part)
+            {
+                case BodyPart.Head:
+                {
+                    max = GetRarity(nachoWrestler) == Rarity.Legendary ? 128 : 64;
+
+                    break;
+                }
+
+
+                default:
+                    max = 32;
+                    break;
+            }
+
+            var element = new LuchadorPiece(hash, index, part == BodyPart.Head ? 0 : 1, max);
+
+            if (GetRarity(nachoWrestler) == Rarity.Bot)
+            {
+                if (part != BodyPart.Head)
+                {
+                    element.Variation = 0;
+                }
+
+                element.PrimaryHue = SkinHue;
+                element.SecondaryHue = SkinHue;
+                element.TertiaryHue = SkinHue;
+                element.Shade = SkinShade;
+            }
+
+            _elements[part] = element;
+            index = (index + 5) % (_hash.Length - 5);
+        }
+
         public LuchadorPiece GetBodyPart(BodyPart part)
         {
             if (!_elements.ContainsKey(part))
@@ -213,6 +255,11 @@ namespace Phantasma.Spook.Nachomen
             }
 
             return _elements[part];
+        }
+
+        public static LuchadorPiece GetBodyPart(NachoWrestler nachoWrestler, BodyPart part)
+        {
+            return GeneratePart(part);
         }
 
         public string Name
@@ -241,6 +288,31 @@ namespace Phantasma.Spook.Nachomen
                         }
                 }
 
+            }
+        }
+
+        public static string GetName(NachoWrestler nachoWrestler)
+        {
+            //if (nachoWrestler.auctionID <= 8)
+            //{
+            //    return ((PraticeLevel)((int)ID)).ToString() + " dummy";
+            //}
+
+            if (!string.IsNullOrEmpty(nachoWrestler.nickname))
+            {
+                return nachoWrestler.nickname;
+            }
+
+            switch (GetRarity(nachoWrestler))
+            {
+                case Rarity.Legendary:
+                    return NameGenerator.GenerateLegendaryName(nachoWrestler.genes, GetBodyPart(nachoWrestler, BodyPart.Head).Variation);
+
+                default:
+                {
+                    var body = GetBodyPart(BodyPart.Body).Variation;
+                    return NameGenerator.GenerateCommonName(nachoWrestler.genes, body > 20);
+                }
             }
         }
 
@@ -311,6 +383,17 @@ namespace Phantasma.Spook.Nachomen
                 var n = (data.genes[Constants.GENE_RARITY] % 6);
                 return (Rarity)n;
             }
+        }
+
+        public static Rarity GetRarity(NachoWrestler nachoWrestler)
+        {
+            if (nachoWrestler.genes == null)
+            {
+                return Rarity.Common;
+            }
+
+            var n = (nachoWrestler.genes[Constants.GENE_RARITY] % 6);
+            return (Rarity)n;
         }
 
         public LuchadorHoroscope HoroscopeSign => Formulas.GetHoroscopeSign(data.genes);
