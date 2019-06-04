@@ -1175,7 +1175,7 @@ namespace Phantasma.Spook
                     maxMojo = 10,
                     mojoTime = 0,
                     moveOverrides = new byte[0],
-                    nickname = "WrestlerName",
+                    nickname = string.Empty,
                     owner = ownerKey.Address,
                     perfumeTime = 0,
                     praticeLevel = PraticeLevel.Gold,
@@ -1191,7 +1191,9 @@ namespace Phantasma.Spook
                     us3 = byte.MaxValue
                 };
 
-                if (WrestlerValidation.IsValidWrestler(wrestler))
+                var luchador = Luchador.FromData(1, wrestler);
+
+                if (WrestlerValidation.IsValidWrestler(luchador))
                 {
                     amount--;
                     EnqueueNachoWrestler(wrestler);
