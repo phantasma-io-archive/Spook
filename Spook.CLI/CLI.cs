@@ -565,7 +565,7 @@ namespace Phantasma.Spook
             {
                 logger.Message("Initializing simulator...");
                 var simulator = new ChainSimulator(this.nexus, node_keys, 1234);
-                for (int i = 0; i < 10; i++)
+                for (int i = 0; i < 3; i++)
                 {
                     logger.Message("Generating sim block #" + i);
                     simulator.GenerateRandomBlock();

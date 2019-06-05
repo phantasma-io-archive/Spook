@@ -75,8 +75,9 @@ namespace Phantasma.Spook.Nachomen
             _chainSimulator.BeginBlock();
             _chainSimulator.GenerateAppRegistration(_ownerKeys, "nachomen", "https://nacho.men", "Collect, train and battle against other players in Nacho Men!");
 
-            var nachoSupply = UnitConversion.ToBigInteger(10000, 10);
-            _chainSimulator.GenerateToken(_ownerKeys, Constants.NACHO_SYMBOL, "NachoToken", nachoSupply, 10, TokenFlags.Transferable | TokenFlags.Fungible | TokenFlags.Finite | TokenFlags.Divisible);
+            int nachoDecimals = 10;
+            var nachoSupply = UnitConversion.ToBigInteger(10000, nachoDecimals);
+            _chainSimulator.GenerateToken(_ownerKeys, Constants.NACHO_SYMBOL, "NachoToken", nachoSupply, nachoDecimals, TokenFlags.Transferable | TokenFlags.Fungible | TokenFlags.Finite | TokenFlags.Divisible);
             _chainSimulator.MintTokens(_ownerKeys, Constants.NACHO_SYMBOL, nachoSupply);
 
             _chainSimulator.GenerateToken(_ownerKeys, Constants.WRESTLER_SYMBOL, "NachomenWrestlerToken", 0, 0, TokenFlags.Transferable);
@@ -84,12 +85,12 @@ namespace Phantasma.Spook.Nachomen
             _chainSimulator.EndBlock();
 
             _chainSimulator.BeginBlock();
-            _chainSimulator.GenerateSideChainSend(_ownerKeys, Constants.NACHO_SYMBOL, _nexus.RootChain, nachoAddress2, nachoChain, 1000, 1);
+            _chainSimulator.GenerateSideChainSend(_ownerKeys, Constants.NACHO_SYMBOL, _nexus.RootChain, nachoAddress2, nachoChain, UnitConversion.ToBigInteger(1000, nachoDecimals), 1);
             blockTx = _chainSimulator.EndBlock().First();
 
-            //_chainSimulator.BeginBlock();
-            //_chainSimulator.GenerateSideChainSettlement(_owner, Nexus.RootChain, nachoChain, blockTx.Hash);
-            //_chainSimulator.EndBlock();
+            _chainSimulator.BeginBlock();
+            _chainSimulator.GenerateSideChainSettlement(_ownerKeys, _chainSimulator.Nexus.RootChain, nachoChain, blockTx.Hash);
+            _chainSimulator.EndBlock();
 
             _chainSimulator.BeginBlock();
             _chainSimulator.GenerateSetTokenMetadata(_ownerKeys, Constants.WRESTLER_SYMBOL, "details", "https://nacho.men/luchador/*");
