@@ -75,8 +75,8 @@ namespace Phantasma.Spook.Nachomen
             _chainSimulator.BeginBlock();
             _chainSimulator.GenerateAppRegistration(_ownerKeys, "nachomen", "https://nacho.men", "Collect, train and battle against other players in Nacho Men!");
 
-            var nachoSupply = UnitConversion.ToBigInteger(10000, 10);
-            _chainSimulator.GenerateToken(_ownerKeys, Constants.NACHO_SYMBOL, "NachoToken", nachoSupply, 10, TokenFlags.Transferable | TokenFlags.Fungible | TokenFlags.Finite | TokenFlags.Divisible);
+            var nachoSupply = UnitConversion.ToBigInteger(10000, Constants.NACHO_TOKEN_DECIMALS);
+            _chainSimulator.GenerateToken(_ownerKeys, Constants.NACHO_SYMBOL, "NachoToken", nachoSupply, Constants.NACHO_TOKEN_DECIMALS, TokenFlags.Transferable | TokenFlags.Fungible | TokenFlags.Finite | TokenFlags.Divisible);
             _chainSimulator.MintTokens(_ownerKeys, Constants.NACHO_SYMBOL, nachoSupply);
 
             _chainSimulator.GenerateToken(_ownerKeys, Constants.WRESTLER_SYMBOL, "NachomenWrestlerToken", 0, 0, TokenFlags.Transferable);
@@ -84,7 +84,7 @@ namespace Phantasma.Spook.Nachomen
             _chainSimulator.EndBlock();
 
             _chainSimulator.BeginBlock();
-            _chainSimulator.GenerateSideChainSend(_ownerKeys, Constants.NACHO_SYMBOL, _nexus.RootChain, nachoAddress, nachoChain, UnitConversion.ToBigInteger(1000, 10), 1);
+            _chainSimulator.GenerateSideChainSend(_ownerKeys, Constants.NACHO_SYMBOL, _nexus.RootChain, nachoAddress, nachoChain, UnitConversion.ToBigInteger(1000, Constants.NACHO_TOKEN_DECIMALS), 1);
             //_chainSimulator.GenerateSideChainSend(_ownerKeys, Constants.NACHO_SYMBOL, _nexus.RootChain, nachoAddress2, nachoChain, UnitConversion.ToBigInteger(1000, 10), 1);
             var blockB = _chainSimulator.EndBlock().First();
 
