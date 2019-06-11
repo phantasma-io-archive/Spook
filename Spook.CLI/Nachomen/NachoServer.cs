@@ -46,8 +46,8 @@ namespace Phantasma.Spook.Nachomen
 
             GenerateTokens();
 
-            //GenerateBotGenes();
-            
+            GenerateBotGenes();
+
             //InitialNachoFill();
 
             FillNachoMarket();
@@ -66,10 +66,10 @@ namespace Phantasma.Spook.Nachomen
 
             _chainSimulator.GenerateSideChainSend(_ownerKeys, Nexus.FuelTokenSymbol, _nexus.RootChain, nachoAddress2, nachoChain, nachoFuel, 9999);
             _chainSimulator.GenerateSideChainSend(_ownerKeys, Nexus.FuelTokenSymbol, _nexus.RootChain, nachoAddress2, nachoChain, nachoFuel, 9999);
-            var blockTx = _chainSimulator.EndBlock().First();
+            var blockA = _chainSimulator.EndBlock().First();
 
             _chainSimulator.BeginBlock();
-            _chainSimulator.GenerateSideChainSettlement(_ownerKeys, _nexus.RootChain, nachoChain, blockTx.Hash);
+            _chainSimulator.GenerateSideChainSettlement(_ownerKeys, _nexus.RootChain, nachoChain, blockA.Hash);
             _chainSimulator.EndBlock();
 
             _chainSimulator.BeginBlock();
@@ -84,12 +84,12 @@ namespace Phantasma.Spook.Nachomen
             _chainSimulator.EndBlock();
 
             _chainSimulator.BeginBlock();
-            _chainSimulator.GenerateSideChainSend(_ownerKeys, Constants.NACHO_SYMBOL, _nexus.RootChain, nachoAddress2, nachoChain, 1000, 1);
-            blockTx = _chainSimulator.EndBlock().First();
+            _chainSimulator.GenerateSideChainSend(_ownerKeys, Constants.NACHO_SYMBOL, _nexus.RootChain, nachoAddress2, nachoChain, UnitConversion.ToBigInteger(1000, 10), 1);
+            var blockB = _chainSimulator.EndBlock().First();
 
-            //_chainSimulator.BeginBlock();
-            //_chainSimulator.GenerateSideChainSettlement(_owner, Nexus.RootChain, nachoChain, blockTx.Hash);
-            //_chainSimulator.EndBlock();
+            _chainSimulator.BeginBlock();
+            _chainSimulator.GenerateSideChainSettlement(_ownerKeys, _nexus.RootChain, nachoChain, blockB.Hash);
+            _chainSimulator.EndBlock();
 
             _chainSimulator.BeginBlock();
             _chainSimulator.GenerateSetTokenMetadata(_ownerKeys, Constants.WRESTLER_SYMBOL, "details", "https://nacho.men/luchador/*");
@@ -427,6 +427,8 @@ namespace Phantasma.Spook.Nachomen
 
         private static void GenerateBotGenes()
         {
+            return;
+
             Console.WriteLine("Generate genes for bots");
 
             var rnd = new System.Random();
