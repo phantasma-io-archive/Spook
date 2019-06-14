@@ -19,17 +19,17 @@ namespace Phantasma.Spook.Nachomen
 {
     class NachoServer
     {
-        private static Nexus            _nexus;
-        private static ChainSimulator   _chainSimulator;
-        private static Chain            _nachoChain;
-        private static KeyPair          _ownerKeys;
-        private static Logger           _logger;
+        private static Nexus _nexus;
+        private static ChainSimulator _chainSimulator;
+        private static Chain _nachoChain;
+        private static KeyPair _ownerKeys;
+        private static Logger _logger;
 
-        private static int _legendaryWrestlerDelay  = 0;
-        private static int _legendaryItemDelay      = 0;
+        private static int _legendaryWrestlerDelay = 0;
+        private static int _legendaryItemDelay = 0;
 
-        private static Dictionary<Rarity, Queue<BigInteger>>    _itemQueue      = new Dictionary<Rarity, Queue<BigInteger>>();
-        private static Dictionary<Rarity, Queue<NachoWrestler>> _wrestlerQueue  = new Dictionary<Rarity, Queue<NachoWrestler>>();
+        private static Dictionary<Rarity, Queue<BigInteger>> _itemQueue = new Dictionary<Rarity, Queue<BigInteger>>();
+        private static Dictionary<Rarity, Queue<NachoWrestler>> _wrestlerQueue = new Dictionary<Rarity, Queue<NachoWrestler>>();
 
         private static Random _rnd = new Random();
 
@@ -55,11 +55,11 @@ namespace Phantasma.Spook.Nachomen
 
         public static void GenerateTokens()
         {
-            var nachoAddress    = Address.FromText("PGasVpbFYdu7qERihCsR22nTDQp1JwVAjfuJ38T8NtrCB");
+            var nachoAddress = Address.FromText("PGasVpbFYdu7qERihCsR22nTDQp1JwVAjfuJ38T8NtrCB");
             //var nachoAddress2   = Address.FromText("P2f7ZFuj6NfZ76ymNMnG3xRBT5hAMicDrQRHE4S7SoxEr");
 
-            var nachoFuel       = UnitConversion.ToBigInteger(5, Nexus.FuelTokenDecimals);
-            var nachoChain      = _nexus.FindChainByName("nacho");
+            var nachoFuel = UnitConversion.ToBigInteger(5, Nexus.FuelTokenDecimals);
+            var nachoChain = _nexus.FindChainByName("nacho");
 
             _chainSimulator.BeginBlock();
             _chainSimulator.GenerateSideChainSend(_ownerKeys, Nexus.FuelTokenSymbol, _nexus.RootChain, _ownerKeys.Address, nachoChain, nachoFuel, 0);
@@ -288,7 +288,7 @@ namespace Phantasma.Spook.Nachomen
                     var tokenRAM = new byte[0];
 
                     _chainSimulator.BeginBlock();
-                    _chainSimulator.GenerateNft(_ownerKeys, testUser.Address, Constants.WRESTLER_SYMBOL, tokenROM, tokenRAM);
+                    _chainSimulator.MintNonFungibleToken(_ownerKeys, testUser.Address, Constants.WRESTLER_SYMBOL, tokenROM, tokenRAM, 0);
                     _chainSimulator.EndBlock();
 
                     // verify nft presence on the user post-mint
@@ -386,7 +386,7 @@ namespace Phantasma.Spook.Nachomen
                     var tokenRAM = new byte[0];
 
                     _chainSimulator.BeginBlock();
-                    _chainSimulator.GenerateNft(_ownerKeys, testUser.Address, Constants.ITEM_SYMBOL, tokenROM, tokenRAM);
+                    _chainSimulator.MintNonFungibleToken(_ownerKeys, testUser.Address, Constants.ITEM_SYMBOL, tokenROM, tokenRAM, 0);
                     _chainSimulator.EndBlock();
 
                     // verify nft presence on the user post-mint
