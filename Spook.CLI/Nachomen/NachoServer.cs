@@ -288,7 +288,7 @@ namespace Phantasma.Spook.Nachomen
                     var tokenRAM = new byte[0];
 
                     _chainSimulator.BeginBlock();
-                    _chainSimulator.GenerateNft(_ownerKeys, testUser.Address, Constants.WRESTLER_SYMBOL, tokenROM, tokenRAM);
+                    _chainSimulator.MintNonFungibleToken(_ownerKeys, testUser.Address, Constants.WRESTLER_SYMBOL, tokenROM, tokenRAM, 0);
                     _chainSimulator.EndBlock();
 
                     // verify nft presence on the user post-mint
@@ -386,7 +386,7 @@ namespace Phantasma.Spook.Nachomen
                     var tokenRAM = new byte[0];
 
                     _chainSimulator.BeginBlock();
-                    _chainSimulator.GenerateNft(_ownerKeys, testUser.Address, Constants.ITEM_SYMBOL, tokenROM, tokenRAM);
+                    _chainSimulator.MintNonFungibleToken(_ownerKeys, testUser.Address, Constants.ITEM_SYMBOL, tokenROM, tokenRAM, 0);
                     _chainSimulator.EndBlock();
 
                     // verify nft presence on the user post-mint
