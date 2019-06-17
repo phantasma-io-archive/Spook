@@ -302,7 +302,7 @@ namespace Phantasma.Spook.Nachomen
 
                     _chainSimulator.BeginBlock();
                     _chainSimulator.MintNonFungibleToken(_ownerKeys, testUser.Address, Constants.WRESTLER_SYMBOL, tokenROM, tokenRAM, 0);
-                    _chainSimulator.EndBlock();
+                    _chainSimulator.EndBlock(); 
 
                     // verify nft presence on the user post-mint
                     ownedTokenList = ownerships.Get(_nexus.RootChain.Storage, testUser.Address);
@@ -369,7 +369,7 @@ namespace Phantasma.Spook.Nachomen
                     Timestamp endWrestlerAuctionDate = _chainSimulator.CurrentTime + TimeSpan.FromDays(2);
 
                     _chainSimulator.BeginBlock();
-                    _chainSimulator.GenerateCustomTransaction(nachoUser, () =>
+                    _chainSimulator.GenerateCustomTransaction(nachoUser, _chainSimulator.Nexus.FindChainByName("nacho"), () =>
                         ScriptUtils.
                             BeginScript().
                             AllowGas(nachoUser.Address, Address.Null, 1, 9999).
