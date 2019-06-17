@@ -77,11 +77,11 @@ namespace Phantasma.Spook.Nachomen
 
             int nachoDecimals = 10;
             var nachoSupply = UnitConversion.ToBigInteger(10000, nachoDecimals);
-            _chainSimulator.GenerateToken(_ownerKeys, Constants.NACHO_SYMBOL, "NachoToken", nachoSupply, nachoDecimals, TokenFlags.Transferable | TokenFlags.Fungible | TokenFlags.Finite | TokenFlags.Divisible);
+            _chainSimulator.GenerateToken(_ownerKeys, Constants.NACHO_SYMBOL, "Nachomen Token", nachoSupply, nachoDecimals, TokenFlags.Transferable | TokenFlags.Fungible | TokenFlags.Finite | TokenFlags.Divisible);
             _chainSimulator.MintTokens(_ownerKeys, Constants.NACHO_SYMBOL, nachoSupply);
 
-            _chainSimulator.GenerateToken(_ownerKeys, Constants.WRESTLER_SYMBOL, "NachomenWrestlerToken", 0, 0, TokenFlags.Transferable);
-            _chainSimulator.GenerateToken(_ownerKeys, Constants.ITEM_SYMBOL, "NachomenItemToken", 0, 0, TokenFlags.Transferable);
+            _chainSimulator.GenerateToken(_ownerKeys, Constants.WRESTLER_SYMBOL, "Nachomen Luchador", 0, 0, TokenFlags.Transferable);
+            _chainSimulator.GenerateToken(_ownerKeys, Constants.ITEM_SYMBOL, "Nachomen Item", 0, 0, TokenFlags.Transferable);
             _chainSimulator.EndBlock();
 
             _chainSimulator.BeginBlock();
@@ -246,6 +246,11 @@ namespace Phantasma.Spook.Nachomen
 
                 var count = luchadorCounts[rarity];
 
+                // Transfer Fuel Tokens to the test user address
+                _chainSimulator.BeginBlock();
+                _chainSimulator.GenerateTransfer(_ownerKeys, testUser.Address, _nexus.RootChain, Nexus.FuelTokenSymbol, 1000000);
+                _chainSimulator.EndBlock();
+
                 for (var i = 1; i <= count; i++)
                 {
                     var wrestler = DequeueNachoWrestler(_ownerKeys, rarity);
@@ -270,11 +275,6 @@ namespace Phantasma.Spook.Nachomen
                     var wrestlerTokenId = ownedTokenList.ElementAt(0);
                     */
 
-                    // Transfer Fuel Tokens to the test user address
-                    _chainSimulator.BeginBlock();
-                    _chainSimulator.GenerateTransfer(_ownerKeys, testUser.Address, _nexus.RootChain, Nexus.FuelTokenSymbol, 1000000);
-                    _chainSimulator.EndBlock();
-
                     var wrestlerToken = _chainSimulator.Nexus.GetTokenInfo(Constants.WRESTLER_SYMBOL);
                     Assert.IsTrue(_nexus.TokenExists(Constants.WRESTLER_SYMBOL), "Can't find the token symbol");
 
@@ -288,7 +288,7 @@ namespace Phantasma.Spook.Nachomen
                     var tokenRAM = new byte[0];
 
                     _chainSimulator.BeginBlock();
-                    _chainSimulator.GenerateNft(_ownerKeys, testUser.Address, Constants.WRESTLER_SYMBOL, tokenROM, tokenRAM);
+                    _chainSimulator.MintNonFungibleToken(_ownerKeys, testUser.Address, Constants.WRESTLER_SYMBOL, tokenROM, tokenRAM, 0);
                     _chainSimulator.EndBlock();
 
                     // verify nft presence on the user post-mint
@@ -386,7 +386,7 @@ namespace Phantasma.Spook.Nachomen
                     var tokenRAM = new byte[0];
 
                     _chainSimulator.BeginBlock();
-                    _chainSimulator.GenerateNft(_ownerKeys, testUser.Address, Constants.ITEM_SYMBOL, tokenROM, tokenRAM);
+                    _chainSimulator.MintNonFungibleToken(_ownerKeys, testUser.Address, Constants.ITEM_SYMBOL, tokenROM, tokenRAM, 0);
                     _chainSimulator.EndBlock();
 
                     // verify nft presence on the user post-mint
