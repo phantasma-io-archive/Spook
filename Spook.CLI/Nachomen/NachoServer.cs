@@ -212,6 +212,9 @@ namespace Phantasma.Spook.Nachomen
             Console.WriteLine("Filling initial market");
 
             var testUser        = KeyPair.Generate();
+
+            Console.WriteLine("owner: " + _ownerKeys.Address.Text + " | test user: " + testUser.Address.Text);
+
             //var nachoAddress    = Address.FromText("PGasVpbFYdu7qERihCsR22nTDQp1JwVAjfuJ38T8NtrCB");
             var nachoUser       = KeyPair.FromWIF("L3ydJBTWrKwRLZ5PxpygUnxkeJ4gxGHUDs3d3bDZkLTnB6Bpga87");
 
@@ -276,6 +279,7 @@ namespace Phantasma.Spook.Nachomen
                     // Transfer Fuel Tokens to the test user address
                     _chainSimulator.BeginBlock();
                     _chainSimulator.GenerateTransfer(_ownerKeys, testUser.Address, _nexus.RootChain, Nexus.FuelTokenSymbol, 1000000);
+                    _chainSimulator.GenerateTransfer(_ownerKeys, nachoUser.Address, _nexus.RootChain, Nexus.FuelTokenSymbol, 1000000);
                     _chainSimulator.EndBlock();
 
                     var wrestlerToken = _chainSimulator.Nexus.GetTokenInfo(Constants.WRESTLER_SYMBOL);
@@ -344,7 +348,6 @@ namespace Phantasma.Spook.Nachomen
                     nft = _nexus.GetNFT(Constants.WRESTLER_SYMBOL, tokenId);
                     Assert.IsTrue(nft.ROM.SequenceEqual(wrestlerBytes) || nft.RAM.SequenceEqual(wrestlerBytes), "And why is this NFT different than expected? Not the same data");
 
-
                     //////////////////////////////////////////////////////////////////
 
                     // Create auction
@@ -376,6 +379,8 @@ namespace Phantasma.Spook.Nachomen
             //auctions = (MarketAuction[])_chainSimulator.Nexus.RootChain.InvokeContract("market", "GetAuctions");
             auctions = (MarketAuction[])_nachoChain.InvokeContract("market", "GetAuctions");
             Assert.IsTrue(auctions.Length == createdAuctions + previousAuctionCount, "wrestler auction ids missing");
+
+            return;
 
             var itemCounts = new Dictionary<Rarity, int>
             {
