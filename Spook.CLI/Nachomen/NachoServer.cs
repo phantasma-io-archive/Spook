@@ -310,8 +310,7 @@ namespace Phantasma.Spook.Nachomen
                     //verify that the present nft is the same we actually tried to create
                     var tokenId = ownedTokenList.ElementAt(0);
                     var nft = _nexus.GetNFT(Constants.WRESTLER_SYMBOL, tokenId);
-                    Assert.IsTrue(nft.ROM.SequenceEqual(wrestlerBytes) || nft.RAM.SequenceEqual(wrestlerBytes),
-                        "And why is this NFT different than expected? Not the same data");
+                    Assert.IsTrue(nft.ROM.SequenceEqual(wrestlerBytes) || nft.RAM.SequenceEqual(wrestlerBytes), "And why is this NFT different than expected? Not the same data");
 
                     // verify nft presence on the receiver pre-transfer
                     ownedTokenList = ownerships.Get(_nachoChain.Storage, nachoUser.Address /*nachoAddress*/);
@@ -321,7 +320,7 @@ namespace Phantasma.Spook.Nachomen
 
                     // transfer that nft from sender to receiver
                     _chainSimulator.BeginBlock();
-                    _chainSimulator.GenerateSideChainSend(testUser, Nexus.FuelTokenSymbol, _nexus.RootChain, nachoUser.Address /*nachoAddress*/, _nachoChain, 0, extraFee);
+                    //_chainSimulator.GenerateSideChainSend(testUser, Nexus.FuelTokenSymbol, _nexus.RootChain, nachoUser.Address /*nachoAddress*/, _nachoChain, 0, extraFee);
                     var txA = _chainSimulator.GenerateNftSidechainTransfer(testUser, nachoUser.Address /*nachoAddress*/, _nexus.RootChain, _nachoChain, Constants.WRESTLER_SYMBOL, tokenId);
                     _chainSimulator.EndBlock();
 
@@ -362,12 +361,12 @@ namespace Phantasma.Spook.Nachomen
                     Timestamp endWrestlerAuctionDate = _chainSimulator.CurrentTime + TimeSpan.FromDays(2);
 
                     _chainSimulator.BeginBlock();
-                    _chainSimulator.GenerateCustomTransaction(testUser, () =>
+                    _chainSimulator.GenerateCustomTransaction(nachoUser, () =>
                         ScriptUtils.
                             BeginScript().
-                            AllowGas(testUser.Address, Address.Null, 1, 9999).
-                            CallContract("market", "SellToken", testUser.Address, wrestlerToken.Symbol, Nexus.FuelTokenSymbol, tokenID, price, endWrestlerAuctionDate).
-                            SpendGas(testUser.Address).
+                            AllowGas(nachoUser.Address, Address.Null, 1, 9999).
+                            CallContract("market", "SellToken", nachoUser.Address, wrestlerToken.Symbol, Nexus.FuelTokenSymbol, tokenID, price, endWrestlerAuctionDate).
+                            SpendGas(nachoUser.Address).
                             EndScript()
                     );
                     _chainSimulator.EndBlock();
