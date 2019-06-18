@@ -57,7 +57,7 @@ namespace Phantasma.Spook.Nachomen
         public static void GenerateTokens()
         {
             var nachoAddress = Address.FromText("PGasVpbFYdu7qERihCsR22nTDQp1JwVAjfuJ38T8NtrCB");
-            //var nachoAddress2   = Address.FromText("P2f7ZFuj6NfZ76ymNMnG3xRBT5hAMicDrQRHE4S7SoxEr");
+            var nachoAddress2 = Address.FromText("P2f7ZFuj6NfZ76ymNMnG3xRBT5hAMicDrQRHE4S7SoxEr");
 
             var nachoFuel = UnitConversion.ToBigInteger(5, Nexus.FuelTokenDecimals);
             var nachoChain = _nexus.FindChainByName("nacho");
@@ -65,6 +65,7 @@ namespace Phantasma.Spook.Nachomen
             _chainSimulator.BeginBlock();
             _chainSimulator.GenerateSideChainSend(_ownerKeys, Nexus.FuelTokenSymbol, _nexus.RootChain, _ownerKeys.Address, nachoChain, nachoFuel, 0);
             _chainSimulator.GenerateSideChainSend(_ownerKeys, Nexus.FuelTokenSymbol, _nexus.RootChain, nachoAddress, nachoChain, nachoFuel, 9999);
+            _chainSimulator.GenerateSideChainSend(_ownerKeys, Nexus.FuelTokenSymbol, _nexus.RootChain, nachoAddress2, nachoChain, nachoFuel, 0);
 
             //_chainSimulator.GenerateSideChainSend(_ownerKeys, Nexus.FuelTokenSymbol, _nexus.RootChain, nachoAddress2, nachoChain, nachoFuel, 9999);
             var blockA = _chainSimulator.EndBlock().First();
@@ -86,6 +87,7 @@ namespace Phantasma.Spook.Nachomen
 
             _chainSimulator.BeginBlock();
             _chainSimulator.GenerateSideChainSend(_ownerKeys, Constants.NACHO_SYMBOL, _nexus.RootChain, nachoAddress, nachoChain, UnitConversion.ToBigInteger(1000, Constants.NACHO_TOKEN_DECIMALS), 1);
+            _chainSimulator.GenerateSideChainSend(_ownerKeys, Constants.NACHO_SYMBOL, _nexus.RootChain, nachoAddress2, nachoChain, UnitConversion.ToBigInteger(1000, Constants.NACHO_TOKEN_DECIMALS), 1);
             //_chainSimulator.GenerateSideChainSend(_ownerKeys, Constants.NACHO_SYMBOL, _nexus.RootChain, nachoAddress2, nachoChain, UnitConversion.ToBigInteger(1000, 10), 1);
             var blockB = _chainSimulator.EndBlock().First();
 
