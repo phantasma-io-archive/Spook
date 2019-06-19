@@ -29,8 +29,8 @@ namespace Phantasma.Spook.Nachomen
         private static int _legendaryWrestlerDelay = 0;
         private static int _legendaryItemDelay = 0;
 
-        private static Dictionary<Rarity, Queue<BigInteger>> _itemQueue = new Dictionary<Rarity, Queue<BigInteger>>();
-        private static Dictionary<Rarity, Queue<NachoWrestler>> _wrestlerQueue = new Dictionary<Rarity, Queue<NachoWrestler>>();
+        private static Dictionary<Rarity, Queue<NachoItem>> _itemQueue          = new Dictionary<Rarity, Queue<NachoItem>>();
+        private static Dictionary<Rarity, Queue<NachoWrestler>> _wrestlerQueue  = new Dictionary<Rarity, Queue<NachoWrestler>>();
 
         private static Random _rnd = new Random();
 
@@ -401,8 +401,8 @@ namespace Phantasma.Spook.Nachomen
 
                 for (var i = 1; i <= count; i++)
                 {
-                    var itemID      = DequeueItem(rarity);
-                    var itemBytes   = itemID.Serialize();
+                    var item        = DequeueItem(rarity);
+                    var itemBytes   = item.Serialize();
 
                     var rand        = new Random();
                     var isWrapped   = rand.Next(0, 100) < 50; // TODO update logic for the lootboxes (1 item lootbox = 1 wrapped item)
@@ -596,20 +596,27 @@ namespace Phantasma.Spook.Nachomen
             while (amount > 0)
             {
                 _lastItemID++;
-                var obtained = Formulas.GetItemKind(_lastItemID);
+                var itemKind = Formulas.GetItemKind(_lastItemID);
 
-                if (Rules.IsReleasedItem(obtained))
+                if (Rules.IsReleasedItem(itemKind))
                 {
-                    var rarity = Rules.GetItemRarity(obtained);
-                    EnqueueItem(_lastItemID, rarity);
+                    var item = new NachoItem()
+                    {
+                        flags       =  ItemFlags.None,
+                        location    = ItemLocation.None,
+                        wrestlerID  = 0
+                    };
+
+                    var rarity = Rules.GetItemRarity(itemKind);
+                    EnqueueItem(item, rarity);
                     amount--;
                 }
             }
         }
 
-        private static void EnqueueItem(BigInteger ID, Rarity rarity)
+        private static void EnqueueItem(NachoItem nachoItem, Rarity rarity)
         {
-            Queue<BigInteger> queue;
+            Queue<NachoItem> queue;
 
             if (_itemQueue.ContainsKey(rarity))
             {
@@ -617,14 +624,14 @@ namespace Phantasma.Spook.Nachomen
             }
             else
             {
-                queue = new Queue<BigInteger>();
+                queue = new Queue<NachoItem>();
                 _itemQueue[rarity] = queue;
             }
 
-            queue.Enqueue(ID);
+            queue.Enqueue(nachoItem);
         }
 
-        private static BigInteger DequeueItem(Rarity rarity)
+        private static NachoItem DequeueItem(Rarity rarity)
         {
             while (!_itemQueue.ContainsKey(rarity) || _itemQueue[rarity].Count == 0)
             {
