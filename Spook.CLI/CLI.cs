@@ -30,6 +30,7 @@ using Phantasma.Spook.Nachomen;
 using Phantasma.Storage;
 using Logger = Phantasma.Core.Log.Logger;
 using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
+using System.Globalization;
 
 namespace Phantasma.Spook
 {
@@ -405,6 +406,9 @@ namespace Phantasma.Spook
 
         public CLI(string[] args)
         {
+            var culture = new CultureInfo("en-US");
+            CultureInfo.DefaultThreadCurrentCulture = culture;
+
             var seeds = new List<string>();
 
             var settings = new Arguments(args);
@@ -726,6 +730,12 @@ namespace Phantasma.Spook
 
             dispatcher.RegisterCommand("script.compile", "Compiles a .sol file into Phantasma VM script format",
                 (args) => ScriptModule.CompileFile(args));
+
+            dispatcher.RegisterCommand("wallet.balance", "Shows the current wallet balance",
+                (args) => WalletModule.Balance(node.Address, api, logger, args));
+
+            dispatcher.RegisterCommand("wallet.transfer", "Generates a new transfer transaction",
+                (args) => WalletModule.Transfer(node.Keys, api, logger, args));
         }
     }
 }
