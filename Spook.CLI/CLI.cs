@@ -477,11 +477,14 @@ namespace Phantasma.Spook
 
             nexus = new Nexus(logger, (name) => new BasicDiskStore(storagePath+name+".txt"));
 
+            bool bootstrap = false;
+
             if (wif == validatorWIFs[0])
             {
                 if (!nexus.Ready)
                 {
                     logger.Debug("Boostraping nexus...");
+                    bootstrap = true;
                     if (!nexus.CreateGenesisBlock(nexusName, node_keys, Timestamp.Now))
                     {
                         throw new ChainException("Genesis block failure");
@@ -550,6 +553,23 @@ namespace Phantasma.Spook
                 Terminate();
             };
 
+            bool useSimulator = settings.GetBool("simulator.enabled", false);
+            if (useSimulator)
+            {
+                if (bootstrap)
+                {
+                    logger.Message("Initializing simulator...");
+                    var simulator = new ChainSimulator(this.nexus, node_keys, 1234);
+                    for (int i = 0; i < 3; i++)
+                    {
+                        logger.Message("Generating sim block #" + i);
+                        simulator.GenerateRandomBlock();
+                    }
+
+                    NachoServer.InitNachoServer(nexus, simulator, node_keys, logger);
+                }
+            }
+
             logger.Success("Node is ready");
 
             var dispatcher = new CommandDispatcher();
@@ -558,20 +578,6 @@ namespace Phantasma.Spook
             if (gui != null)
             {
                 gui.MakeReady(dispatcher);
-            }
-
-            bool useSimulator = settings.GetBool("simulator.enabled", false);
-            if (useSimulator)
-            {
-                logger.Message("Initializing simulator...");
-                var simulator = new ChainSimulator(this.nexus, node_keys, 1234);
-                for (int i = 0; i < 3; i++)
-                {
-                    logger.Message("Generating sim block #" + i);
-                    simulator.GenerateRandomBlock();
-                }
-
-                NachoServer.InitNachoServer(nexus, simulator, node_keys, logger);
             }
 
             this.Run();

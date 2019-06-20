@@ -251,6 +251,7 @@ namespace Phantasma.Spook.Nachomen
                 }
 
                 var count = luchadorCounts[rarity];
+                _logger.Message($"Generating {count} {rarity} luchadores...");
 
                 // Transfer Fuel Tokens to the test user address
                 _chainSimulator.BeginBlock();
@@ -385,6 +386,7 @@ namespace Phantasma.Spook.Nachomen
             auctions = (MarketAuction[])_nachoChain.InvokeContract("market", "GetAuctions");
             Assert.IsTrue(auctions.Length == createdAuctions + previousAuctionCount, "wrestler auction ids missing");
 
+            _logger.Message("Finished...");
             return;
 
             var itemCounts = new Dictionary<Rarity, int>
