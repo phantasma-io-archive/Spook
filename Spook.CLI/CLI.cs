@@ -736,6 +736,9 @@ namespace Phantasma.Spook
 
             dispatcher.RegisterCommand("wallet.transfer", "Generates a new transfer transaction",
                 (args) => WalletModule.Transfer(node.Keys, api, logger, args));
+
+            dispatcher.RegisterCommand("wallet.stake", $"Stakes {Nexus.StakingTokenSymbol}",
+                (args) => WalletModule.Stake(node.Keys, api, logger, args));
         }
     }
 }

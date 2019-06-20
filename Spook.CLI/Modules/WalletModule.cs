@@ -89,7 +89,8 @@ namespace Phantasma.Spook.Modules
             var rawTx = tx.ToByteArray(true);
 
             logger.Message($"Sending {tempAmount} {tokenSymbol} to {dest.Text}...");
-            try {
+            try
+            {
                 api.SendRawTransaction(Base16.Encode(rawTx));
             }
             catch (Exception e)
@@ -101,7 +102,90 @@ namespace Phantasma.Spook.Modules
             var hash = tx.Hash.ToString();
             do
             {
-                try { 
+                try
+                {
+                    var result = api.GetTransaction(hash);
+                }
+                catch (Exception e)
+                {
+                    throw new CommandException(e.Message);
+                }
+                /*if (result is ErrorResult)
+                {
+                    var temp = (ErrorResult)result;
+                    if (temp.error.Contains("pending"))
+                    {
+                        Thread.Sleep(1000);
+                    }
+                    else
+                    {
+                        throw new CommandException(temp.error);
+                    }
+                }
+                else*/
+                {
+                    break;
+                }
+            } while (true);
+            logger.Success($"Sent transaction with hash {hash}!");
+        }
+
+        public static void Stake(KeyPair source, NexusAPI api, Logger logger, string[] args)
+        {
+            if (args.Length != 3)
+            {
+                throw new CommandException("Expected args: target_address amount");
+            }
+
+            // TODO more arg validation
+            var dest = Address.FromText(args[0]);
+
+            if (dest.Text == source.Address.Text)
+            {
+                throw new CommandException("Cannot transfer to same address");
+            }
+
+            var tempAmount = decimal.Parse(args[1]);
+            var tokenSymbol = Nexus.StakingTokenSymbol;
+
+            TokenResult tokenInfo;
+            try
+            {
+                var result = api.GetToken(tokenSymbol);
+                tokenInfo = (TokenResult)result;
+            }
+            catch (Exception e)
+            {
+                throw new CommandException(e.Message);
+            }
+
+            var amount = UnitConversion.ToBigInteger(tempAmount, tokenInfo.decimals);
+
+            var script = ScriptUtils.BeginScript().
+                AllowGas(source.Address, Address.Null, 1, 9999).
+                CallContract("energy", "Stake", source.Address, dest, amount).
+                SpendGas(source.Address).
+                EndScript();
+            var tx = new Transaction("simnet", "main", script, Timestamp.Now + TimeSpan.FromMinutes(5));
+            tx.Sign(source);
+            var rawTx = tx.ToByteArray(true);
+
+            logger.Message($"Staking {tempAmount} {tokenSymbol} with {dest.Text}...");
+            try
+            {
+                api.SendRawTransaction(Base16.Encode(rawTx));
+            }
+            catch (Exception e)
+            {
+                throw new CommandException(e.Message);
+            }
+
+            Thread.Sleep(3000);
+            var hash = tx.Hash.ToString();
+            do
+            {
+                try
+                {
                     var result = api.GetTransaction(hash);
                 }
                 catch (Exception e)
