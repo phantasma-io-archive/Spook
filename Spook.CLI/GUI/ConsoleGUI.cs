@@ -82,6 +82,8 @@ namespace Phantasma.Spook.GUI
         {
             this.dispatcher = dispatcher;
             ready = true;
+            initializing = false;
+            redrawFlags |= RedrawFlags.Content | RedrawFlags.Logo | RedrawFlags.Prompt;
         }
 
         public override void Write(LogEntryKind kind, string msg)
