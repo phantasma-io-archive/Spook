@@ -553,10 +553,13 @@ namespace Phantasma.Spook
                 Terminate();
             };
 
+            var dispatcher = new CommandDispatcher();
+            SetupCommands(dispatcher);
+
             bool useSimulator = settings.GetBool("simulator.enabled", false);
-            if (useSimulator)
+            if (useSimulator && bootstrap)
             {
-                if (bootstrap)
+                new Thread(() =>
                 {
                     logger.Message("Initializing simulator...");
                     var simulator = new ChainSimulator(this.nexus, node_keys, 1234);
@@ -567,20 +570,22 @@ namespace Phantasma.Spook
                     }
 
                     NachoServer.InitNachoServer(nexus, simulator, node_keys, logger);
-                }
+                    MakeReady(dispatcher);
+                }).Start();
+                
             }
-
-            logger.Success("Node is ready");
-
-            var dispatcher = new CommandDispatcher();
-            SetupCommands(dispatcher);
-
-            if (gui != null)
+            else
             {
-                gui.MakeReady(dispatcher);
+                MakeReady(dispatcher);
             }
 
             this.Run();
+        }
+
+        private void MakeReady(CommandDispatcher dispatcher)
+        {
+            logger.Success("Node is ready");
+            gui?.MakeReady(dispatcher);
         }
 
         private void Mempool_OnTransactionFailed(Transaction tx)

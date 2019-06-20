@@ -212,11 +212,11 @@ namespace Phantasma.Spook.Nachomen
 
         private static void FillNachoMarket()
         {
-            Console.WriteLine("Filling initial market");
+            _logger.Message("Filling initial nacho market");
 
             var testUser        = KeyPair.Generate();
 
-            Console.WriteLine("token owner: " + _ownerKeys.Address.Text + " | test user: " + testUser.Address.Text);
+            //_logger.Message("token owner: " + _ownerKeys.Address.Text + " | test user: " + testUser.Address.Text);
 
             var nachoUser       = KeyPair.FromWIF("L3ydJBTWrKwRLZ5PxpygUnxkeJ4gxGHUDs3d3bDZkLTnB6Bpga87"); // => PGasVpbFYdu7qERihCsR22nTDQp1JwVAjfuJ38T8NtrCB
 
@@ -399,6 +399,8 @@ namespace Phantasma.Spook.Nachomen
                 }
 
                 var count = itemCounts[rarity];
+
+                _logger.Message($"Generating {count} {rarity} items...");
 
                 for (var i = 1; i <= count; i++)
                 {
