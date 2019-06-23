@@ -413,12 +413,12 @@ namespace Phantasma.Spook
 
             var settings = new Arguments(args);
 
+            /*
             for (int i = 0; i < 20; i++)
             {
                 var k = KeyPair.Generate();
                 Console.WriteLine(k.ToWIF() + " => " + k.Address.Text);
-            }
-
+            }*/
 
             var useGUI = settings.GetBool("gui.enabled", true);
 
