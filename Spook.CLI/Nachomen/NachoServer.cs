@@ -360,7 +360,7 @@ namespace Phantasma.Spook.Nachomen
                         ScriptUtils.
                             BeginScript().
                             AllowGas(nachoUser.Address, Address.Null, 1, 9999).
-                            CallContract("market", "SellToken", nachoUser.Address, wrestlerToken.Symbol, Nexus.FuelTokenSymbol, tokenID, price, endWrestlerAuctionDate).
+                            CallContract("market", "SellToken", nachoUser.Address, wrestlerToken.Symbol, Constants.NACHO_SYMBOL, tokenID, price, endWrestlerAuctionDate).
                             SpendGas(nachoUser.Address).
                             EndScript()
                     );
@@ -495,7 +495,7 @@ namespace Phantasma.Spook.Nachomen
                         ScriptUtils.
                             BeginScript().
                             AllowGas(nachoUser.Address, Address.Null, 1, 9999).
-                            CallContract("market", "SellToken", nachoUser.Address, itemToken.Symbol, Nexus.FuelTokenSymbol, tokenID, price, endItemAuctionDate).
+                            CallContract("market", "SellToken", nachoUser.Address, itemToken.Symbol, Constants.NACHO_SYMBOL, tokenID, price, endItemAuctionDate).
                             SpendGas(nachoUser.Address).
                             EndScript()
                     );
