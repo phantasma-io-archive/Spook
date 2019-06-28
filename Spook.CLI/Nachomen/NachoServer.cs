@@ -643,7 +643,6 @@ namespace Phantasma.Spook.Nachomen
             {
                 var wrestler = new NachoWrestler()
                 {
-                    auctionID = 0,
                     battleCount = 0,
                     comments = new string[0],
                     currentMojo = 10,
