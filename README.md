@@ -93,11 +93,15 @@ Below are instructions needed for the various operating systems supported.
 #Options: 'true' or 'false'
 #Enables or disables the RPC server
 
--rpc.enabled=
+-node.wif=
 #Key for the wallet - local test wallet is 'L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25'
 
 -nexus.name=
 #Name of the network - 'simnet' is the self contained network
+
+-gui.enabled=
+#Options: 'true' or 'false'
+#Enables or disables the graphic when running spook - enabled doesn't work well in a scripted start
 ```` 
 ### Ubuntu 18.04+
 
