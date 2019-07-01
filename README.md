@@ -15,6 +15,7 @@
 
 - [Description](#description)
 - [Node](#node)
+- [Node OS Support](#node-os-support)
 - [API](#api)
 - [Compiler](#compiler)
 - [Contributing](#contributing)
@@ -24,32 +25,203 @@
 
 ## Description
 
-Spook implements various Phantasma standard features in a single easy to use tool.
+Spook implements various Phantasma standard features in a single easy to use tool. These tools can be leveraged from the SDK allowing developers to setup a full Integrated Development Environment(IDE) locally. 
 
 To learn more about Phantasma, please read the [White Paper](https://phantasma.io/phantasma_whitepaper.pdf) and check the official repository.
 
+
 ## Node
+For development of Phantasma applications it is recommended you run a Phantasma node locally. It acts as your own personal blockchain network. The following instructions explain how to do this on Windows. Other operating systems are also supported and instructions can be found in the following section of this document.
 
-To development Phantasma applications it is recommended to run a Phantasma node locally.
+Note - For a development purposes you can keep your development Phantasma network running with just one node.  You can later move to the official test network where multiple nodes are running, in order to test your dapp under a more realistic enviroment.
 
-Get either a pre-compiled build of Phantasma-CLI which comes bundled in the official SDK release or compile yourself from the source available in the official [repository](https://github.com/phantasma-io/PhantasmaNode)
+To get started download a pre-compiled build which comes bundled in the official SDK release: https://github.com/phantasma-io/PhantasmaSDK/releases/latest - the files you need reside under Tools\Spook in the .zip file
 
 To bootstrap your own test net just run a single instance of Phantasma node using the following arguments:
+
+Note - you will need .NET runtime 2.2 or higher installed on your desktop https://dotnet.microsoft.com/download
+
 ```
 Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet
+#To enable the RPC server add this argument to the line above
+-rpc.enabled=true
 ```
 
-Note - For a development purposes you can keep your testnet Phantasma network running with just one node. 
+Otherwise you can compile the latest yourself from the source available in this repository.
 
-You can later move to the official test network where multiple nodes are running, in order to test your dapp under a more realistic enviroment.
+To compile and publish the source code for you will need the following:
+
+- A Windows PC that suports Visual Studio Community
+  - Can be obtained here: https://visualstudio.microsoft.com/downloads/
+- An installation of Visual Studio Community with the following extension
+  - .NET Desktop Development
+  
+Pull or download the following GitHub Repositories
+- PhantasmaChain [repository](https://github.com/phantasma-io/PhantasmaChain) 
+- PhantasmaSpook [repository](https://github.com/phantasma-io/PhantasmaSpook)
+
+Ensure both of these sit in the same root directory on your PC and are in folders that match the above. For example:
+- C:\<my code>\Phantasma\PhantasmaChain
+- C:\<my code>\Phantasma\PhantasmaSpook
+
+Build and publish the code
+- Open Visual Studio
+- Open the PhantasmaSpook\Spook.sln solution
+- Build the solution
+- Publish the Spook.CLI Project
+
+The files needed to run a node will now be in PhantasmaSpook\Phantasma.CLI\Publish
+
+As per above you can run it with the following command:
+
+```
+Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet
+#To enable the RPC server add this argument to the line above
+-rpc.enabled=true
+```
+
+## Node OS Support
+
+This section provides instructions on standing up a self-contained node for Phantasma on various operating systems. The dependencies installed as part of the below steps however will remain consistent and as such can serve as a basis for anyone who will later switch to running a Test or Main Network Node.
+
+Below are instructions needed for the various operating systems supported.
+
+### Runtime Paramaters
+
+````
+-rpc.enabled=
+#Options: 'true' or 'false'
+#Enables or disables the RPC server
+
+-rpc.enabled=
+#Key for the wallet - local test wallet is 'L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25'
+
+-nexus.name=
+#Name of the network - 'simnet' is the self contained network
+```` 
+### Ubuntu 18.04+
+
+- To find out your version of Ubuntu run this command in a terminal
+````
+lsb_release -a
+````
+- If it’s 18.04+ use these steps, if it is 19.04+ follow the steps in the 19.04+ section
+- Copy the compiled Spook files from the previous section to somewhere on the filesystem
+- Open a terminal and do the following to install .NET runtime
+
+````
+#Create the MS license
+wget -q https://packages.microsoft.com/config/ubuntu/18.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb 
+sudo dpkg -i packages-microsoft-prod.deb
+#Install the runtime
+sudo add-apt-repository universe
+sudo apt-get install apt-transport-https
+sudo apt-get update
+sudo apt-get install dotnet-runtime-2.2
+````
+-	If you get error like: Unable to locate package dotnet-runtime-2.2 – try the following
+
+````
+sudo dpkg --purge packages-microsoft-prod && sudo dpkg -i packages-microsoft-prod.deb 
+sudo apt-get update 
+sudo apt-get install dotnet-runtime-2.2
+````
+
+- In a terminal navigate to the location you placed the compiled contents of Spook
+- Then run the instance 
+
+````
+dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet -rpc.enabled=true
+#to disable the graphic in the terminal, add the following argument to the line above
+-gui.enabled=false
+````
+- An example shell script to execute the above and run it in the background as a process would is
+````
+#!/bin/bash
+dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet -rpc.enabled=true -gui.enabled=false &
+````
+
+### Ubuntu 19.04+
+
+- To find out your version of Ubuntu run this command in a terminal
+````
+lsb_release -a
+````
+
+- If it’s 19.04+ use these steps, if it is 18.04+ follow the steps in the 18.04+ section
+- Copy the compiled Spook files from the previous section to somewhere on the filesystem
+- Open a terminal and do the following to install .NET runtime
+
+````
+#create the MS license
+wget -q https://packages.microsoft.com/config/ubuntu/19.04/ -O packages-microsoft-prod.deb
+sudo dpkg -i packages-microsoft-prod.deb
+#Install the runtime
+sudo add-apt-repository universe
+sudo apt-get install apt-transport-https
+sudo apt-get update
+sudo apt-get install dotnet-runtime-2.2
+````
+
+- If you get error like: Unable to locate package dotnet-runtime-2.2 – try the following
+
+````
+sudo dpkg --purge packages-microsoft-prod && sudo dpkg -i packages-microsoft-prod.deb 
+sudo apt-get update 
+sudo apt-get install dotnet-runtime-2.2
+````
+- In a terminal navigate to the location you placed the compiled contents of Spook
+- Then run the instance
+````
+dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet -rpc.enabled=true
+#to disable the graphic in the terminal, add the following argument to the line above
+-gui.enabled=false  
+````
+### macOS 
+- Copy the compiled Spook files from the previous section to somewhere on the filesystem
+- Install .NET runtime
+https://dotnet.microsoft.com/download/thank-you/dotnet-runtime-2.2.5-macos-x64-installer
+- Open a terminal window
+- In a terminal navigate to the location you placed the compiled contents of Spook
+- Then run the instance
+````
+dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet -rpc.enabled=true
+#to disable the graphic in the terminal, add the following argument to the line above
+-gui.enabled=false 
+````
+
+### CentOS
+- Copy the compiled Spook files from the previous section to somewhere on the filesystem
+- Open a terminal and do the following to install .NET runtime
+
+````
+sudo rpm -Uvh https://packages.microsoft.com/config/rhel/7/packages-microsoft-prod.rpm
+sudo yum update
+sudo yum install dotnet-runtime-2.2
+````
+- In a terminal navigate to the location you placed the compiled contents of Spook
+- Then run the instance
+````
+dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet -rpc.enabled=true
+#to disable the graphic in the terminal, add the following argument to the line above
+-gui.enabled=false 
+````
+
+- An example shell script to execute the above and run it in the background as a process would is
+
+````
+#!/bin/bash
+dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet -rpc.enabled=true -gui.enabled=false &
+````
+
 
 ## API
 
 Spook can optionally expose a RPC-JSON API so that you can connect it to your Phantasma dapps.
 
-Documentation for this API can be found [here](/Docs).
+Documentation for this API can be found here: https://github.com/phantasma-io/PhantasmaSpook/tree/Nacho/Docs.
 
-To enable the API pass the following flag to Spook:
+To enable the API pass the following flag to the Spook node you stood up in previous sections - examples of full commands are in the sections above:
 
 ```
 -rpc.enabled=true
