@@ -139,7 +139,7 @@ dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 
 #to disable the graphic in the terminal, add the following argument to the line above
 -gui.enabled=false
 ````
-- An example shell script to execute the above and run it in the background as a process would is
+- An example shell script to execute the above and run it in the background as a process is
 ````
 #!/bin/bash
 dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet -rpc.enabled=true -gui.enabled=false &
@@ -211,7 +211,7 @@ dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 
 -gui.enabled=false 
 ````
 
-- An example shell script to execute the above and run it in the background as a process would is
+- An example shell script to execute the above and run it in the background as a process is
 
 ````
 #!/bin/bash
