@@ -28,7 +28,7 @@ namespace Phantasma.Spook.Nachomen
 
         private static Random _rnd = new Random();
 
-        private static BigInteger _lastItemID;
+        private static BigInteger _nextItemID;
 
         public static void InitNachoServer(Nexus nexus, ChainSimulator chainSimulator, KeyPair ownerKeys, Logger logger)
         {
@@ -367,13 +367,15 @@ namespace Phantasma.Spook.Nachomen
 
             // ITEMS
 
+            // TODO update items count values => assim fica em ciclo infinito a tentar minar estas quantidades de cada raridade
+            
             var itemCounts = new Dictionary<Rarity, int>
             {
                 [Rarity.Common]     = 16,
-                [Rarity.Uncommon]   = 12,
-                [Rarity.Rare]       = 8,
-                [Rarity.Epic]       = 2,
-                [Rarity.Legendary]  = 1
+                [Rarity.Uncommon]   = 0, // 12,
+                [Rarity.Rare]       = 0, //8,
+                [Rarity.Epic]       = 0, //2,
+                [Rarity.Legendary]  = 0, //1
             };
 
             logger.Message("Generating items for market...");
@@ -397,7 +399,7 @@ namespace Phantasma.Spook.Nachomen
 
                 for (var i = 1; i <= count; i++)
                 {
-                    var item        = DequeueItem(nexus, ownerKeys, rarity, logger);
+                    var item        = DequeueItem(rarity, logger);
                     var itemBytes   = item.Serialize();
 
                     var rand        = new Random();
@@ -587,55 +589,82 @@ namespace Phantasma.Spook.Nachomen
             }
         }
 
-        private static void MineRandomItems(Nexus nexus, KeyPair ownerKeys, int amount, Logger logger)
+        private static void MineRandomItems(int amount, Logger logger)
         {
             while (amount > 0)
             {
-                _lastItemID++;
+                _nextItemID++;
 
-                //var itemKind =  Formulas.GetItemKind(_lastItemID);
-                var itemKind = GetItem(nexus, ownerKeys, _lastItemID).kind;
+                //var itemKind = Formulas.GetItemKind(_lastItemID);
+                //var itemKind = GetItem(nexus, ownerKeys, _lastItemID).kind;
 
-                logger.Message("last item id: " + _lastItemID + " | kind: " + itemKind);
+                var itemKind = (ItemKind) (int)_nextItemID;
 
-                if (Rules.IsReleasedItem(itemKind))
+                logger.Message("next item id: " + _nextItemID + " | kind: " + itemKind + " | amount: " + amount);
+
+                if (_nextItemID > Enum.GetValues(typeof(ItemKind)).Length) break;
+
+                if (!Rules.IsReleasedItem(itemKind)) continue;
+
+                var item = new NachoItem()
                 {
-                    var item = new NachoItem()
-                    {
-                        flags       =  ItemFlags.None,
-                        location    = ItemLocation.None,
-                        wrestlerID  = 0
-                    };
+                    kind        = itemKind,
+                    flags       =  ItemFlags.None,
+                    location    = ItemLocation.None,
+                    wrestlerID  = 0
+                };
 
-                    var rarity = Rules.GetItemRarity(itemKind);
-                    EnqueueItem(item, rarity);
-                    amount--;
-                }
+                var rarity = Rules.GetItemRarity(itemKind);
+                EnqueueItem(item, rarity, logger);
+                amount--;
             }
         }
 
-        private static void EnqueueItem(NachoItem nachoItem, Rarity rarity)
+        private static void EnqueueItem(NachoItem nachoItem, Rarity rarity, Logger logger)
         {
-            Queue<NachoItem> queue;
+            //Queue<NachoItem> queue;
 
-            if (_itemQueue.ContainsKey(rarity))
+            //if (_itemQueue.ContainsKey(rarity))
+            //{
+            //    //logger.Message("ENQUEUE contains rarity: " + rarity + " | add item kind: " + nachoItem.kind);
+            //    queue = _itemQueue[rarity];
+            //}
+            //else
+            //{
+            //    //logger.Message("ENQUEUE NOT contains rarity: " + rarity + " | add item kind: " + nachoItem.kind);
+
+            //    queue = new Queue<NachoItem>();
+            //}
+
+            //queue.Enqueue(nachoItem);
+            //_itemQueue[rarity] = queue;
+            // ----------------------------
+
+            if (!_itemQueue.ContainsKey(rarity))
             {
-                queue = _itemQueue[rarity];
-            }
-            else
-            {
-                queue = new Queue<NachoItem>();
-                _itemQueue[rarity] = queue;
+                _itemQueue[rarity] = new Queue<NachoItem>();
             }
 
-            queue.Enqueue(nachoItem);
+            _itemQueue[rarity].Enqueue(nachoItem);
         }
 
-        private static NachoItem DequeueItem(Nexus nexus, KeyPair ownerKeys, Rarity rarity, Logger logger)
+        private static NachoItem DequeueItem(Rarity rarity, Logger logger)
         {
+            // TODO fix => isto fica em loop
+
+            //logger.Message("DEQUEUE item / rarity: " + rarity + " | item not contains: " + !_itemQueue.ContainsKey(rarity) + " | next item id: " + (int)_nextItemID);
+
             while (!_itemQueue.ContainsKey(rarity) || _itemQueue[rarity].Count == 0)
             {
-                MineRandomItems(nexus, ownerKeys, 10, logger);
+                //logger.Message("rarity: " + rarity + " | item not contains: " + !_itemQueue.ContainsKey(rarity));
+
+                //if (_itemQueue.ContainsKey(rarity))
+                //{
+                //    logger.Message("rarity: " + rarity + " | count: " + _itemQueue[rarity].Count);
+                //}
+
+                MineRandomItems(10, logger);
+                //MineRandomItems(Enum.GetValues(typeof(ItemKind)).Length - 1, logger);
             }
 
             return _itemQueue[rarity].Dequeue();
