@@ -27,7 +27,6 @@ using Phantasma.Network.P2P.Messages;
 
 using Logger = Phantasma.Core.Log.Logger;
 using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
-using Phantasma.IO;
 using System.Runtime.InteropServices;
 
 namespace Phantasma.Spook
@@ -450,7 +449,7 @@ namespace Phantasma.Spook
             // TODO increase this later
             int cacheSize = 32;
 
-            nexus = new Nexus(nexusName, genesisAddress, cacheSize, logger);
+            nexus = new Nexus(logger);
             if (wif != validatorWIFs[0])
             {
                 seeds.Add("127.0.0.1:7073");
@@ -582,7 +581,7 @@ namespace Phantasma.Spook
             }
 
             // make sure that all pending data is written to disk
-            DiskStore.FlushAll();
+            //DiskStore.FlushAll();
         }
 
         private void RegisterPlugin(IPlugin plugin)
