@@ -595,15 +595,22 @@ namespace Phantasma.Spook.Nachomen
         {
             var itemsCount = Enum.GetValues(typeof(ItemKind)).Length;
 
-            while (_nextItemID < itemsCount)
+            var nextItemId = 0;
+
+            // TODO fix este ciclo não vai até ao fim e não gera os items todos
+            while (nextItemId < itemsCount)
             {
-                _nextItemID++;
+                nextItemId++;
 
-                var itemKind = (ItemKind)(int)_nextItemID;
+                var itemKind = (ItemKind)nextItemId;
 
-                logger.Message("next item id: " + _nextItemID + " | kind: " + itemKind);
+                logger.Message("next item id: " + nextItemId + " | kind: " + itemKind);
 
-                if (!Rules.IsReleasedItem(itemKind)) continue;
+                if (!Rules.IsReleasedItem(itemKind))
+                {
+                    logger.Message("skip: " + itemKind);
+                    continue;
+                }
 
                 var item = new NachoItem()
                 {
