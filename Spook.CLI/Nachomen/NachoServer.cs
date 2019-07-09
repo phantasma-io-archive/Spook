@@ -34,7 +34,7 @@ namespace Phantasma.Spook.Nachomen
         {
             GenerateTokens(nexus, chainSimulator, ownerKeys, logger);
 
-            GenerateBotGenes(nexus, chainSimulator, ownerKeys, logger);
+            GenerateBotGenes(logger);
 
             //InitialNachoFill();
 
@@ -509,59 +509,56 @@ namespace Phantasma.Spook.Nachomen
             logger.Success("Nacho Market is ready!");
         }
 
-        private static void GenerateBotGenes(Nexus nexus, ChainSimulator chainSimulator, KeyPair ownerKeys, Logger logger)
+        private static void GenerateBotGenes(Logger logger)
         {
-            return;
+            logger.Message("Generate genes for bots");
 
-            Console.WriteLine("Generate genes for bots");
+            var rnd = new Random();
 
-            var rnd = new System.Random();
-
-            for (int n = 1; n <= 8; n++)
+            for (var n = 1; n <= 8; n++)
             {
                 var level = (PraticeLevel)n;
 
-                /*HashSet<WrestlingMove> wantedMoves;
+                HashSet<WrestlingMove> wantedMoves;
 
                 switch (level)
                 {
-                    case PraticeLevel.Wood: wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Bash }); break;
-                    case PraticeLevel.Iron: wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Block }); break;
-                    case PraticeLevel.Steel: wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Corkscrew }); break;
-                    case PraticeLevel.Silver: wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Bulk }); break;
-                    case PraticeLevel.Gold: wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Chicken_Wing}); break;
-                    case PraticeLevel.Ruby: wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Refresh }); break;
-                    case PraticeLevel.Emerald: wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Rhino_Charge }); break;
-                    case PraticeLevel.Diamond: wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Razor_Jab }); break;
-                    default: wantedMoves = new HashSet<WrestlingMove>(validMoves); break;
-                }*/
+                    case PraticeLevel.Wood:     wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Bash }); break;
+                    case PraticeLevel.Iron:     wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Block }); break;
+                    case PraticeLevel.Steel:    wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Corkscrew }); break;
+                    case PraticeLevel.Silver:   wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Bulk }); break;
+                    case PraticeLevel.Gold:     wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Chicken_Wing }); break;
+                    case PraticeLevel.Ruby:     wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Refresh }); break;
+                    case PraticeLevel.Emerald:  wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Rhino_Charge }); break;
+                    case PraticeLevel.Diamond:  wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Razor_Jab }); break;
+                    default:                    throw new ContractException("No wanted moves for the bot: " + level);
+                }
 
-                //level = PraticeLevel.Wood;
+                level = PraticeLevel.Wood;
                 Console.WriteLine("Mining bot: " + level);
 
-                //var genes = Luchador.MineBotGenes(rnd, level/*, wantedMoves*/);
+                var genes = Luchador.MineBotGenes(rnd, level/*, wantedMoves*/);
 
-                //for (int i = 0; i < genes.Length; i++)
+                //for (var i = 0; i < genes.Length; i++)
                 //{
-                //    Console.Write(genes[i] + ", ");
+                //    logger.Message(i + ", ");
                 //}
 
-                //var bb = Luchador.FromGenes(n, genes);
-                //var temp = bb.data;
-                //bb.data = temp;
+                var bb = Luchador.FromGenes(n, genes);
+                var temp = bb.data;
+                bb.data = temp;
 
-                //Console.WriteLine();
-                //Console.WriteLine(bb.Name);
-                ////Console.WriteLine("Kind: " + bb.Rarity);
-                ////Console.WriteLine("Head: " + bb.GetBodyPart(BodyPart.Head).Variation);
-                //Console.WriteLine("Primary Move: " + bb.PrimaryMove);
-                //Console.WriteLine("Secondary Move: " + bb.SecondaryMove);
-                //Console.WriteLine("Support Move: " + bb.TertiaryMove);
-                //Console.WriteLine("Stance Move: " + bb.StanceMove);
-                //Console.WriteLine("Base STA: " + bb.BaseStamina);
-                //Console.WriteLine("Base ATK: " + bb.BaseAttack);
-                //Console.WriteLine("Base DEF: " + bb.BaseDefense);
-                Console.WriteLine("------------------");
+                logger.Message(bb.Name);
+                //logger.Message("Kind: " + bb.Rarity);
+                //logger.Message("Head: " + bb.GetBodyPart(BodyPart.Head).Variation);
+                //logger.Message("Primary Move: " + bb.PrimaryMove);
+                //logger.Message("Secondary Move: " + bb.SecondaryMove);
+                //logger.Message("Support Move: " + bb.TertiaryMove);
+                //logger.Message("Stance Move: " + bb.StanceMove);
+                //logger.Message("Base STA: " + bb.BaseStamina);
+                //logger.Message("Base ATK: " + bb.BaseAttack);
+                //logger.Message("Base DEF: " + bb.BaseDefense);
+                //logger.Message("------------------");
             }
         }
 

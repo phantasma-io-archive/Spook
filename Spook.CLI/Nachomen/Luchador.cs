@@ -104,32 +104,14 @@ namespace Phantasma.Spook.Nachomen
 
             return MineGenes(rnd, x =>
             {
-                if (x.Rarity != Rarity.Bot)
-                {
-                    return false;
-                }
-
-                if (x.GetBodyPart(BodyPart.Head).Variation != headVariation)
-                {
-                    return false;
-                }
-
-                if (x.SkinHue != hue || x.SkinShade != shade)
-                {
-                    return false;
-                }
-
-                if (Math.Abs(x.BaseStamina - targetStat) > 1
-                 || Math.Abs(x.BaseAttack - targetStat) > 10
-                 || Math.Abs(x.BaseDefense - targetStat) > 10)
-                {
-                    return false;
-                }
-
-                if (x.BaseAttack < x.BaseStamina != isOdd)
-                {
-                    return false;
-                }
+                if ((x.Rarity != Rarity.Bot) ||
+                    (x.GetBodyPart(BodyPart.Head).Variation != headVariation) ||
+                    (x.SkinHue != hue || x.SkinShade != shade) ||
+                    (Math.Abs(x.BaseStamina - targetStat) > 1 || Math.Abs(x.BaseAttack - targetStat) > 10 || Math.Abs(x.BaseDefense - targetStat) > 10) ||
+                    (x.BaseAttack < x.BaseStamina != isOdd))
+                    {
+                        return false;
+                    }              
 
                 return true;
             },
