@@ -367,20 +367,21 @@ namespace Phantasma.Spook.Nachomen
 
             // ITEMS
 
-            // TODO update items count values => assim fica em ciclo infinito a tentar minar estas quantidades de cada raridade
-            
-            var itemCounts = new Dictionary<Rarity, int>
-            {
-                [Rarity.Common]     = 16,
-                [Rarity.Uncommon]   = 0, // 12,
-                [Rarity.Rare]       = 0, //8,
-                [Rarity.Epic]       = 0, //2,
-                [Rarity.Legendary]  = 0, //1
-            };
-
             logger.Message("Generating items for market...");
 
-            foreach (var rarity in itemCounts.Keys)
+            //var itemCounts = new Dictionary<Rarity, int>
+            //{
+            //    [Rarity.Common]     = 16,
+            //    [Rarity.Uncommon]   = 12,
+            //    [Rarity.Rare]       = 8,
+            //    [Rarity.Epic]       = 2,
+            //    [Rarity.Legendary]  = 1
+            //};
+
+            MineItems(logger);
+
+            //foreach (var rarity in itemCounts.Keys)
+            foreach (var rarity in _itemQueue.Keys)
             {
                 if (rarity == Rarity.Legendary)
                 {
@@ -393,7 +394,8 @@ namespace Phantasma.Spook.Nachomen
                     _legendaryItemDelay = 10;
                 }
 
-                var count = itemCounts[rarity];
+                //var count = itemCounts[rarity];
+                var count = _itemQueue[rarity].Count;
 
                 logger.Message($"Generating {count} {rarity} items...");
 
@@ -589,6 +591,36 @@ namespace Phantasma.Spook.Nachomen
             }
         }
 
+        /// <summary>
+        /// Mine all released items. One item of each kind
+        /// </summary>
+        private static void MineItems(Logger logger)
+        {
+            var itemsCount = Enum.GetValues(typeof(ItemKind)).Length;
+
+            while (_nextItemID < itemsCount)
+            {
+                _nextItemID++;
+
+                var itemKind = (ItemKind)(int)_nextItemID;
+
+                logger.Message("next item id: " + _nextItemID + " | kind: " + itemKind);
+
+                if (!Rules.IsReleasedItem(itemKind)) continue;
+
+                var item = new NachoItem()
+                {
+                    kind        = itemKind,
+                    flags       = ItemFlags.None,
+                    location    = ItemLocation.None,
+                    wrestlerID  = 0
+                };
+
+                var rarity = Rules.GetItemRarity(itemKind);
+                EnqueueItem(item, rarity, logger);
+            }
+        }
+
         private static void MineRandomItems(int amount, Logger logger)
         {
             while (amount > 0)
@@ -622,6 +654,9 @@ namespace Phantasma.Spook.Nachomen
 
         private static void EnqueueItem(NachoItem nachoItem, Rarity rarity, Logger logger)
         {
+            // -------------------------
+            // Old code
+
             //Queue<NachoItem> queue;
 
             //if (_itemQueue.ContainsKey(rarity))
@@ -638,6 +673,7 @@ namespace Phantasma.Spook.Nachomen
 
             //queue.Enqueue(nachoItem);
             //_itemQueue[rarity] = queue;
+
             // ----------------------------
 
             if (!_itemQueue.ContainsKey(rarity))
@@ -650,8 +686,6 @@ namespace Phantasma.Spook.Nachomen
 
         private static NachoItem DequeueItem(Rarity rarity, Logger logger)
         {
-            // TODO fix => isto fica em loop
-
             //logger.Message("DEQUEUE item / rarity: " + rarity + " | item not contains: " + !_itemQueue.ContainsKey(rarity) + " | next item id: " + (int)_nextItemID);
 
             while (!_itemQueue.ContainsKey(rarity) || _itemQueue[rarity].Count == 0)
