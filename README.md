@@ -217,8 +217,40 @@ dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 
 #!/bin/bash
 dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet -rpc.enabled=true -gui.enabled=false &
 ````
+### Running in a screen - Linux
 
+- For running for extended periods it makes sense to use a persistant screen so you can check the output whenever you like:
+- Check if you have screen installed
+````
+screen --version
+````
+- If you don't do the following in debian
+````	
+ sudo apt install screen
+````
+CentOS/Fedora
+````	
+ sudo yum install screen
+````
+To run in a screen
+````
+screen -S SpeckyRules
+./go specky.sh
+````
+- My shell script from above FYI looks like this
+````
+#!/bin/bash
+dotnet ./Phantasma/Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet -rpc.enabled=true -gui.enabled=false &
+````
 
+To list screens
+````
+screen -ls
+````
+To reconnect to the screen
+````
+screen -d -r <number of screen from previous command>
+````
 ## API
 
 Spook can optionally expose a RPC-JSON API so that you can connect it to your Phantasma dapps.
@@ -237,10 +269,15 @@ Spook comes with a builtin Phantasma smart contract assembler and compiler.
 
 More languages will be available later.
 
-Language 		| Status
-:---------------------- | 
-C# 		| In Development (30%) 
-Solidity 		| In Development (25%) 
+Language 		| Core Library	| Smart Compiler | Sample Dapps
+:---------------------- | :------------| :------------| :------------
+[.NET / C#](/C#) 		| Beta | In Development | Yes
+[PHP](/PHP) 		| Beta | N/A | Yes |
+[Python](/Python) 		| Beta | Planned | In Development |
+[Golang](/Go) 		| Beta | Planned | In Development |
+[Javascript](/JS) 		| Alpha | Planned | In Development |
+[C++](/C++) 		| Alpha | Planned | In Development |
+[Java](/Java) 		| Alpha | Planned | In Development |
 
 
 ## Contributing
