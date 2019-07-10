@@ -34,7 +34,7 @@ namespace Phantasma.Spook.Nachomen
         {
             GenerateTokens(nexus, chainSimulator, ownerKeys, logger);
 
-            GenerateBotGenes(logger);
+            GenerateBotGenes(ownerKeys.Address, logger);
 
             //InitialNachoFill();
 
@@ -509,7 +509,7 @@ namespace Phantasma.Spook.Nachomen
             logger.Success("Nacho Market is ready!");
         }
 
-        private static void GenerateBotGenes(Logger logger)
+        private static void GenerateBotGenes(Address owner, Logger logger)
         {
             logger.Message("Generate genes for bots");
 
@@ -537,14 +537,14 @@ namespace Phantasma.Spook.Nachomen
                 level = PraticeLevel.Wood;
                 logger.Message("Mining bot: " + level);
 
-                var genes = Luchador.MineBotGenes(rnd, level/*, wantedMoves*/);
+                var genes = Luchador.MineBotGenes(owner, rnd, level/*, wantedMoves*/);
 
                 //for (var i = 0; i < genes.Length; i++)
                 //{
                 //    logger.Message(i + ", ");
                 //}
 
-                var bb = Luchador.FromGenes(n, genes);
+                var bb = Luchador.FromGenes(n, owner,  genes);
                 var temp = bb.data;
                 bb.data = temp;
 
@@ -711,7 +711,7 @@ namespace Phantasma.Spook.Nachomen
                     currentMojo = 10,
                     experience = 10000,
                     flags = WrestlerFlags.None,
-                    genes = Luchador.MineGenes(_rnd, null),
+                    genes = Luchador.MineGenes(ownerKey.Address, _rnd, null),
                     gymBoostAtk = byte.MaxValue,
                     gymBoostDef = byte.MaxValue,
                     gymBoostStamina = byte.MaxValue,
@@ -725,7 +725,6 @@ namespace Phantasma.Spook.Nachomen
                     mojoTime = 0,
                     moveOverrides = new byte[0],
                     nickname = string.Empty,
-                    owner = ownerKey.Address,
                     perfumeTime = 0,
                     praticeLevel = PraticeLevel.Gold,
                     roomTime = 0,
@@ -740,7 +739,7 @@ namespace Phantasma.Spook.Nachomen
                     us3 = byte.MaxValue
                 };
 
-                var luchador = Luchador.FromData(1, wrestler);
+                var luchador = Luchador.FromData(1, ownerKey.Address, wrestler);
 
                 if (WrestlerValidation.IsValidWrestler(luchador))
                 {
@@ -1071,7 +1070,6 @@ namespace Phantasma.Spook.Nachomen
 
             var bot = new NachoWrestler()
             {
-                owner           = ownerKeys.Address,
                 genes           = genes,
                 experience      = Constants.EXPERIENCE_MAP[level],
                 nickname        = "",

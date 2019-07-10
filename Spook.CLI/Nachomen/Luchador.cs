@@ -36,7 +36,7 @@ namespace Phantasma.Spook.Nachomen
     public class Luchador : ICollectable
     {
         public BigInteger ID { get; private set; }
-        public Address Owner => data.owner;
+        public Address Owner { get; private set; }
 
         public bool IsTransferable => !data.flags.HasFlag(WrestlerFlags.Locked);
 
@@ -59,6 +59,7 @@ namespace Phantasma.Spook.Nachomen
         {
             var otherLuchador = (Luchador)other;
             this.ID = otherLuchador.ID;
+            this.Owner = otherLuchador.Owner;
             this.data = otherLuchador.data;
         }
 
@@ -72,14 +73,15 @@ namespace Phantasma.Spook.Nachomen
 
         private readonly Dictionary<BodyPart, LuchadorPiece> _elements = new Dictionary<BodyPart, LuchadorPiece>();
 
-        private Luchador(BigInteger ID)
+        private Luchador(BigInteger ID, Address owner)
         {
-            this.ID = ID;
+            this.ID     = ID;
+            this.Owner  = owner;
         }
 
-        public static Luchador FromID(BigInteger ID)
+        public static Luchador FromID(BigInteger ID, Address owner)
         {
-            return new Luchador(ID);
+            return new Luchador(ID, owner);
         }
 
         public string GetTier()
@@ -87,7 +89,7 @@ namespace Phantasma.Spook.Nachomen
             return Rarity.ToString().ToLower();
         }
 
-        public static byte[] MineBotGenes(Random rnd, PraticeLevel level)
+        public static byte[] MineBotGenes(Address owner, Random rnd, PraticeLevel level)
         {
             Hue hue;
             sbyte shade;
@@ -102,7 +104,7 @@ namespace Phantasma.Spook.Nachomen
 
             //var movesList = allowedMoves != null ? allowedMoves.ToArray() : null;
 
-            return MineGenes(rnd, x =>
+            return MineGenes(owner, rnd, x =>
             {
                 if ((x.Rarity != Rarity.Bot) ||
                     (x.GetBodyPart(BodyPart.Head).Variation != headVariation) ||
@@ -305,10 +307,10 @@ namespace Phantasma.Spook.Nachomen
         public int Attack => (int)Formulas.CalculateWrestlerStat(this.Level, BaseAttack, data.gymBoostAtk);
         public int Defense => (int)Formulas.CalculateWrestlerStat(this.Level, BaseDefense, data.gymBoostDef);
 
-        public static byte[] MineGenes(Random rnd, Func<Luchador, bool> filter, Action<byte[]> geneSplicer = null, int limit = 0)
+        public static byte[] MineGenes(Address owner, Random rnd, Func<Luchador, bool> filter, Action<byte[]> geneSplicer = null, int limit = 0)
         {
             int amount = 0;
-            var luchador = new Luchador(Constants.BASE_LUCHADOR_ID);
+            var luchador = new Luchador(Constants.BASE_LUCHADOR_ID, owner);
             do
             {
                 var temp = luchador.data;
@@ -367,26 +369,26 @@ namespace Phantasma.Spook.Nachomen
             return true;
         }
 
-        public static Luchador FromGenes(BigInteger n, byte[] genes)
+        public static Luchador FromGenes(BigInteger n, Address owner, byte[] genes)
         {
-            var luchador = new Luchador(n);
+            var luchador = new Luchador(n, owner);
             var data = new NachoWrestler();
             data.genes = genes;
             luchador.data = data;
             return luchador;
         }
 
-        public static Luchador FromData(BigInteger n, NachoWrestler data)
+        public static Luchador FromData(BigInteger n, Address owner, NachoWrestler data)
         {
-            var luchador = new Luchador(n);
-            luchador.data = data;
+            var luchador = new Luchador(n, owner) {data = data};
+
             return luchador;
         }
 
 
-        public static byte[] MineGenes(Random rnd, Rarity rarity)
+        public static byte[] MineGenes(Address owner, Random rnd, Rarity rarity)
         {
-            return MineGenes(rnd, x => x.Rarity == rarity);
+            return MineGenes(owner, rnd, x => x.Rarity == rarity);
         }
 
         public static byte[] GenerateGenes(Random rnd)
