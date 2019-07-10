@@ -537,14 +537,14 @@ namespace Phantasma.Spook.Nachomen
                 level = PraticeLevel.Wood;
                 logger.Message("Mining bot: " + level);
 
-                var genes = Luchador.MineBotGenes(owner, rnd, level/*, wantedMoves*/);
+                var genes = Luchador.MineBotGenes(rnd, level/*, wantedMoves*/);
 
                 //for (var i = 0; i < genes.Length; i++)
                 //{
                 //    logger.Message(i + ", ");
                 //}
 
-                var bb = Luchador.FromGenes(n, owner,  genes);
+                var bb = Luchador.FromGenes(n, genes);
                 var temp = bb.data;
                 bb.data = temp;
 
@@ -711,7 +711,7 @@ namespace Phantasma.Spook.Nachomen
                     currentMojo = 10,
                     experience = 10000,
                     flags = WrestlerFlags.None,
-                    genes = Luchador.MineGenes(ownerKey.Address, _rnd, null),
+                    genes = Luchador.MineGenes(_rnd, null),
                     gymBoostAtk = byte.MaxValue,
                     gymBoostDef = byte.MaxValue,
                     gymBoostStamina = byte.MaxValue,
