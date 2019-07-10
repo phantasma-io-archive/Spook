@@ -535,7 +535,7 @@ namespace Phantasma.Spook.Nachomen
                 }
 
                 level = PraticeLevel.Wood;
-                Console.WriteLine("Mining bot: " + level);
+                logger.Message("Mining bot: " + level);
 
                 var genes = Luchador.MineBotGenes(rnd, level/*, wantedMoves*/);
 
@@ -593,34 +593,26 @@ namespace Phantasma.Spook.Nachomen
         /// </summary>
         private static void MineItems(Logger logger)
         {
-            var itemsCount = Enum.GetValues(typeof(ItemKind)).Length;
-
-            var nextItemId = 0;
-
             // TODO fix este ciclo não vai até ao fim e não gera os items todos
-            while (nextItemId < itemsCount)
+            var itemValues = Enum.GetValues(typeof(ItemKind)).Cast<ItemKind>().ToArray();
+            foreach (var kind in itemValues)
             {
-                nextItemId++;
-
-                var itemKind = (ItemKind)nextItemId;
-
-                logger.Message("next item id: " + nextItemId + " | kind: " + itemKind);
-
-                if (!Rules.IsReleasedItem(itemKind))
+                if (!Rules.IsReleasedItem(kind))
                 {
-                    logger.Message("skip: " + itemKind);
+                    logger.Message("skip: " + kind);
                     continue;
                 }
 
+                logger.Message("generated item: " + kind);
                 var item = new NachoItem()
                 {
-                    kind        = itemKind,
+                    kind        = kind,
                     flags       = ItemFlags.None,
                     location    = ItemLocation.None,
                     wrestlerID  = 0
                 };
 
-                var rarity = Rules.GetItemRarity(itemKind);
+                var rarity = Rules.GetItemRarity(kind);
                 EnqueueItem(item, rarity, logger);
             }
         }
