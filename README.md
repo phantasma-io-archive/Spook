@@ -200,7 +200,7 @@ dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 
 ````
 
 ### CentOS
-- DO NOT DO THIS AS ROOT
+- DO NOT DO THIS AS ROOT!
 - Copy the compiled Spook files from the previous section to somewhere on the filesystem
 - Open a terminal and do the following to install .NET runtime
 
