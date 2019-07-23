@@ -84,7 +84,7 @@ namespace Phantasma.Spook.Modules
                 CallContract("token", "TransferTokens", source.Address, dest, tokenSymbol, amount).
                 SpendGas(source.Address).
                 EndScript();
-            var tx = new Transaction("simnet", "main", script, Timestamp.Now + TimeSpan.FromMinutes(5));
+            var tx = new Transaction(api.Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5));
             tx.Sign(source);
             var rawTx = tx.ToByteArray(true);
 
@@ -166,7 +166,7 @@ namespace Phantasma.Spook.Modules
                 CallContract("energy", "Stake", source.Address, dest, amount).
                 SpendGas(source.Address).
                 EndScript();
-            var tx = new Transaction("simnet", "main", script, Timestamp.Now + TimeSpan.FromMinutes(5));
+            var tx = new Transaction(api.Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5));
             tx.Sign(source);
             var rawTx = tx.ToByteArray(true);
 
