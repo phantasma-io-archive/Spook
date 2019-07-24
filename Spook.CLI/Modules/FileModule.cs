@@ -34,7 +34,7 @@ namespace Phantasma.Spook.Modules
             }
 
             var fileContent = File.ReadAllBytes(filePath);
-            var contentMerkle = new MerkleTree(fileContent, Archive.BlockSize);
+            var contentMerkle = new MerkleTree(fileContent);
 
             var fileName = Path.GetFileName(filePath);
 
