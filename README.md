@@ -31,9 +31,7 @@ To learn more about Phantasma, please read the [White Paper](https://phantasma.i
 
 
 ## Node
-For development of Phantasma applications it is recommended you run a Phantasma node locally. It acts as your own personal blockchain network. The following instructions explain how to do this on Windows. Other operating systems are also supported and instructions can be found in the following section of this document.
-
-Note - For a development purposes you can keep your development Phantasma network running with just one node.  You can later move to the official test network where multiple nodes are running, in order to test your dapp under a more realistic enviroment.
+For development of Phantasma applications it is recommended you run a Phantasma node locally. It acts as your own personal blockchain network. The following instructions explain how to do this on Windows. Other operating systems are also supported and instructions can be found in the following section of this document. You can later move to the official test network where multiple nodes are running, in order to test your dapp under a more realistic enviroment.
 
 To get started download a pre-compiled build which comes bundled in the official SDK release: https://github.com/phantasma-io/PhantasmaSDK/releases/latest - the files you need reside under Tools\Spook in the .zip file
 
@@ -102,9 +100,15 @@ Below are instructions needed for the various operating systems supported.
 -gui.enabled=
 #Options: 'true' or 'false'
 #Enables or disables the graphic when running spook - enabled doesn't work well in a scripted start
+
+-simulator.enabled=
+#Options: 'true' or 'false'
+#Utilised when supporting Nachomen - Luchedores get ready for action in the startup when enabled
 ```` 
+
 ### Ubuntu 18.04+
 
+- DO NOT DO THIS AS ROOT!
 - To find out your version of Ubuntu run this command in a terminal
 ````
 lsb_release -a
@@ -147,6 +151,7 @@ dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 
 
 ### Ubuntu 19.04+
 
+- DO NOT DO THIS AS ROOT!
 - To find out your version of Ubuntu run this command in a terminal
 ````
 lsb_release -a
@@ -195,6 +200,7 @@ dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 
 ````
 
 ### CentOS
+- DO NOT DO THIS AS ROOT!
 - Copy the compiled Spook files from the previous section to somewhere on the filesystem
 - Open a terminal and do the following to install .NET runtime
 
