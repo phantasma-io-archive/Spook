@@ -275,8 +275,8 @@ namespace Phantasma.Spook.Nachomen
                     Assert.IsTrue(!ownedTokenList.Any(), "How does the sender already have a Wrestler Token?");
 
                     // Mint a new Wrestler Token directly on the user
-                    var tokenROM = wrestlerBytes;
-                    var tokenRAM = new byte[0];
+                    var tokenROM = new byte[0];     //wrestlerBytes;
+                    var tokenRAM = wrestlerBytes;   //new byte[0];
 
                     chainSimulator.BeginBlock();
                     var mintTx = chainSimulator.MintNonFungibleToken(ownerKeys, testUser.Address, Constants.WRESTLER_SYMBOL, tokenROM, tokenRAM, 0);
@@ -416,8 +416,8 @@ namespace Phantasma.Spook.Nachomen
                     Assert.IsTrue(!ownedTokenList.Any(), "How does the sender already have a Item Token?");
 
                     // Mint a new Item Token directly on the user
-                    var tokenROM = itemBytes;
-                    var tokenRAM = new byte[0];
+                    var tokenROM = new byte[0]; //itemBytes;
+                    var tokenRAM = itemBytes;   //new byte[0];
 
                     chainSimulator.BeginBlock();
                     var mintTx = chainSimulator.MintNonFungibleToken(ownerKeys, testUser.Address, Constants.ITEM_SYMBOL, tokenROM, tokenRAM, 0);
