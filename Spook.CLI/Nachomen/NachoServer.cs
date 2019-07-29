@@ -730,13 +730,7 @@ namespace Phantasma.Spook.Nachomen
                     roomTime = 0,
                     score = 0,
                     stakeAmount = 0,
-                    trainingStat = StatKind.None,
-                    ua1 = byte.MaxValue,
-                    ua2 = byte.MaxValue,
-                    ua3 = byte.MaxValue,
-                    us1 = byte.MaxValue,
-                    us2 = byte.MaxValue,
-                    us3 = byte.MaxValue
+                    trainingStat = StatKind.None
                 };
 
                 var luchador = Luchador.FromData(1, ownerKey.Address, wrestler);
@@ -869,22 +863,6 @@ namespace Phantasma.Spook.Nachomen
                 //{
                 //    wrestler.itemID = 0;
                 //}
-            }
-
-            if (wrestler.us1 > 0 || wrestler.us2 > 0 || wrestler.us3 > 0)
-            {
-                IncreaseWrestlerEV(ref wrestler, StatKind.Stamina, wrestler.us1 + wrestler.us2 + wrestler.us3);
-                wrestler.us1 = 0;
-                wrestler.us2 = 0;
-                wrestler.us3 = 0;
-            }
-
-            if (wrestler.ua1 > 0 || wrestler.ua2 > 0 || wrestler.ua3 > 0)
-            {
-                IncreaseWrestlerEV(ref wrestler, StatKind.Attack, wrestler.ua1 + wrestler.ua2 + wrestler.ua3);
-                wrestler.ua1 = 0;
-                wrestler.ua2 = 0;
-                wrestler.ua3 = 0;
             }
 
             if (!IsValidMaskOverride(wrestler))
@@ -1077,7 +1055,7 @@ namespace Phantasma.Spook.Nachomen
                 location        = WrestlerLocation.None,
                 itemID          = botItemID,
                 comments        = new string[Constants.LUCHADOR_COMMENT_MAX],
-                moveOverrides   = new byte[Constants.MOVE_OVERRIDE_COUNT],
+                moveOverrides   = new byte[Constants.MOVE_OVERRIDE_COUNT],                
             };
 
             bot.comments[Constants.LUCHADOR_COMMENT_INTRO] = introText;

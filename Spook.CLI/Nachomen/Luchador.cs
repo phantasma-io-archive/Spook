@@ -315,10 +315,7 @@ namespace Phantasma.Spook.Nachomen
                 var temp = luchador.data;
                 var genes = GenerateGenes(rnd);
 
-                if (geneSplicer != null)
-                {
-                    geneSplicer(genes);
-                }
+                geneSplicer?.Invoke(genes);
 
                 temp.genes = genes;
 
