@@ -3,6 +3,8 @@ using System.Net.Sockets;
 using System.Linq;
 using System.Collections.Generic;
 using System.Threading;
+using System.Reflection;
+using System.IO;
 
 using LunarLabs.Parser.JSON;
 using LunarLabs.WebServer.Core;
@@ -24,15 +26,16 @@ using Phantasma.CodeGen.Assembler;
 using Phantasma.VM.Utils;
 using Phantasma.Core;
 using Phantasma.Network.P2P.Messages;
-
+using Phantasma.Spook.Nachomen;
+using Phantasma.Storage;
 using Logger = Phantasma.Core.Log.Logger;
 using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
-using System.Runtime.InteropServices;
+using System.Globalization;
 
 namespace Phantasma.Spook
 {
     [AttributeUsage(AttributeTargets.Class)]
-    public class ModuleAttribute: Attribute
+    public class ModuleAttribute : Attribute
     {
         public readonly string Name;
 
@@ -61,7 +64,25 @@ namespace Phantasma.Spook
             "L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25", //P2f7ZFuj6NfZ76ymNMnG3xRBT5hAMicDrQRHE4S7SoxEr
             "L1sEB8Z6h5Y7aQKqxbAkrzQLY5DodmPacjqSkFPmcR82qdmHEEdY", // PGBinkbZA3Q6BxMnL2HnJSBubNvur3iC6GtQpEThDnvrr
             "KxWUCAD2wECLfA7diT7sV7V3jcxAf9GSKqZy3cvAt79gQLHQ2Qo8", // PDiqQHDwe6MTcP6TH6DYjq7FTUouvy2YEkDXz2chCABCb
-        };
+            "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
+    };
 
         private readonly Node node;
         private readonly Logger logger;
@@ -225,7 +246,7 @@ namespace Phantasma.Spook
                 {
                     txs.Clear();
 
-                    
+
                     if (returnPhase)
                     {
                         foreach (var target in addressList)
@@ -242,7 +263,7 @@ namespace Phantasma.Spook
                         shouldConfirm = true;
                     }
                     else
-                    { 
+                    {
                         amount -= fee * 2 * addressesListSize;
                         if (amount <= 0)
                         {
@@ -253,7 +274,7 @@ namespace Phantasma.Spook
                         {
                             var target = KeyPair.Generate();
                             addressList.Add(target);
-                       
+
                             var script = ScriptUtils.BeginScript().AllowGas(peerKey.Address, Address.Null, 1, 9999).TransferTokens("SOUL", peerKey.Address, target.Address, 1 + fee).SpendGas(peerKey.Address).EndScript();
                             var tx = new Transaction("simnet", "main", script, Timestamp.Now + TimeSpan.FromMinutes(30));
                             tx.Sign(peerKey);
@@ -341,7 +362,7 @@ namespace Phantasma.Spook
 
             logger.Message($"Estimated amount per thread: {UnitConversion.ToDecimal(initialAmount, Nexus.FuelTokenDecimals)} SOUL");
 
-            for (int i=1; i<= threadCount; i++)
+            for (int i = 1; i <= threadCount; i++)
             {
                 logger.Message($"Starting thread #{i}...");
                 try
@@ -349,7 +370,8 @@ namespace Phantasma.Spook
                     new Thread(() => { SenderSpawn(i, masterKeys, host, initialAmount, addressesListSize); }).Start();
                     Thread.Sleep(200);
                 }
-                catch (Exception e) {
+                catch (Exception e)
+                {
                     logger.Error(e.ToString());
                     break;
                 }
@@ -382,10 +404,21 @@ namespace Phantasma.Spook
             }
         }
 
-        public CLI(string[] args) { 
+        public CLI(string[] args)
+        {
+            var culture = new CultureInfo("en-US");
+            CultureInfo.DefaultThreadCurrentCulture = culture;
+
             var seeds = new List<string>();
 
             var settings = new Arguments(args);
+
+            /*
+            for (int i = 0; i < 20; i++)
+            {
+                var k = KeyPair.Generate();
+                Console.WriteLine(k.ToWIF() + " => " + k.Address.Text);
+            }*/
 
             var useGUI = settings.GetBool("gui.enabled", true);
 
@@ -408,7 +441,6 @@ namespace Phantasma.Spook
             string wif = settings.GetString("node.wif");
 
             var nexusName = settings.GetString("nexus.name", "simnet");
-            var genesisAddress = Address.FromText(settings.GetString("nexus.genesis", KeyPair.FromWIF(validatorWIFs[0]).Address.Text));
 
             switch (mode)
             {
@@ -429,7 +461,7 @@ namespace Phantasma.Spook
             }
 
             int defaultPort = 0;
-            for (int i=0; i<validatorWIFs.Length; i++)
+            for (int i = 0; i < validatorWIFs.Length; i++)
             {
                 if (validatorWIFs[i] == wif)
                 {
@@ -443,15 +475,56 @@ namespace Phantasma.Spook
             }
 
             int port = settings.GetInt("node.port", defaultPort);
+            var defaultStoragePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/Storage";
+            var storagePath = settings.GetString("storage.path", defaultStoragePath);
+            storagePath = storagePath.Replace("\\", "/");
+            if (!storagePath.EndsWith('/'))
+            {
+                storagePath += '/';
+            }
+
+            var storageFix = settings.GetBool("storage.fix", false);
+
+            // TODO remove this later
+            if (storageFix)
+            {
+                if (Directory.Exists(storagePath))
+                {
+                    logger.Warning("Storage fix enabled... Cleaning up all storage...");
+                    var di = new DirectoryInfo(storagePath);
+                    foreach (FileInfo file in di.EnumerateFiles())
+                    {
+                        file.Delete();
+                    }
+                }
+            }
+
+            logger.Message("Storage path: " + storagePath);
 
             var node_keys = KeyPair.FromWIF(wif);
 
-            // TODO increase this later
-            int cacheSize = 32;
+            nexus = new Nexus(logger, (name) => new BasicDiskStore(storagePath + name + ".txt"));
 
-            nexus = new Nexus(logger);
-            if (wif != validatorWIFs[0])
+            bool bootstrap = false;
+
+            if (wif == validatorWIFs[0])
             {
+                if (!nexus.Ready)
+                {
+                    logger.Debug("Boostraping nexus...");
+                    bootstrap = true;
+                    if (!nexus.CreateGenesisBlock(nexusName, node_keys, Timestamp.Now))
+                    {
+                        throw new ChainException("Genesis block failure");
+                    }
+
+                    logger.Debug("Genesis block created: " + nexus.GenesisHash);
+                }
+            }
+            else
+            {
+                //nexus = new Nexus(nexusName, genesisAddress, logger);
+                nexus = new Nexus(logger);
                 seeds.Add("127.0.0.1:7073");
             }
 
@@ -461,18 +534,10 @@ namespace Phantasma.Spook
             nexus.AddPlugin(new AddressTransactionsPlugin());
             nexus.AddPlugin(new UnclaimedTransactionsPlugin());
 
-            /*if (simulator != null)
-            {
-                for (int i = 0; i < 100; i++)
-                {
-                    simulator.GenerateRandomBlock();
-                }
-            }*/
-
             running = true;
 
             // mempool setup
-            int blockTime = settings.GetInt("node.blocktime", Mempool.MinimumBlockTime);            
+            int blockTime = settings.GetInt("node.blocktime", Mempool.MinimumBlockTime);
             this.mempool = new Mempool(node_keys, nexus, blockTime);
             mempool.Start(ThreadPriority.AboveNormal);
 
@@ -500,49 +565,71 @@ namespace Phantasma.Spook
                 restServer.Start(ThreadPriority.AboveNormal);
             }
 
-            /*if (simulator != null && settings.GetBool("simulator", false))
-            {
-                new Thread(() =>
-                {
-                    Thread.CurrentThread.IsBackground = true;
-                    while (running)
-                    {
-                        Thread.Sleep(Mempool.MinimumBlockTime + 1000);
-                        simulator.CurrentTime = Timestamp.Now;
-                        simulator.GenerateRandomBlock(mempool);
-                    }
-                }).Start();
-            }*/
-
             // node setup
-            this.node = new Node(nexus, mempool, node_keys, port, seeds, logger);           
+            this.node = new Node(nexus, mempool, node_keys, port, seeds, logger);
             node.Start();
 
-            int pluginPeriod = settings.GetInt("plugin.refresh", 1); // in seconds
-            RegisterPlugin(new TPSPlugin(logger, pluginPeriod));
-            RegisterPlugin(new RAMPlugin(logger, pluginPeriod));
-            RegisterPlugin(new MempoolPlugin(mempool, logger, pluginPeriod));
+            if (gui != null)
+            {
+                int pluginPeriod = settings.GetInt("plugin.refresh", 1); // in seconds
+                RegisterPlugin(new TPSPlugin(logger, pluginPeriod));
+                RegisterPlugin(new RAMPlugin(logger, pluginPeriod));
+                RegisterPlugin(new MempoolPlugin(mempool, logger, pluginPeriod));
+            }
 
             Console.CancelKeyPress += delegate {
                 Terminate();
             };
 
-            logger.Success("Node is ready");
-
             var dispatcher = new CommandDispatcher();
             SetupCommands(dispatcher);
 
-            if (gui != null)
+            bool useSimulator = settings.GetBool("simulator.enabled", false);
+            if (useSimulator && bootstrap)
             {
-                gui.MakeReady(dispatcher);
+                new Thread(() =>
+                {
+                    logger.Message("Initializing simulator...");
+                    var simulator = new ChainSimulator(this.nexus, node_keys, 1234);
+
+                    logger.Message("Bootstrapping validators");
+                    simulator.BeginBlock();
+                    for (int i = 1; i < validatorWIFs.Length; i++)
+                    {
+                        simulator.GenerateTransfer(node_keys, Address.FromWIF(validatorWIFs[i]), this.nexus.RootChain, Nexus.StakingTokenSymbol, UnitConversion.ToBigInteger(50000, Nexus.StakingTokenDecimals));
+                    }
+                    simulator.EndBlock();
+
+                    for (int i = 0; i < 3; i++)
+                    {
+                        logger.Message("Generating sim block #" + i);
+                        simulator.GenerateRandomBlock();
+                    }
+
+                    NachoServer.InitNachoServer(nexus, simulator, node_keys, logger);
+                    MakeReady(dispatcher);
+                }).Start();
+
+            }
+            else
+            {
+                MakeReady(dispatcher);
             }
 
             this.Run();
         }
 
+        private void MakeReady(CommandDispatcher dispatcher)
+        {
+            logger.Success("Node is ready");
+            gui?.MakeReady(dispatcher);
+        }
+
         private void Mempool_OnTransactionFailed(Transaction tx)
         {
-            logger.Warning($"Rejected transaction {tx.Hash}!");
+            var status = mempool.GetTransactionStatus(tx.Hash, out string reason);
+
+            logger.Warning($"Rejected transaction {tx.Hash} => " + reason);
         }
 
         private void Run()
@@ -568,20 +655,24 @@ namespace Phantasma.Spook
         private void Terminate()
         {
             running = false;
-            logger.Message("Phantasma Node stopping...");
 
-            if (node.IsRunning)
-            {
-                node.Stop();
-            }
+            logger.Message("Termination started...");
 
             if (mempool.IsRunning)
             {
+                logger.Message("Stopping mempool...");
                 mempool.Stop();
             }
 
-            // make sure that all pending data is written to disk
-            //DiskStore.FlushAll();
+            if (node.IsRunning)
+            {
+                logger.Message("Stopping node...");
+                node.Stop();
+            }
+
+            logger.Message("Termination complete...");
+            Thread.Sleep(3000);
+            Environment.Exit(0);
         }
 
         private void RegisterPlugin(IPlugin plugin)
@@ -628,7 +719,7 @@ namespace Phantasma.Spook
 
             foreach (var method in api.Methods)
             {
-                dispatcher.RegisterCommand("api."+method.Name, "API CALL", (args) => ExecuteAPI(method.Name, args));
+                dispatcher.RegisterCommand("api." + method.Name, "API CALL", (args) => ExecuteAPI(method.Name, args));
             }
 
             dispatcher.RegisterCommand("script.assemble", "Assembles a .asm file into Phantasma VM script format",
@@ -639,6 +730,18 @@ namespace Phantasma.Spook
 
             dispatcher.RegisterCommand("script.compile", "Compiles a .sol file into Phantasma VM script format",
                 (args) => ScriptModule.CompileFile(args));
+
+            dispatcher.RegisterCommand("wallet.balance", "Shows the current wallet balance",
+                (args) => WalletModule.Balance(node.Address, api, logger, args));
+
+            dispatcher.RegisterCommand("wallet.transfer", "Generates a new transfer transaction",
+                (args) => WalletModule.Transfer(node.Keys, api, logger, args));
+
+            dispatcher.RegisterCommand("wallet.stake", $"Stakes {Nexus.StakingTokenSymbol}",
+                (args) => WalletModule.Stake(node.Keys, api, logger, args));
+
+            dispatcher.RegisterCommand("file.upload", "Uploads a file into Phantasma",
+                (args) => FileModule.Upload(node.Keys, api, logger, args));
         }
     }
 }

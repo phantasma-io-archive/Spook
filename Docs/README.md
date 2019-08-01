@@ -1,27 +1,37 @@
 ## JSON-RPC methods
 
 * [getAccount](#getAccount)
-* [getAddressTransactions](#getAddressTransactions)
-* [getAddressTxCount](#getAddressTxCount)
-* [getApps](#getApps)
-* [getBlockByHash](#getBlockByHash)
-* [getBlockByHeight](#getBlockByHeight)
+* [lookUpName](#lookUpName)
 * [getBlockHeight](#getBlockHeight)
 * [getBlockTransactionCountByHash](#getBlockTransactionCountByHash)
-* [getChains](#getChains)
-* [getConfirmations](#getConfirmations)
-* [getTransactionByHash](#getTransactionByHash)
+* [getBlockByHash](#getBlockByHash)
+* [getRawBlockByHash](#getRawBlockByHash)
+* [getBlockByHeight](#getBlockByHeight)
+* [getRawBlockByHeight](#getRawBlockByHeight)
 * [getTransactionByBlockHashAndIndex](#getTransactionByBlockHashAndIndex)
+* [getAddressTransactions](#getAddressTransactions)
+* [getAddressTransactionCount](#getAddressTransactionCount)
+* [sendRawTransaction](#sendRawTransaction)
+* [invokeRawScript](#invokeRawScript)
+* [getTransaction](#getTransaction)
+* [cancelTransaction](#cancelTransaction)
+* [getChains](#getChains)
 * [getTokens](#getTokens)
-* [getTokenBalance](#getTokenBalance)
+* [getToken](#getToken)
+* [getTokenData](#getTokenData)
+* [getApps](#getApps)
 * [getTokenTransfers](#getTokenTransfers)
 * [getTokenTransferCount](#getTokenTransferCount)
-* [sendRawTransaction](#sendRawTransaction)
-
+* [getTokenBalance](#getTokenBalance)
+* [getAuctionsCount](#getAuctionsCount)
+* [getAuctions](#getAuctions)
+* [getAuction](#getAuction)
+* [getArchive](#getArchive)
 
 ## JSON RPC API Reference
 
 ***
+
 
 #### getAccount
 Returns the account name and balance of given address.
@@ -29,7 +39,9 @@ Returns the account name and balance of given address.
 
 ##### Parameters
 
-1. `String`, base58 encoded - address to check for balance and name.
+1. `string` Address of account.
+
+
 ```js
 params: [
    'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
@@ -38,7 +50,7 @@ params: [
 
 ##### Returns
 
-`Object` - An account object, or `error` if address is invalid or on a incorrect format
+`Account` - A Account object, or `error` if address is invalid.
 
   - `address `: `string` - Given address.
   - `name`: `string` - Name of given address.
@@ -51,7 +63,7 @@ params: [
 ##### Example
 ```js
 // Request
-curl -X POST --data '{"jsonrpc":"2.0","method":"getAccount","params":["PDHcAHq1fZXuwDrtJGDhjemFnj2ZaFc7iu3qD4XjZG9eV"],"id":1}'
+curl -X POST --data '{"jsonrpc":"2.0","method":"getAccount","params":[""],"id":1}'
 
 // Result
 {
@@ -78,99 +90,16 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"getAccount","params":["PDHcAHq1f
 
 ***
 
-#### getAddressTransactions
-Returns last X transactions of given address.
+
+#### lookUpName
+Returns the address that owns a given name.
 
 
 ##### Parameters
 
-1. `String`, base58 encoded - address to check for balance and name.
-2. `QUANTITY`, number of last transactions.
-```js
-params: [
-   'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV',
-   5
-]
-```
-
-##### Returns
-
-`Object` - An array of transaction objects, or `error` if address is invalid or on a incorrect format
-
-  - `address `: `string` - Given address.
-  - `amount`: `QUANTITY` - Amount of transactions query.
-  - `txs`: `Array` - Array of transaction objects. See [getTransactionByHash](#getTransactionByHash).
-  - `txs - txid`: `DATA` - Transaction hash.
-  - `txs - chainAddress`: `string` - Chain address.
-  - `txs - chainName`: `string` - Chain name.
-  - `txs - timestamp`: `long` - Timestamp of the transaction.
-  - `txs - blockHeight`: `long` - Block height of chain in which the transaction occurred.
-  - `txs - script`: `DATA` - Transaction script.
-  - `txs - events`: `Array` - Array of the events occurred in the transaction.
-  - `events - address`: `string` - Address on which the specific event occurred.
-  - `events - data`: `DATA` - Serialized data of the event.
-  - `events - kind`: `string` - Enum that specify the type of event. E.g: TokenSend.
+1. `string` Name of account.
 
 
-##### Example
-```js
-// Request
-curl -X POST --data '{"jsonrpc":"2.0","method":"getAddressTransactions","params":["PDHcAHq1fZXuwDrtJGDhjemFnj2ZaFc7iu3qD4XjZG9eV",3],"id":1}'
-
-// Result
-{
-   "jsonrpc":"2.0",
-   "result":{
-      "address":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX",
-      "amount":3,
-      "txs":[
-         {
-            "txid":"0xF1BA00567920AC884E1C0244ADDC21FF5E4541D7B1B9651FEE10442374214822",
-            "chainAddress":"NztsEZP7dtrzRBagogUYVp6mgEFbhjZfvHMVkd2bYWJfE",
-            "chainName":"main",
-            "timestamp":1536498900,
-            "blockHeight":462,
-            "script":"030004036761732B0001030003020F2704000300030101040003000220913E7B38E0FC5239792071414821AACA71737EFE15F5E88988A0BA8EB90EABA4040003000409416464726573732829080003000408416C6C6F7747617304002C0103000405746F6B656E2B0001030003055A55B5D110040003000404534F554C040003000220107A56D57F87DD59B4C82EAC953EB255220F6260F5D7418BF9BCB6A1372327B0040003000409416464726573732829080003000220913E7B38E0FC5239792071414821AACA71737EFE15F5E88988A0BA8EB90EABA404000300040941646472657373282908000300040E5472616E73666572546F6B656E7304002C01030004036761732B000103000220913E7B38E0FC5239792071414821AACA71737EFE15F5E88988A0BA8EB90EABA40400030004094164647265737328290800030004085370656E6447617304002C010C",
-            "events":[
-               {
-                  "address":"P9mQoUpwt5yxe8Jnrf4N16foQLW9RY67KbD7B2mtnM1BH",
-                  "data":"0101020F27",
-                  "kind":"GasEscrow"
-               },
-               {
-                  "address":"P9mQoUpwt5yxe8Jnrf4N16foQLW9RY67KbD7B2mtnM1BH",
-                  "data":"04534F554C055A55B5D1100D6E4079E36703EBD37C00722F5891D28B0E2811DC114B129215123ADCCE3605",
-                  "kind":"TokenSend"
-               },
-               {
-                  "address":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX",
-                  "data":"04534F554C055A55B5D1100D6E4079E36703EBD37C00722F5891D28B0E2811DC114B129215123ADCCE3605",
-                  "kind":"TokenReceive"
-               },
-               {
-                  "address":"P9mQoUpwt5yxe8Jnrf4N16foQLW9RY67KbD7B2mtnM1BH",
-                  "data":"01010168",
-                  "kind":"GasPayment"
-               }
-            ]
-         },{...}         
-            ]
-         }
-      ]
-   },
-   "id":"1"
-}
-```
-
-***
-
-#### getAddressTxCount
-Returns the number of transaction of given address.
-
-
-##### Parameters
-
-1. `String`, base58 encoded - address to query transaction count.
 ```js
 params: [
    'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
@@ -179,64 +108,37 @@ params: [
 
 ##### Returns
 
-`QUANTITY` - Integer of the number of transactions send from this address.
+`string` - A string object, or `error` if address is invalid.
+
+  - `address `: `string` - Given address.
+  - `name`: `string` - Name of given address.
+  - `balances`: `Array` - Array of balance objects.
+  - `balance - chain`: `string` - Name of the chain.
+  - `balance - symbol`: `string` - Token symbol.
+  - `balance - amount`: `string` - Amount of tokens.
+ 
   
 ##### Example
 ```js
 // Request
-curl -X POST --data '{"jsonrpc":"2.0","method":"getAddressTxCount","params":["PDHcAHq1fZXuwDrtJGDhjemFnj2ZaFc7iu3qD4XjZG9eV"],"id":1}'
-
-// Result
-{
-   "jsonrpc":"2.0",
-   "result":"42",
-   "id":"1"
-}
-```
-
-***
-
-#### getApps
-Returns an array of application running on Phantasma.
-
-
-##### Parameters
-
-none
-
-##### Returns
-
-`apps`: `Array` - Set of applications descriptions.
-
-  - `description `: `string` - Brief application description.
-  - `icon `: `DATA` - Small application icon.
-  - `id `: `string` - Application ID.
-  - `title `: `string` - Application title.
-  - `url `: `string` - Url of the application website.
-
-##### Example
-```js
-// Request
-curl -X POST --data '{"jsonrpc":"2.0","method":"getApps","params":[],"id":1}'
+curl -X POST --data '{"jsonrpc":"2.0","method":"lookUpName","params":[""],"id":1}'
 
 // Result
 {
    "jsonrpc":"2.0",
    "result":{
-      "apps":[
+      "address":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX",
+      "name":"genesis",
+      "balances":[
          {
-            "description":"Collect, train and battle against other players in Nacho Men!",
-            "icon":"0x0000000000000000000000000000000000000000000000000000000000000000",
-            "id":"nachomen",
-            "title":"nachomen",
-            "url":"https:\/\/nacho.men"
+            "chain":"main",
+            "amount":"511567851650398",
+            "symbol":"SOUL"
          },
          {
-            "description":"The future of digital content distribution!",
-            "icon":"0x0000000000000000000000000000000000000000000000000000000000000000",
-            "id":"mystore",
-            "title":"mystore",
-            "url":"https:\/\/my.store"
+            "chain":"apps",
+            "amount":"891917855944784",
+            "symbol":"SOUL"
          }
       ]
    },
@@ -246,102 +148,238 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"getApps","params":[],"id":1}'
 
 ***
 
-#### getBlockByHash
-Returns information about a block by hash.
+
+#### getBlockHeight
+Returns the height of a chain.
+
 
 ##### Parameters
 
+1. `string` Address or name of chain.
 
-1. `DATA`, 33 bytes - hash of a block
-2. `Verbose` - Optional, the default value of verbose is 0, returning the block in a `JSON` format string. If verbose is 1, returns serialized information of the block, represented by a hexadecimal string. 
+
 ```js
 params: [
-   '0x4C8D0DA35EF24DAE6F5BBAC8A11597A0EAB25926A3A474A28AD87C7F7792F6F2',
-   0
+   'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
 ]
 ```
 
 ##### Returns
 
-Object - A block object or `error` if given hash is invalid or is not found:
+`number` - A number, or `error` if chain is invalid.
 
-  - `hash`: `DATA`, 33 bytes - Block hash.
-  - `previousHash`: `DATA` - Hash of previous block.
-  - `timestamp`: `QUANTITY` - Block timestamp.
-  - `height`: `QUANTITY` - Block height.
-  - `chainAddress`: `string` - Chain address.
-  - `nonce`: `DATA` - Nonce.
-  - `reward`: `QUANTITY` - Reward given to the block miner.
-  - `payload`: `DATA` - Custom data given by miners.
-  - `txs`: `Array` - List of transactions inside this block. See [getTransactionByHash](#getTransactionByHash).
+  - `address `: `string` - Given address.
+  - `name`: `string` - Name of given address.
+  - `balances`: `Array` - Array of balance objects.
+  - `balance - chain`: `string` - Name of the chain.
+  - `balance - symbol`: `string` - Token symbol.
+  - `balance - amount`: `string` - Amount of tokens.
  
-
+  
 ##### Example
 ```js
-// Request when verbose = 0
-curl -X POST --data '{"jsonrpc":"2.0","method":"getBlockByHash","params":["0x4C8D0DA35EF24DAE6F5BBAC8A11597A0EAB25926A3A474A28AD87C7F7792F6F2"],"id":1}'
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"getBlockHeight","params":[""],"id":1}'
 
 // Result
 {
    "jsonrpc":"2.0",
    "result":{
-      "hash":"0x4C8D0DA35EF24DAE6F5BBAC8A11597A0EAB25926A3A474A28AD87C7F7792F6F2",
-      "previousHash":"0xCC456422FF4599FB0EB8A78C0FA783A66E08A9565E638904F7FEB67367CF06A9",
-      "timestamp":"26\/12\/2018 15:56:36",
-      "height":563,
-      "chainAddress":"NztsEZP7dtrzRBagogUYVp6mgEFbhjZfvHMVkd2bYWJfE",
-      "nonce":0,
-      "minerAddress":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX",
-      "reward":0.0000052,
-      "payload":"",
-      "txs":[
+      "address":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX",
+      "name":"genesis",
+      "balances":[
          {
-            "txid":"0x92A476D9E3FC4CFD810E5DA3840DF32A3DA3BAC9C58E3F2C868491D357CA527A",
-            "chainAddress":"NztsEZP7dtrzRBagogUYVp6mgEFbhjZfvHMVkd2bYWJfE",
-            "chainName":"main",
-            "timestamp":1545839796,
-            "blockHeight":563,
-            "script":"030004036761732B0001030003020F2704000300030101040003000220E9B876646F83E08D477606947C1CF8305B44F69408E9D805EED7E466B84C6EEB040003000409416464726573732829080003000408416C6C6F7747617304002C0103000405746F6B656E2B0001030003058B390CBAF7040003000404534F554C0400030002208ED1352401D148977B19D1228F6C9847292F0C164C5C2478E9A09F4CF6DC416B040003000409416464726573732829080003000220E9B876646F83E08D477606947C1CF8305B44F69408E9D805EED7E466B84C6EEB04000300040941646472657373282908000300040E5472616E73666572546F6B656E7304002C01030004036761732B000103000220E9B876646F83E08D477606947C1CF8305B44F69408E9D805EED7E466B84C6EEB0400030004094164647265737328290800030004085370656E6447617304002C010C",
-            "events":[
-               {
-                  "address":"PFinZTCKezYYXMqVaVGNndhkQcuqPW7AmnLrU9jCRQeKk",
-                  "data":"0101020F27",
-                  "kind":"GasEscrow"
-               },
-               {
-                  "address":"PFinZTCKezYYXMqVaVGNndhkQcuqPW7AmnLrU9jCRQeKk",
-                  "data":"04534F554C058B390CBAF70D6E4079E36703EBD37C00722F5891D28B0E2811DC114B129215123ADCCE3605",
-                  "kind":"TokenSend"
-               },
-               {
-                  "address":"P9bwLwG8hoq52cgizgJ5kt5XaAkrzfTn6ZiUkQTPbUfEA",
-                  "data":"04534F554C058B390CBAF70D6E4079E36703EBD37C00722F5891D28B0E2811DC114B129215123ADCCE3605",
-                  "kind":"TokenReceive"
-               },
-               {
-                  "address":"PFinZTCKezYYXMqVaVGNndhkQcuqPW7AmnLrU9jCRQeKk",
-                  "data":"01010168",
-                  "kind":"GasPayment"
-               }
-            ]
-         },{...}
+            "chain":"main",
+            "amount":"511567851650398",
+            "symbol":"SOUL"
+         },
+         {
+            "chain":"apps",
+            "amount":"891917855944784",
+            "symbol":"SOUL"
+         }
       ]
    },
-   "id":"1"
-}
-
-// Request when verbose = 1
-curl -X POST --data '{"jsonrpc":"2.0","method":"getBlockByHash","params":["0x4C8D0DA35EF24DAE6F5BBAC8A11597A0EAB25926A3A474A28AD87C7F7792F6F2",1],"id":1}'
-
-// Result
-{
-   "jsonrpc":"2.0",
-   "result": "01000000BF02265C00000000000000000000000000000000000000000000000000000000000000000D6E4079E36703EBD37C00722F5891D28B0E2811DC114B129215123ADCCE36050C534F554C2067656E657369730700D5594E7663F28DD1A6323D79C5D5CDF736328C37B18E3FBD91F5790EE801D30E040001279FB052FA82D619FB33581321E3A5F592507EAC995907B504876ABF6F62421F0504534F554C04279FB052FA82D619FB33581321E3A5F592507EAC995907B504876ABF6F62421F2D04534F554C0700B6D60FCE60200D6E4079E36703EBD37C00722F5891D28B0E2811DC114B129215123ADCCE36050A279FB052FA82D619FB33581321E3A5F592507EAC995907B504876ABF6F62421F050101020F270B279FB052FA82D619FB33581321E3A5F592507EAC995907B504876ABF6F62421F040101013EA72BCEA7B629C891CCDB57043B538DA284C3D68B33466CB800EAC7E6360054D203000A279FB052FA82D619FB33581321E3A5F592507EAC995907B504876ABF6F62421F050101020F2701279FB052FA82D619FB33581321E3A5F592507EAC995907B504876ABF6F62421F0504414C4D410B279FB052FA82D619FB33581321E3A5F592507EAC995907B504876ABF6F62421F04010101694049CF4FEFE074A4F422B17CE598C0E70B3ECDCE53F93B68BF3430496DA408F003000A279FB052FA82D619FB33581321E3A5F592507EAC995907B504876ABF6F62421F050101020F2700279FB052FA82D619FB33581321E3A5F592507EAC995907B504876ABF6F62421F20A4CC6BC01A927E2A78FD3BEC51E865AC0D85E4DAAB6F988D5D33D056E125B1C30B279FB052FA82D619FB33581321E3A5F592507EAC995907B504876ABF6F62421F04010101604E1066199D86AFF13C33E2C9501E30706D4397541640857609B36FF8980E597803000A279FB052FA82D619FB33581321E3A5F592507EAC995907B504876ABF6F62421F050101020F2700279FB052FA82D619FB33581321E3A5F592507EAC995907B504876ABF6F62421F20E6F0A1FBB43C89196DCFCBEF85908F19AB4C5F7CC4F4C452284697757683D7EF0B279FB052FA82D619FB33581321E3A5F592507EAC995907B504876ABF6F62421F04010101607AC4C2DA77E9F92118A96F6CC1997CB65D3C64AC6C39B7F4A158ACDFB2A1569A03000A279FB052FA82D619FB33581321E3A5F592507EAC995907B504876ABF6F62421F050101020F2700279FB052FA82D619FB33581321E3A5F592507EAC995907B504876ABF6F62421F204381DC2AB14285160C808659AEE005D51255ADD7264B318D07C7417292C7442C0B279FB052FA82D619FB33581321E3A5F592507EAC995907B504876ABF6F62421F0401010160E32FAF6FDEFD7B90E5C52DC907D6A781C39663A91A8FCA6527CB25654D9DA7FC03000A279FB052FA82D619FB33581321E3A5F592507EAC995907B504876ABF6F62421F050101020F2700279FB052FA82D619FB33581321E3A5F592507EAC995907B504876ABF6F62421F20D56F6359D240F69E4164425B599D08869574FC013B9E5727951048914DB12C5B0B279FB052FA82D619FB33581321E3A5F592507EAC995907B504876ABF6F62421F040101016076C6923D75714923146951F8EC04AB7049F2BF9E33FF82AC06BF58C5AFBB1D0E02000A279FB052FA82D619FB33581321E3A5F592507EAC995907B504876ABF6F62421F050101020F270B279FB052FA82D619FB33581321E3A5F592507EAC995907B504876ABF6F62421F040101015A00000000",
    "id":"1"
 }
 ```
 
 ***
+
+
+#### getBlockTransactionCountByHash
+Returns the number of transactions of given block hash or error if given hash is invalid or is not found.
+
+
+##### Parameters
+
+1. `string` Hash of block.
+
+
+```js
+params: [
+   'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
+]
+```
+
+##### Returns
+
+`number` - A number, or `error` if block hash is invalid.
+
+  - `address `: `string` - Given address.
+  - `name`: `string` - Name of given address.
+  - `balances`: `Array` - Array of balance objects.
+  - `balance - chain`: `string` - Name of the chain.
+  - `balance - symbol`: `string` - Token symbol.
+  - `balance - amount`: `string` - Amount of tokens.
+ 
+  
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"getBlockTransactionCountByHash","params":[""],"id":1}'
+
+// Result
+{
+   "jsonrpc":"2.0",
+   "result":{
+      "address":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX",
+      "name":"genesis",
+      "balances":[
+         {
+            "chain":"main",
+            "amount":"511567851650398",
+            "symbol":"SOUL"
+         },
+         {
+            "chain":"apps",
+            "amount":"891917855944784",
+            "symbol":"SOUL"
+         }
+      ]
+   },
+   "id":"1"
+}
+```
+
+***
+
+
+#### getBlockByHash
+Returns information about a block by hash.
+
+
+##### Parameters
+
+1. `string` Hash of block.
+
+
+```js
+params: [
+   'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
+]
+```
+
+##### Returns
+
+`Block` - A Block object, or `error` if block hash is invalid.
+
+  - `address `: `string` - Given address.
+  - `name`: `string` - Name of given address.
+  - `balances`: `Array` - Array of balance objects.
+  - `balance - chain`: `string` - Name of the chain.
+  - `balance - symbol`: `string` - Token symbol.
+  - `balance - amount`: `string` - Amount of tokens.
+ 
+  
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"getBlockByHash","params":[""],"id":1}'
+
+// Result
+{
+   "jsonrpc":"2.0",
+   "result":{
+      "address":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX",
+      "name":"genesis",
+      "balances":[
+         {
+            "chain":"main",
+            "amount":"511567851650398",
+            "symbol":"SOUL"
+         },
+         {
+            "chain":"apps",
+            "amount":"891917855944784",
+            "symbol":"SOUL"
+         }
+      ]
+   },
+   "id":"1"
+}
+```
+
+***
+
+
+#### getRawBlockByHash
+Returns a serialized string, containing information about a block by hash.
+
+
+##### Parameters
+
+1. `string` Hash of block.
+
+
+```js
+params: [
+   'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
+]
+```
+
+##### Returns
+
+`string` - A string object, or `error` if block hash is invalid.
+
+  - `address `: `string` - Given address.
+  - `name`: `string` - Name of given address.
+  - `balances`: `Array` - Array of balance objects.
+  - `balance - chain`: `string` - Name of the chain.
+  - `balance - symbol`: `string` - Token symbol.
+  - `balance - amount`: `string` - Amount of tokens.
+ 
+  
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"getRawBlockByHash","params":[""],"id":1}'
+
+// Result
+{
+   "jsonrpc":"2.0",
+   "result":{
+      "address":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX",
+      "name":"genesis",
+      "balances":[
+         {
+            "chain":"main",
+            "amount":"511567851650398",
+            "symbol":"SOUL"
+         },
+         {
+            "chain":"apps",
+            "amount":"891917855944784",
+            "symbol":"SOUL"
+         }
+      ]
+   },
+   "id":"1"
+}
+```
+
+***
+
 
 #### getBlockByHeight
 Returns information about a block by height and chain.
@@ -349,194 +387,50 @@ Returns information about a block by height and chain.
 
 ##### Parameters
 
+1. `string` Address or name of chain.2. `number` Height of block.
 
-1. `string`, - chain name or chain address
-2. `QUANTITY`, - height of a block
-3. `Verbose` - Optional, the default value of verbose is 0, returning the block in a `JSON` format string. If verbose is 1, returns serialized information of the block, represented by a hexadecimal string. 
+
 ```js
 params: [
-   'main',
-   1
+   'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
 ]
 ```
 
 ##### Returns
 
-See [getBlockByHash](#getblockbyhash)
+`Block` - A Block object, or `error` if block hash is invalidor chain is invalid.
 
-##### Example
-```js
-// Request
-curl -X POST --data '{"jsonrpc":"2.0","method":"getBlockByHeight","params":["main",1],"id":1}'
-```
-
-Result see [getBlockByHash](#getblockbyhash)
-
-
-***
-
-
-#### getBlockHeight
-Returns the height of most recent block of given chain.
-
-##### Parameters
-
-1. `string`, - chain name or chain address
-
-##### Returns
-
-`QUANTITY` - Integer of the current block number the client is on.
-
-##### Example
-```js
-// Request
-curl -X POST --data '{"jsonrpc":"2.0","method":"getBlockHeight","params":["main"],"id":1}'
-
-// Result
-{
-   "jsonrpc":"2.0",
-   "result":"540",
-   "id":"1"
-}
-```
-
-
-***
-
-
-#### getBlockTransactionCountByHash
-Returns the number of transactions of given block hash or `error` if given hash is invalid or is not found.
-
-##### Parameters
-
-1. `DATA`, 33 bytes - hash of a block
-```js
-params: [
-   '0x4C8D0DA35EF24DAE6F5BBAC8A11597A0EAB25926A3A474A28AD87C7F7792F6F2'
-]
-```
-
-##### Returns
-
-`QUANTITY` - integer of the number of transactions in this block.
-
-##### Example
-```js
-// Request
-curl -X POST --data '{"jsonrpc":"2.0","method":"getBlockTransactionCountByHash","params":["0x4C8D0DA35EF24DAE6F5BBAC8A11597A0EAB25926A3A474A28AD87C7F7792F6F2"],"id":1}'
-
-// Result
-{
-   "jsonrpc":"2.0",
-   "result":"540",
-   "id":"1"
-}
-```
-
-***
-
-#### getChains
-Returns an array of chains with useful information.
-
-##### Parameters
-
-none
-
-##### Returns
-
-Array of chain info:
-
-  - `name`: `string` - Chain name.
-  - `address`: `string` - Chain address.
-  - `height`: `QUANTITY` - Last block number.
-  - `children`: `Array` - Child chains.
+  - `address `: `string` - Given address.
+  - `name`: `string` - Name of given address.
+  - `balances`: `Array` - Array of balance objects.
+  - `balance - chain`: `string` - Name of the chain.
+  - `balance - symbol`: `string` - Token symbol.
+  - `balance - amount`: `string` - Amount of tokens.
  
-
+  
 ##### Example
 ```js
 // Request
-curl -X POST --data '{"jsonrpc":"2.0","method":"getChains","params":[],"id":1}'
-
-// Result
-{
-   "jsonrpc":"2.0",
-   "result":[
-      {
-         "name":"main",
-         "address":"NztsEZP7dtrzRBagogUYVp6mgEFbhjZfvHMVkd2bYWJfE",
-         "height":504,
-         "children":[
-            {
-               "name":"privacy",
-               "address":"PB5k5d7rbdNU5QKHMgErzw8Mkqx9TZh8FcfE8oTfdqn2v"
-            },
-            {
-               "name":"vault",
-               "address":"PFXw1o59Kshau2rPXKRhVVLmKwfMh2eyNzBbdqNoSDkwx"
-            },
-            {
-               "name":"bank",
-               "address":"P4XxbH98DUM59KCQogauUxWxsyuQJ1wbfoCDQUhryhXK1"
-            },
-            {
-               "name":"apps",
-               "address":"PEMbn8smAMZxbGVFCcLMWbQZBYK7SFf93jFLFi8dZV6Ga"
-            }
-         ]
-      },
-      {
-         "name":"privacy",
-         "address":"PB5k5d7rbdNU5QKHMgErzw8Mkqx9TZh8FcfE8oTfdqn2v",
-         "height":1,
-         "parentAddress":"main"
-      },
-      {
-         "name":"vault",
-         "address":"PFXw1o59Kshau2rPXKRhVVLmKwfMh2eyNzBbdqNoSDkwx",
-         "height":1,
-         "parentAddress":"main"
-      },{...}
-   ],
-   "id":"1"
-}
-```
-
-***
-
-#### getConfirmations
-Returns the number of confirmations of given transaction hash and other useful info.
-
-##### Parameters
-
-1. `DATA`, 33 bytes - hash of a transaction
-```js
-params: [
-   '0x34647C9A097909C7E5112B7F8F3950F6FA65D20DFA9D172A8F5084AC8595EABD'
-]
-```
-##### Returns
-
-Array of chain info:
-
-  - `confirmations`: `QUANTITY` - Chain name.
-  - `hash`: `DATA` - Chain address.
-  - `height`: `QUANTITY` - Last block number.
-  - `chain`: `string` - Child chains.
- 
-
-##### Example
-```js
-// Request
-curl -X POST --data '{"jsonrpc":"2.0","method":"getConfirmations","params":["0x34647C9A097909C7E5112B7F8F3950F6FA65D20DFA9D172A8F5084AC8595EABD"],"id":1}'
+curl -X POST --data '{"jsonrpc":"2.0","method":"getBlockByHeight","params":["", ""],"id":1}'
 
 // Result
 {
    "jsonrpc":"2.0",
    "result":{
-      "confirmations":1,
-      "hash":"0x34647C9A097909C7E5112B7F8F3950F6FA65D20DFA9D172A8F5084AC8595EABD",
-      "height":510,
-      "chain":"NztsEZP7dtrzRBagogUYVp6mgEFbhjZfvHMVkd2bYWJfE"
+      "address":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX",
+      "name":"genesis",
+      "balances":[
+         {
+            "chain":"main",
+            "amount":"511567851650398",
+            "symbol":"SOUL"
+         },
+         {
+            "chain":"apps",
+            "amount":"891917855944784",
+            "symbol":"SOUL"
+         }
+      ]
    },
    "id":"1"
 }
@@ -544,68 +438,55 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"getConfirmations","params":["0x3
 
 ***
 
-#### getTransactionByHash
-Returns the information about a transaction requested by transaction hash.
+
+#### getRawBlockByHeight
+Returns a serialized string, in hex format, containing information about a block by height and chain.
+
 
 ##### Parameters
 
-1. `DATA`, 33 bytes - hash of a transaction
+1. `string` Address or name of chain.2. `number` Height of block.
+
+
 ```js
 params: [
-   '0x3C0D260AACF17BD4AFA535C4845E1CE8B9D8A600A826AB138ADF677C6369C703'
+   'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
 ]
 ```
+
 ##### Returns
 
-Object - A transaction object or `error` if hash is invalid or not found:
+`string` - A string object, or `error` if block hash is invalidor chain is invalid.
 
-  - `txs - txid`: `DATA` - Transaction hash.
-  - `txs - chainAddress`: `string` - Chain address.
-  - `txs - chainName`: `string` - Chain name.
-  - `txs - timestamp`: `long` - Timestamp of the transaction.
-  - `txs - blockHeight`: `long` - Block height of chain in which the transaction occurred.
-  - `txs - script`: `DATA` - Transaction script.
-  - `txs - events`: `Array` - Array of the events occurred in the transaction.
-  - `events - address`: `string` - Address on which the specific event occurred.
-  - `events - data`: `DATA` - Serialized data of the event.
-  - `events - kind`: `string` - Enum that specify the type of event. E.g: TokenSend.
+  - `address `: `string` - Given address.
+  - `name`: `string` - Name of given address.
+  - `balances`: `Array` - Array of balance objects.
+  - `balance - chain`: `string` - Name of the chain.
+  - `balance - symbol`: `string` - Token symbol.
+  - `balance - amount`: `string` - Amount of tokens.
  
-
+  
 ##### Example
 ```js
 // Request
-curl -X POST --data '{"jsonrpc":"2.0","method":"getTransactionByHash","params":["0x3C0D260AACF17BD4AFA535C4845E1CE8B9D8A600A826AB138ADF677C6369C703"],"id":1}'
+curl -X POST --data '{"jsonrpc":"2.0","method":"getRawBlockByHeight","params":["", ""],"id":1}'
 
 // Result
 {
    "jsonrpc":"2.0",
    "result":{
-      "txid":"0x3C0D260AACF17BD4AFA535C4845E1CE8B9D8A600A826AB138ADF677C6369C703",
-      "chainAddress":"NztsEZP7dtrzRBagogUYVp6mgEFbhjZfvHMVkd2bYWJfE",
-      "chainName":"main",
-      "timestamp":1545844818,
-      "blockHeight":515,
-      "script":"030004036761732B0001030003020F270400030003010104000300022042CDF84A890B8E2649D6C9A6D643B09D15A01BB64F5EE0816A8EF8F341055096040003000409416464726573732829080003000408416C6C6F7747617304002C0103000405746F6B656E2B0001030003061E4ED9E77901040003000404534F554C040003000220A81C7F808DE996F8C61E01F2488CA69F93A21E76949075BCCDAE03245C14B2E004000300040941646472657373282908000300022042CDF84A890B8E2649D6C9A6D643B09D15A01BB64F5EE0816A8EF8F34105509604000300040941646472657373282908000300040E5472616E73666572546F6B656E7304002C01030004036761732B00010300022042CDF84A890B8E2649D6C9A6D643B09D15A01BB64F5EE0816A8EF8F3410550960400030004094164647265737328290800030004085370656E6447617304002C010C",
-      "events":[
+      "address":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX",
+      "name":"genesis",
+      "balances":[
          {
-            "address":"P4VDVj2xoHXjShSaCxHWZDEuy8pBcTe56msuWJACQyhcy",
-            "data":"0101020F27",
-            "kind":"GasEscrow"
+            "chain":"main",
+            "amount":"511567851650398",
+            "symbol":"SOUL"
          },
          {
-            "address":"P4VDVj2xoHXjShSaCxHWZDEuy8pBcTe56msuWJACQyhcy",
-            "data":"04534F554C061E4ED9E779010D6E4079E36703EBD37C00722F5891D28B0E2811DC114B129215123ADCCE3605",
-            "kind":"TokenSend"
-         },
-         {
-            "address":"PBJg8AF9ta8nEHF3MidzzofTj4WDBRWAoHv2WQDWwcyGb",
-            "data":"04534F554C061E4ED9E779010D6E4079E36703EBD37C00722F5891D28B0E2811DC114B129215123ADCCE3605",
-            "kind":"TokenReceive"
-         },
-         {
-            "address":"P4VDVj2xoHXjShSaCxHWZDEuy8pBcTe56msuWJACQyhcy",
-            "data":"01010168",
-            "kind":"GasPayment"
+            "chain":"apps",
+            "amount":"891917855944784",
+            "symbol":"SOUL"
          }
       ]
    },
@@ -619,64 +500,462 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"getTransactionByHash","params":[
 #### getTransactionByBlockHashAndIndex
 Returns the information about a transaction requested by a block hash and transaction index.
 
-##### Parameters
-
-1. `DATA`, 33 bytes - hash of a block
-```js
-params: [
-   '0x1EBA956A82900DCB69B3A372EBE558760913ACEF9292917C9E43DFB685DEDDA5',
-   5
-]
-```
-##### Returns
-
-See [getTransactionByHash](#getTransactionByHash).
- 
-
-##### Example
-```js
-// Request
-curl -X POST --data '{"jsonrpc":"2.0","method":"getTransactionByBlockHashAndIndex","params":["0x1EBA956A82900DCB69B3A372EBE558760913ACEF9292917C9E43DFB685DEDDA5", 5],"id":1}'
-```
-Result
-See [getTransactionByHash](#getTransactionByHash).
-
-***
-
-#### getTokenBalance
-Returns the balance for a specific token and chain, given an address.
-
 
 ##### Parameters
 
-1. `String`, base58 encoded - address to check for balance.
-2. `String`, token symbol.
-3. `String`, base58 encoded chain address or name.
+1. `string` Hash of block.2. `number` Index of transaction.
+
+
 ```js
 params: [
-   'P2kArw3PA6JPQZpQT6FMDjTkX4VGdL6kmWZHe8Fgeg8CZ',
-   'SOUL',
-   'privacy',
+   'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
 ]
 ```
 
 ##### Returns
 
-This endpoint can have 2 types of returns, depending on the token. If the token is fungible, it will return a `QUANTITY`. If it's a NFT, it returns a list of `Id's` and `QUANTITY`, being this the total of id's.
+`Transaction` - A Transaction object, or `error` if block hash is invalidor index transaction is invalid.
+
+  - `address `: `string` - Given address.
+  - `name`: `string` - Name of given address.
+  - `balances`: `Array` - Array of balance objects.
+  - `balance - chain`: `string` - Name of the chain.
+  - `balance - symbol`: `string` - Token symbol.
+  - `balance - amount`: `string` - Amount of tokens.
  
   
 ##### Example
 ```js
 // Request
-curl -X POST --data '{"jsonrpc":"2.0","method":"getTokenBalance","params":["P2kArw3PA6JPQZpQT6FMDjTkX4VGdL6kmWZHe8Fgeg8CZ", "SOUL", "privacy"],"id":1}'
+curl -X POST --data '{"jsonrpc":"2.0","method":"getTransactionByBlockHashAndIndex","params":["", ""],"id":1}'
 
 // Result
 {
-	"jsonrpc": "2.0",
-	"result": {
-		"balance": "2540151826638"
-	},
-	"id": "1"
+   "jsonrpc":"2.0",
+   "result":{
+      "address":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX",
+      "name":"genesis",
+      "balances":[
+         {
+            "chain":"main",
+            "amount":"511567851650398",
+            "symbol":"SOUL"
+         },
+         {
+            "chain":"apps",
+            "amount":"891917855944784",
+            "symbol":"SOUL"
+         }
+      ]
+   },
+   "id":"1"
+}
+```
+
+***
+
+
+#### getAddressTransactions
+Returns last X transactions of given address.
+
+
+##### Parameters
+
+1. `string` Address of account.2. `number` Index of page to return.3. `number` Number of items to return per page.
+
+
+```js
+params: [
+   'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
+]
+```
+
+##### Returns
+
+`AccountTransactions` - A AccountTransactions object, or `error` if address is invalidor page is invalidor pageSize is invalid.
+
+  - `address `: `string` - Given address.
+  - `name`: `string` - Name of given address.
+  - `balances`: `Array` - Array of balance objects.
+  - `balance - chain`: `string` - Name of the chain.
+  - `balance - symbol`: `string` - Token symbol.
+  - `balance - amount`: `string` - Amount of tokens.
+ 
+  
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"getAddressTransactions","params":["", "", ""],"id":1}'
+
+// Result
+{
+   "jsonrpc":"2.0",
+   "result":{
+      "address":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX",
+      "name":"genesis",
+      "balances":[
+         {
+            "chain":"main",
+            "amount":"511567851650398",
+            "symbol":"SOUL"
+         },
+         {
+            "chain":"apps",
+            "amount":"891917855944784",
+            "symbol":"SOUL"
+         }
+      ]
+   },
+   "id":"1"
+}
+```
+
+***
+
+
+#### getAddressTransactionCount
+Get number of transactions in a specific address and chain
+
+
+##### Parameters
+
+1. `string` Address of account.2. `string` Name or address of chain, optional.
+
+
+```js
+params: [
+   'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
+]
+```
+
+##### Returns
+
+`number` - A number, or `error` if address is invalidor chain is invalid.
+
+  - `address `: `string` - Given address.
+  - `name`: `string` - Name of given address.
+  - `balances`: `Array` - Array of balance objects.
+  - `balance - chain`: `string` - Name of the chain.
+  - `balance - symbol`: `string` - Token symbol.
+  - `balance - amount`: `string` - Amount of tokens.
+ 
+  
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"getAddressTransactionCount","params":["", ""],"id":1}'
+
+// Result
+{
+   "jsonrpc":"2.0",
+   "result":{
+      "address":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX",
+      "name":"genesis",
+      "balances":[
+         {
+            "chain":"main",
+            "amount":"511567851650398",
+            "symbol":"SOUL"
+         },
+         {
+            "chain":"apps",
+            "amount":"891917855944784",
+            "symbol":"SOUL"
+         }
+      ]
+   },
+   "id":"1"
+}
+```
+
+***
+
+
+#### sendRawTransaction
+Allows to broadcast a signed operation on the network, but it&apos;s required to build it manually.
+
+
+##### Parameters
+
+1. `string` Serialized transaction bytes, in hexadecimal format.
+
+
+```js
+params: [
+   'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
+]
+```
+
+##### Returns
+
+`string` - A string object, or `error` if rejected by mempoolor script is invalidor failed to decoded transaction.
+
+  - `address `: `string` - Given address.
+  - `name`: `string` - Name of given address.
+  - `balances`: `Array` - Array of balance objects.
+  - `balance - chain`: `string` - Name of the chain.
+  - `balance - symbol`: `string` - Token symbol.
+  - `balance - amount`: `string` - Amount of tokens.
+ 
+  
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"sendRawTransaction","params":[""],"id":1}'
+
+// Result
+{
+   "jsonrpc":"2.0",
+   "result":{
+      "address":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX",
+      "name":"genesis",
+      "balances":[
+         {
+            "chain":"main",
+            "amount":"511567851650398",
+            "symbol":"SOUL"
+         },
+         {
+            "chain":"apps",
+            "amount":"891917855944784",
+            "symbol":"SOUL"
+         }
+      ]
+   },
+   "id":"1"
+}
+```
+
+***
+
+
+#### invokeRawScript
+Allows to invoke script based on network state, without state changes.
+
+
+##### Parameters
+
+1. `string` Address or name of chain.2. `string` Serialized script bytes, in hexadecimal format.
+
+
+```js
+params: [
+   'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
+]
+```
+
+##### Returns
+
+`Script` - A Script object, or `error` if script is invalidor failed to decoded script.
+
+  - `address `: `string` - Given address.
+  - `name`: `string` - Name of given address.
+  - `balances`: `Array` - Array of balance objects.
+  - `balance - chain`: `string` - Name of the chain.
+  - `balance - symbol`: `string` - Token symbol.
+  - `balance - amount`: `string` - Amount of tokens.
+ 
+  
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"invokeRawScript","params":["", ""],"id":1}'
+
+// Result
+{
+   "jsonrpc":"2.0",
+   "result":{
+      "address":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX",
+      "name":"genesis",
+      "balances":[
+         {
+            "chain":"main",
+            "amount":"511567851650398",
+            "symbol":"SOUL"
+         },
+         {
+            "chain":"apps",
+            "amount":"891917855944784",
+            "symbol":"SOUL"
+         }
+      ]
+   },
+   "id":"1"
+}
+```
+
+***
+
+
+#### getTransaction
+Returns information about a transaction by hash.
+
+
+##### Parameters
+
+1. `string` Hash of transaction.
+
+
+```js
+params: [
+   'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
+]
+```
+
+##### Returns
+
+`Transaction` - A Transaction object, or `error` if hash is invalid.
+
+  - `address `: `string` - Given address.
+  - `name`: `string` - Name of given address.
+  - `balances`: `Array` - Array of balance objects.
+  - `balance - chain`: `string` - Name of the chain.
+  - `balance - symbol`: `string` - Token symbol.
+  - `balance - amount`: `string` - Amount of tokens.
+ 
+  
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"getTransaction","params":[""],"id":1}'
+
+// Result
+{
+   "jsonrpc":"2.0",
+   "result":{
+      "address":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX",
+      "name":"genesis",
+      "balances":[
+         {
+            "chain":"main",
+            "amount":"511567851650398",
+            "symbol":"SOUL"
+         },
+         {
+            "chain":"apps",
+            "amount":"891917855944784",
+            "symbol":"SOUL"
+         }
+      ]
+   },
+   "id":"1"
+}
+```
+
+***
+
+
+#### cancelTransaction
+Removes a pending transaction from the mempool.
+
+
+##### Parameters
+
+1. `string` Hash of transaction.
+
+
+```js
+params: [
+   'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
+]
+```
+
+##### Returns
+
+`string` - A string object, or `error` if hash is invalid.
+
+  - `address `: `string` - Given address.
+  - `name`: `string` - Name of given address.
+  - `balances`: `Array` - Array of balance objects.
+  - `balance - chain`: `string` - Name of the chain.
+  - `balance - symbol`: `string` - Token symbol.
+  - `balance - amount`: `string` - Amount of tokens.
+ 
+  
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"cancelTransaction","params":[""],"id":1}'
+
+// Result
+{
+   "jsonrpc":"2.0",
+   "result":{
+      "address":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX",
+      "name":"genesis",
+      "balances":[
+         {
+            "chain":"main",
+            "amount":"511567851650398",
+            "symbol":"SOUL"
+         },
+         {
+            "chain":"apps",
+            "amount":"891917855944784",
+            "symbol":"SOUL"
+         }
+      ]
+   },
+   "id":"1"
+}
+```
+
+***
+
+
+#### getChains
+Returns an array of all chains deployed in Phantasma.
+
+
+##### Parameters
+
+
+none
+
+
+```js
+params: [
+   'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
+]
+```
+
+##### Returns
+
+`Chain` - A Chain object.
+
+  - `address `: `string` - Given address.
+  - `name`: `string` - Name of given address.
+  - `balances`: `Array` - Array of balance objects.
+  - `balance - chain`: `string` - Name of the chain.
+  - `balance - symbol`: `string` - Token symbol.
+  - `balance - amount`: `string` - Amount of tokens.
+ 
+  
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"getChains","params":[],"id":1}'
+
+// Result
+{
+   "jsonrpc":"2.0",
+   "result":{
+      "address":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX",
+      "name":"genesis",
+      "balances":[
+         {
+            "chain":"main",
+            "amount":"511567851650398",
+            "symbol":"SOUL"
+         },
+         {
+            "chain":"apps",
+            "amount":"891917855944784",
+            "symbol":"SOUL"
+         }
+      ]
+   },
+   "id":"1"
 }
 ```
 
@@ -689,62 +968,224 @@ Returns an array of tokens deployed in Phantasma.
 
 ##### Parameters
 
+
 none
+
+
+```js
+params: [
+   'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
+]
+```
 
 ##### Returns
 
-Array of token info:
+`Token` - A Token object.
 
-  - `symbol`: `string` - Unique token symbol.
-  - `name`: `string` - Full token name.
-  - `currentSupply`: `QUANTITY` - Token current supply.
-  - `maxSupply`: `QUANTITY` - Token maximum supply.
-  - `decimals`: `QUANTITY` - Token decimals.
-  - `isFungible`: `bool` - Indicates if the token is fungible or not.
-  - `flags`: `string` - Set of token properties.
-  - `owner`: `string` - Address of token owner.   
+  - `address `: `string` - Given address.
+  - `name`: `string` - Name of given address.
+  - `balances`: `Array` - Array of balance objects.
+  - `balance - chain`: `string` - Name of the chain.
+  - `balance - symbol`: `string` - Token symbol.
+  - `balance - amount`: `string` - Amount of tokens.
  
-
+  
 ##### Example
 ```js
 // Request
 curl -X POST --data '{"jsonrpc":"2.0","method":"getTokens","params":[],"id":1}'
 
-
-//Result
+// Result
 {
    "jsonrpc":"2.0",
    "result":{
-      "tokens":[
+      "address":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX",
+      "name":"genesis",
+      "balances":[
          {
-            "symbol":"SOUL",
-            "name":"Phantasma",
-            "currentSupply":"8648333245505330",
-            "maxSupply":"9113637400000000",
-            "decimals":8,
-            "isFungible":true,
-            "flags":"Transferable, Fungible, Finite, Divisible",
-            "owner":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX"
+            "chain":"main",
+            "amount":"511567851650398",
+            "symbol":"SOUL"
          },
          {
-            "symbol":"ALMA",
-            "name":"Stable Coin",
-            "currentSupply":"0",
-            "maxSupply":"0",
-            "decimals":8,
-            "isFungible":true,
-            "flags":"Transferable, Fungible, Divisible",
-            "owner":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX"
+            "chain":"apps",
+            "amount":"891917855944784",
+            "symbol":"SOUL"
+         }
+      ]
+   },
+   "id":"1"
+}
+```
+
+***
+
+
+#### getToken
+Returns info about a specific token deployed in Phantasma.
+
+
+##### Parameters
+
+1. `string` Token symbol to obtain info.
+
+
+```js
+params: [
+   'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
+]
+```
+
+##### Returns
+
+`Token` - A Token object.
+
+  - `address `: `string` - Given address.
+  - `name`: `string` - Name of given address.
+  - `balances`: `Array` - Array of balance objects.
+  - `balance - chain`: `string` - Name of the chain.
+  - `balance - symbol`: `string` - Token symbol.
+  - `balance - amount`: `string` - Amount of tokens.
+ 
+  
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"getToken","params":[""],"id":1}'
+
+// Result
+{
+   "jsonrpc":"2.0",
+   "result":{
+      "address":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX",
+      "name":"genesis",
+      "balances":[
+         {
+            "chain":"main",
+            "amount":"511567851650398",
+            "symbol":"SOUL"
          },
          {
-            "symbol":"NACHO",
-            "name":"Nachomen",
-            "currentSupply":"0",
-            "maxSupply":"0",
-            "decimals":0,
-            "isFungible":false,
-            "flags":"Transferable",
-            "owner":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX"
+            "chain":"apps",
+            "amount":"891917855944784",
+            "symbol":"SOUL"
+         }
+      ]
+   },
+   "id":"1"
+}
+```
+
+***
+
+
+#### getTokenData
+Returns data of a non-fungible token, in hexadecimal format.
+
+
+##### Parameters
+
+1. `string` Symbol of token.2. `string` ID of token.
+
+
+```js
+params: [
+   'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
+]
+```
+
+##### Returns
+
+`TokenData` - A TokenData object.
+
+  - `address `: `string` - Given address.
+  - `name`: `string` - Name of given address.
+  - `balances`: `Array` - Array of balance objects.
+  - `balance - chain`: `string` - Name of the chain.
+  - `balance - symbol`: `string` - Token symbol.
+  - `balance - amount`: `string` - Amount of tokens.
+ 
+  
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"getTokenData","params":["", ""],"id":1}'
+
+// Result
+{
+   "jsonrpc":"2.0",
+   "result":{
+      "address":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX",
+      "name":"genesis",
+      "balances":[
+         {
+            "chain":"main",
+            "amount":"511567851650398",
+            "symbol":"SOUL"
+         },
+         {
+            "chain":"apps",
+            "amount":"891917855944784",
+            "symbol":"SOUL"
+         }
+      ]
+   },
+   "id":"1"
+}
+```
+
+***
+
+
+#### getApps
+Returns an array of apps deployed in Phantasma.
+
+
+##### Parameters
+
+
+none
+
+
+```js
+params: [
+   'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
+]
+```
+
+##### Returns
+
+`App` - A App object.
+
+  - `address `: `string` - Given address.
+  - `name`: `string` - Name of given address.
+  - `balances`: `Array` - Array of balance objects.
+  - `balance - chain`: `string` - Name of the chain.
+  - `balance - symbol`: `string` - Token symbol.
+  - `balance - amount`: `string` - Amount of tokens.
+ 
+  
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"getApps","params":[],"id":1}'
+
+// Result
+{
+   "jsonrpc":"2.0",
+   "result":{
+      "address":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX",
+      "name":"genesis",
+      "balances":[
+         {
+            "chain":"main",
+            "amount":"511567851650398",
+            "symbol":"SOUL"
+         },
+         {
+            "chain":"apps",
+            "amount":"891917855944784",
+            "symbol":"SOUL"
          }
       ]
    },
@@ -758,97 +1199,405 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"getTokens","params":[],"id":1}'
 #### getTokenTransfers
 Returns last X transactions of given token.
 
+
 ##### Parameters
 
-1. `string` - token symbol
-2. `QUANTITY` - amount of transactions to query
+1. `string` Token symbol.2. `number` Index of page to return.3. `number` Number of items to return per page.
+
+
 ```js
 params: [
-   'SOUL',
-   5
+   'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
 ]
 ```
 
 ##### Returns
 
-See [getTransactionByHash](#getTransactionByHash). 
+`Transaction` - A Transaction object, or `error` if token symbol is invalidor page is invalidor pageSize is invalid.
 
+  - `address `: `string` - Given address.
+  - `name`: `string` - Name of given address.
+  - `balances`: `Array` - Array of balance objects.
+  - `balance - chain`: `string` - Name of the chain.
+  - `balance - symbol`: `string` - Token symbol.
+  - `balance - amount`: `string` - Amount of tokens.
+ 
+  
 ##### Example
 ```js
 // Request
-curl -X POST --data '{"jsonrpc":"2.0","method":"getTokenTransfers","params":["SOUL", 5],"id":1}'
+curl -X POST --data '{"jsonrpc":"2.0","method":"getTokenTransfers","params":["", "", ""],"id":1}'
+
+// Result
+{
+   "jsonrpc":"2.0",
+   "result":{
+      "address":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX",
+      "name":"genesis",
+      "balances":[
+         {
+            "chain":"main",
+            "amount":"511567851650398",
+            "symbol":"SOUL"
+         },
+         {
+            "chain":"apps",
+            "amount":"891917855944784",
+            "symbol":"SOUL"
+         }
+      ]
+   },
+   "id":"1"
+}
 ```
 
-Result
-
-See [getTransactionByHash](#getTransactionByHash). 
-
 ***
+
 
 #### getTokenTransferCount
 Returns the number of transaction of a given token.
 
+
 ##### Parameters
 
-1. `string` - token symbol
+1. `string` Token symbol.
+
+
 ```js
 params: [
-   'SOUL'
+   'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
 ]
 ```
 
 ##### Returns
 
-`QUANTITY` - Integer of the number of transactions of given token.
+`number` - A number, or `error` if token symbol is invalid.
 
+  - `address `: `string` - Given address.
+  - `name`: `string` - Name of given address.
+  - `balances`: `Array` - Array of balance objects.
+  - `balance - chain`: `string` - Name of the chain.
+  - `balance - symbol`: `string` - Token symbol.
+  - `balance - amount`: `string` - Amount of tokens.
+ 
+  
 ##### Example
 ```js
 // Request
-curl -X POST --data '{"jsonrpc":"2.0","method":"getTokenTransferCount","params":["SOUL"],"id":1}'
+curl -X POST --data '{"jsonrpc":"2.0","method":"getTokenTransferCount","params":[""],"id":1}'
 
-
-//Result
-{
-   "jsonrpc":"2.0",
-   "result":"2245",
-   "id":"1"
-}
-
-```
-
-***
-
-#### sendRawTransaction
-Allows to broadcast a signed operation on the network, but it's required to build it manually. 
-
-##### Parameters
-
-1. `DATA` - The signed transaction data.
-```js
-params: [
-   '0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675'
-]
-```
-
-##### Returns
-
-`DATA` - The transaction hash, or null if the transaction does not make it to the mempool for some reason.
-
-##### Example
-```js
-// Request
-curl -X POST --data '{"jsonrpc":"2.0","method":"sendRawTransaction","params":["0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675"],"id":1}'
-
-
-//Result
+// Result
 {
    "jsonrpc":"2.0",
    "result":{
-      "hash":"0x3C0D260AACF17BD4AFA535C4845E1CE8B9D8A600A826AB138ADF677C6369C703"
-      },
+      "address":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX",
+      "name":"genesis",
+      "balances":[
+         {
+            "chain":"main",
+            "amount":"511567851650398",
+            "symbol":"SOUL"
+         },
+         {
+            "chain":"apps",
+            "amount":"891917855944784",
+            "symbol":"SOUL"
+         }
+      ]
+   },
    "id":"1"
 }
-
 ```
 
 ***
+
+
+#### getTokenBalance
+Returns the balance for a specific token and chain, given an address.
+
+
+##### Parameters
+
+1. `string` Address of account.2. `string` Token symbol.3. `string` Address or name of chain.
+
+
+```js
+params: [
+   'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
+]
+```
+
+##### Returns
+
+`Balance` - A Balance object, or `error` if address is invalidor token is invalidor chain is invalid.
+
+  - `address `: `string` - Given address.
+  - `name`: `string` - Name of given address.
+  - `balances`: `Array` - Array of balance objects.
+  - `balance - chain`: `string` - Name of the chain.
+  - `balance - symbol`: `string` - Token symbol.
+  - `balance - amount`: `string` - Amount of tokens.
+ 
+  
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"getTokenBalance","params":["", "", ""],"id":1}'
+
+// Result
+{
+   "jsonrpc":"2.0",
+   "result":{
+      "address":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX",
+      "name":"genesis",
+      "balances":[
+         {
+            "chain":"main",
+            "amount":"511567851650398",
+            "symbol":"SOUL"
+         },
+         {
+            "chain":"apps",
+            "amount":"891917855944784",
+            "symbol":"SOUL"
+         }
+      ]
+   },
+   "id":"1"
+}
+```
+
+***
+
+
+#### getAuctionsCount
+Returns the number of active auctions.
+
+
+##### Parameters
+
+1. `string` Chain address or name where the market is located.2. `string` Token symbol used as filter.
+
+
+```js
+params: [
+   'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
+]
+```
+
+##### Returns
+
+`number` - A number.
+
+  - `address `: `string` - Given address.
+  - `name`: `string` - Name of given address.
+  - `balances`: `Array` - Array of balance objects.
+  - `balance - chain`: `string` - Name of the chain.
+  - `balance - symbol`: `string` - Token symbol.
+  - `balance - amount`: `string` - Amount of tokens.
+ 
+  
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"getAuctionsCount","params":["", ""],"id":1}'
+
+// Result
+{
+   "jsonrpc":"2.0",
+   "result":{
+      "address":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX",
+      "name":"genesis",
+      "balances":[
+         {
+            "chain":"main",
+            "amount":"511567851650398",
+            "symbol":"SOUL"
+         },
+         {
+            "chain":"apps",
+            "amount":"891917855944784",
+            "symbol":"SOUL"
+         }
+      ]
+   },
+   "id":"1"
+}
+```
+
+***
+
+
+#### getAuctions
+Returns the auctions available in the market.
+
+
+##### Parameters
+
+1. `string` Chain address or name where the market is located.2. `string` Token symbol used as filter.3. `number` Index of page to return.4. `number` Number of items to return per page.
+
+
+```js
+params: [
+   'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
+]
+```
+
+##### Returns
+
+`Auction` - A Auction object.
+
+  - `address `: `string` - Given address.
+  - `name`: `string` - Name of given address.
+  - `balances`: `Array` - Array of balance objects.
+  - `balance - chain`: `string` - Name of the chain.
+  - `balance - symbol`: `string` - Token symbol.
+  - `balance - amount`: `string` - Amount of tokens.
+ 
+  
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"getAuctions","params":["", "", "", ""],"id":1}'
+
+// Result
+{
+   "jsonrpc":"2.0",
+   "result":{
+      "address":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX",
+      "name":"genesis",
+      "balances":[
+         {
+            "chain":"main",
+            "amount":"511567851650398",
+            "symbol":"SOUL"
+         },
+         {
+            "chain":"apps",
+            "amount":"891917855944784",
+            "symbol":"SOUL"
+         }
+      ]
+   },
+   "id":"1"
+}
+```
+
+***
+
+
+#### getAuction
+Returns the auction for a specific token.
+
+
+##### Parameters
+
+1. `string` Chain address or name where the market is located.2. `string` Token symbol.3. `string` Token ID.
+
+
+```js
+params: [
+   'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
+]
+```
+
+##### Returns
+
+`Auction` - A Auction object.
+
+  - `address `: `string` - Given address.
+  - `name`: `string` - Name of given address.
+  - `balances`: `Array` - Array of balance objects.
+  - `balance - chain`: `string` - Name of the chain.
+  - `balance - symbol`: `string` - Token symbol.
+  - `balance - amount`: `string` - Amount of tokens.
+ 
+  
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"getAuction","params":["", "", ""],"id":1}'
+
+// Result
+{
+   "jsonrpc":"2.0",
+   "result":{
+      "address":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX",
+      "name":"genesis",
+      "balances":[
+         {
+            "chain":"main",
+            "amount":"511567851650398",
+            "symbol":"SOUL"
+         },
+         {
+            "chain":"apps",
+            "amount":"891917855944784",
+            "symbol":"SOUL"
+         }
+      ]
+   },
+   "id":"1"
+}
+```
+
+***
+
+
+#### getArchive
+Returns info about a specific archive.
+
+
+##### Parameters
+
+1. `string` Archive hash.
+
+
+```js
+params: [
+   'PDHcAHq1fZXuwDrtJGghjemFnj2ZaFc7iu3qD4XjZG9eV'
+]
+```
+
+##### Returns
+
+`Archive` - A Archive object.
+
+  - `address `: `string` - Given address.
+  - `name`: `string` - Name of given address.
+  - `balances`: `Array` - Array of balance objects.
+  - `balance - chain`: `string` - Name of the chain.
+  - `balance - symbol`: `string` - Token symbol.
+  - `balance - amount`: `string` - Amount of tokens.
+ 
+  
+##### Example
+```js
+// Request
+curl -X POST --data '{"jsonrpc":"2.0","method":"getArchive","params":[""],"id":1}'
+
+// Result
+{
+   "jsonrpc":"2.0",
+   "result":{
+      "address":"P16m9XNDHxUex9hsGRytzhSj58k6W7BT5Xsvs3tHjJUkX",
+      "name":"genesis",
+      "balances":[
+         {
+            "chain":"main",
+            "amount":"511567851650398",
+            "symbol":"SOUL"
+         },
+         {
+            "chain":"apps",
+            "amount":"891917855944784",
+            "symbol":"SOUL"
+         }
+      ]
+   },
+   "id":"1"
+}
+```
+
+***
+
