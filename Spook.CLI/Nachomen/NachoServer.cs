@@ -534,8 +534,8 @@ namespace Phantasma.Spook.Nachomen
                     default:                    throw new ContractException("No wanted moves for the bot: " + level);
                 }
 
-                level = PraticeLevel.Wood;
-                logger.Message("Mining bot: " + level);
+                //level = PraticeLevel.Wood;
+                //logger.Message("Mining bot: " + level);
 
                 var genes = Luchador.MineBotGenes(rnd, level/*, wantedMoves*/);
 
@@ -593,17 +593,16 @@ namespace Phantasma.Spook.Nachomen
         /// </summary>
         private static void MineItems(Logger logger)
         {
-            // TODO fix este ciclo não vai até ao fim e não gera os items todos
             var itemValues = Enum.GetValues(typeof(ItemKind)).Cast<ItemKind>().ToArray();
             foreach (var kind in itemValues)
             {
                 if (!Rules.IsReleasedItem(kind))
                 {
-                    logger.Message("skip: " + kind);
+                    //logger.Message("skip: " + kind);
                     continue;
                 }
 
-                logger.Message("generated item: " + kind);
+                //logger.Message("generated item: " + kind);
                 var item = new NachoItem()
                 {
                     kind        = kind,
