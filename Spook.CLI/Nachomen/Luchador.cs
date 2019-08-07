@@ -88,6 +88,9 @@ namespace Phantasma.Spook.Nachomen
             return Rarity.ToString().ToLower();
         }
 
+        /// <summary>
+        /// dont use directly, only if necessary to rewrite new genes for the harcoded genes in the contract
+        /// </summary>
         public static byte[] MineBotGenes(Random rnd, PraticeLevel level)
         {
             Hue hue;

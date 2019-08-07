@@ -34,7 +34,7 @@ namespace Phantasma.Spook.Nachomen
         {
             GenerateTokens(nexus, chainSimulator, ownerKeys, logger);
 
-            GenerateBotGenes(ownerKeys.Address, logger);
+            //GenerateBotGenes(ownerKeys.Address, logger);
 
             //InitialNachoFill();
 
@@ -509,6 +509,7 @@ namespace Phantasma.Spook.Nachomen
             logger.Success("Nacho Market is ready!");
         }
 
+        /*
         private static void GenerateBotGenes(Address owner, Logger logger)
         {
             logger.Message("Generate genes for bots");
@@ -537,7 +538,8 @@ namespace Phantasma.Spook.Nachomen
                 //level = PraticeLevel.Wood;
                 //logger.Message("Mining bot: " + level);
 
-                var genes = Luchador.MineBotGenes(rnd, level/*, wantedMoves*/);
+                var genes = Luchador.MineBotGenes(rnd, level/*, wantedMoves*);
+                var genes = Luchador.MineBotGenes(rnd, level/*, wantedMoves*);
 
                 //for (var i = 0; i < genes.Length; i++)
                 //{
@@ -561,6 +563,7 @@ namespace Phantasma.Spook.Nachomen
                 //logger.Message("------------------");
             }
         }
+        */
 
         public static void GetLuchadorPriceRange(Rarity level, out decimal min, out decimal max)
         {
