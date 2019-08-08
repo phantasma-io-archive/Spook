@@ -345,6 +345,8 @@ namespace Phantasma.Spook.Nachomen
 
                     if (price < 0) price *= -1; // HACK
 
+                    var finalPrice = UnitConversion.ToBigInteger(price, Constants.NACHO_TOKEN_DECIMALS);
+
                     createdAuctions++;
 
                     Timestamp endWrestlerAuctionDate = chainSimulator.CurrentTime + TimeSpan.FromDays(2);
@@ -354,7 +356,7 @@ namespace Phantasma.Spook.Nachomen
                         ScriptUtils.
                             BeginScript().
                             AllowGas(nachoUser.Address, Address.Null, 1, 9999).
-                            CallContract("market", "SellToken", nachoUser.Address, wrestlerToken.Symbol, Constants.NACHO_SYMBOL, tokenID, price, endWrestlerAuctionDate).
+                            CallContract("market", "SellToken", nachoUser.Address, wrestlerToken.Symbol, Constants.NACHO_SYMBOL, tokenID, finalPrice, endWrestlerAuctionDate).
                             SpendGas(nachoUser.Address).
                             EndScript()
                     );
@@ -486,6 +488,8 @@ namespace Phantasma.Spook.Nachomen
 
                     if (price < 0) price *= -1; // HACK
 
+                    var finalPrice = UnitConversion.ToBigInteger(price, Constants.NACHO_TOKEN_DECIMALS);
+
                     createdAuctions++;
 
                     Timestamp endItemAuctionDate = chainSimulator.CurrentTime + TimeSpan.FromDays(2);
@@ -495,7 +499,7 @@ namespace Phantasma.Spook.Nachomen
                         ScriptUtils.
                             BeginScript().
                             AllowGas(nachoUser.Address, Address.Null, 1, 9999).
-                            CallContract("market", "SellToken", nachoUser.Address, itemToken.Symbol, Constants.NACHO_SYMBOL, tokenID, price, endItemAuctionDate).
+                            CallContract("market", "SellToken", nachoUser.Address, itemToken.Symbol, Constants.NACHO_SYMBOL, tokenID, finalPrice, endItemAuctionDate).
                             SpendGas(nachoUser.Address).
                             EndScript()
                     );
