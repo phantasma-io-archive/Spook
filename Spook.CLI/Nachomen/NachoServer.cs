@@ -82,7 +82,7 @@ namespace Phantasma.Spook.Nachomen
                 "pop $tokenID",
 
                 "load r0 \"OnSend\"",
-                "cmp r0, r1",
+                "cmp r0 r1",
                 "jmpif @execTrigger",
                 "ret",
 
@@ -109,7 +109,7 @@ namespace Phantasma.Spook.Nachomen
                 "pop $tokenID",
 
                 "load r0 \"OnSend\"",
-                "cmp r0, r1",
+                "cmp r0 r1",
                 "jmpif @execTrigger",
                 "ret",
 
