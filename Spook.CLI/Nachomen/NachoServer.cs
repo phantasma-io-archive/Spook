@@ -73,7 +73,7 @@ namespace Phantasma.Spook.Nachomen
             chainSimulator.GenerateToken(ownerKeys, Constants.NACHO_SYMBOL, "Nachomen Token", nachoSupply, Constants.NACHO_TOKEN_DECIMALS, TokenFlags.Transferable | TokenFlags.Fungible | TokenFlags.Finite | TokenFlags.Divisible);
             chainSimulator.MintTokens(ownerKeys, Constants.NACHO_SYMBOL, nachoSupply);
 
-            var tokenScript = new []
+            var wrestlerTokenScript = new []
             {
                 "alias r2 $address",
                 "alias r3 $tokenID",
@@ -89,17 +89,43 @@ namespace Phantasma.Spook.Nachomen
                 "@execTrigger:",
                 "load r0 \"nacho\"",
                 "ctx r0 r1",
-                "load r0 \"OnSendTrigger\"",
+                "load r0 \"OnSendWrestlerTrigger\"",
                 "push $address",
                 "push $tokenID",
                 "switch r1",
                 "ret"
             };
 
-            var callScript = AssemblerUtils.BuildScript(tokenScript);
+            var wrestlerCallScript = AssemblerUtils.BuildScript(wrestlerTokenScript);
 
-            chainSimulator.GenerateToken(ownerKeys, Constants.WRESTLER_SYMBOL, "Nachomen Luchador", 0, 0, TokenFlags.Transferable, callScript);
-            chainSimulator.GenerateToken(ownerKeys, Constants.ITEM_SYMBOL, "Nachomen Item", 0, 0, TokenFlags.Transferable, callScript);
+            chainSimulator.GenerateToken(ownerKeys, Constants.WRESTLER_SYMBOL, "Nachomen Luchador", 0, 0, TokenFlags.Transferable, wrestlerCallScript);
+
+            var itemTokenScript = new[]
+            {
+                "alias r2 $address",
+                "alias r3 $tokenID",
+
+                "pop $address",
+                "pop $tokenID",
+
+                "load r0 \"OnSend\"",
+                "cmp r0, r1",
+                "jmpif @execTrigger",
+                "ret",
+
+                "@execTrigger:",
+                "load r0 \"nacho\"",
+                "ctx r0 r1",
+                "load r0 \"OnSendItemTrigger\"",
+                "push $address",
+                "push $tokenID",
+                "switch r1",
+                "ret"
+            };
+
+            var itemCallScript = AssemblerUtils.BuildScript(itemTokenScript);
+
+            chainSimulator.GenerateToken(ownerKeys, Constants.ITEM_SYMBOL, "Nachomen Item", 0, 0, TokenFlags.Transferable, itemCallScript);
             chainSimulator.EndBlock();
 
             chainSimulator.BeginBlock();
