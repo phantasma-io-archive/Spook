@@ -9,6 +9,7 @@ using Phantasma.Blockchain.Contracts;
 using Phantasma.Blockchain.Contracts.Native;
 using Phantasma.Blockchain.Tokens;
 using Phantasma.Blockchain.Utils;
+using Phantasma.CodeGen.Assembler;
 using Phantasma.Core.Log;
 using Phantasma.Core.Types;
 using Phantasma.Cryptography;
@@ -34,7 +35,7 @@ namespace Phantasma.Spook.Nachomen
         {
             GenerateTokens(nexus, chainSimulator, ownerKeys, logger);
 
-            GenerateBotGenes(ownerKeys.Address, logger);
+            //GenerateBotGenes(ownerKeys.Address, logger);
 
             //InitialNachoFill();
 
@@ -72,8 +73,59 @@ namespace Phantasma.Spook.Nachomen
             chainSimulator.GenerateToken(ownerKeys, Constants.NACHO_SYMBOL, "Nachomen Token", nachoSupply, Constants.NACHO_TOKEN_DECIMALS, TokenFlags.Transferable | TokenFlags.Fungible | TokenFlags.Finite | TokenFlags.Divisible);
             chainSimulator.MintTokens(ownerKeys, Constants.NACHO_SYMBOL, nachoSupply);
 
-            chainSimulator.GenerateToken(ownerKeys, Constants.WRESTLER_SYMBOL, "Nachomen Luchador", 0, 0, TokenFlags.Transferable);
-            chainSimulator.GenerateToken(ownerKeys, Constants.ITEM_SYMBOL, "Nachomen Item", 0, 0, TokenFlags.Transferable);
+            var wrestlerTokenScript = new []
+            {
+                "alias r2 $address",
+                "alias r3 $tokenID",
+
+                "pop $address",
+                "pop $tokenID",
+
+                "load r0 \"OnSend\"",
+                "cmp r0 r1",
+                "jmpif @execTrigger",
+                "ret",
+
+                "@execTrigger:",
+                "load r0 \"nacho\"",
+                "ctx r0 r1",
+                "load r0 \"OnSendWrestlerTrigger\"",
+                "push $address",
+                "push $tokenID",
+                "switch r1",
+                "ret"
+            };
+
+            var wrestlerCallScript = AssemblerUtils.BuildScript(wrestlerTokenScript);
+
+            chainSimulator.GenerateToken(ownerKeys, Constants.WRESTLER_SYMBOL, "Nachomen Luchador", 0, 0, TokenFlags.Transferable, wrestlerCallScript);
+
+            var itemTokenScript = new[]
+            {
+                "alias r2 $address",
+                "alias r3 $tokenID",
+
+                "pop $address",
+                "pop $tokenID",
+
+                "load r0 \"OnSend\"",
+                "cmp r0 r1",
+                "jmpif @execTrigger",
+                "ret",
+
+                "@execTrigger:",
+                "load r0 \"nacho\"",
+                "ctx r0 r1",
+                "load r0 \"OnSendItemTrigger\"",
+                "push $address",
+                "push $tokenID",
+                "switch r1",
+                "ret"
+            };
+
+            var itemCallScript = AssemblerUtils.BuildScript(itemTokenScript);
+
+            chainSimulator.GenerateToken(ownerKeys, Constants.ITEM_SYMBOL, "Nachomen Item", 0, 0, TokenFlags.Transferable, itemCallScript);
             chainSimulator.EndBlock();
 
             chainSimulator.BeginBlock();
@@ -345,6 +397,8 @@ namespace Phantasma.Spook.Nachomen
 
                     if (price < 0) price *= -1; // HACK
 
+                    var finalPrice = UnitConversion.ToBigInteger(price, Constants.NACHO_TOKEN_DECIMALS);
+
                     createdAuctions++;
 
                     Timestamp endWrestlerAuctionDate = chainSimulator.CurrentTime + TimeSpan.FromDays(2);
@@ -354,7 +408,7 @@ namespace Phantasma.Spook.Nachomen
                         ScriptUtils.
                             BeginScript().
                             AllowGas(nachoUser.Address, Address.Null, 1, 9999).
-                            CallContract("market", "SellToken", nachoUser.Address, wrestlerToken.Symbol, Constants.NACHO_SYMBOL, tokenID, price, endWrestlerAuctionDate).
+                            CallContract("market", "SellToken", nachoUser.Address, wrestlerToken.Symbol, Constants.NACHO_SYMBOL, tokenID, finalPrice, endWrestlerAuctionDate).
                             SpendGas(nachoUser.Address).
                             EndScript()
                     );
@@ -486,6 +540,8 @@ namespace Phantasma.Spook.Nachomen
 
                     if (price < 0) price *= -1; // HACK
 
+                    var finalPrice = UnitConversion.ToBigInteger(price, Constants.NACHO_TOKEN_DECIMALS);
+
                     createdAuctions++;
 
                     Timestamp endItemAuctionDate = chainSimulator.CurrentTime + TimeSpan.FromDays(2);
@@ -495,7 +551,7 @@ namespace Phantasma.Spook.Nachomen
                         ScriptUtils.
                             BeginScript().
                             AllowGas(nachoUser.Address, Address.Null, 1, 9999).
-                            CallContract("market", "SellToken", nachoUser.Address, itemToken.Symbol, Constants.NACHO_SYMBOL, tokenID, price, endItemAuctionDate).
+                            CallContract("market", "SellToken", nachoUser.Address, itemToken.Symbol, Constants.NACHO_SYMBOL, tokenID, finalPrice, endItemAuctionDate).
                             SpendGas(nachoUser.Address).
                             EndScript()
                     );
@@ -509,6 +565,7 @@ namespace Phantasma.Spook.Nachomen
             logger.Success("Nacho Market is ready!");
         }
 
+        /*
         private static void GenerateBotGenes(Address owner, Logger logger)
         {
             logger.Message("Generate genes for bots");
@@ -534,10 +591,11 @@ namespace Phantasma.Spook.Nachomen
                     default:                    throw new ContractException("No wanted moves for the bot: " + level);
                 }
 
-                level = PraticeLevel.Wood;
-                logger.Message("Mining bot: " + level);
+                //level = PraticeLevel.Wood;
+                //logger.Message("Mining bot: " + level);
 
-                var genes = Luchador.MineBotGenes(rnd, level/*, wantedMoves*/);
+                var genes = Luchador.MineBotGenes(rnd, level/*, wantedMoves*);
+                var genes = Luchador.MineBotGenes(rnd, level/*, wantedMoves*);
 
                 //for (var i = 0; i < genes.Length; i++)
                 //{
@@ -561,6 +619,7 @@ namespace Phantasma.Spook.Nachomen
                 //logger.Message("------------------");
             }
         }
+        */
 
         public static void GetLuchadorPriceRange(Rarity level, out decimal min, out decimal max)
         {
@@ -593,17 +652,16 @@ namespace Phantasma.Spook.Nachomen
         /// </summary>
         private static void MineItems(Logger logger)
         {
-            // TODO fix este ciclo não vai até ao fim e não gera os items todos
             var itemValues = Enum.GetValues(typeof(ItemKind)).Cast<ItemKind>().ToArray();
             foreach (var kind in itemValues)
             {
                 if (!Rules.IsReleasedItem(kind))
                 {
-                    logger.Message("skip: " + kind);
+                    //logger.Message("skip: " + kind);
                     continue;
                 }
 
-                logger.Message("generated item: " + kind);
+                //logger.Message("generated item: " + kind);
                 var item = new NachoItem()
                 {
                     kind        = kind,
