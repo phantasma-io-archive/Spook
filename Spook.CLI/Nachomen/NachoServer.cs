@@ -9,6 +9,7 @@ using Phantasma.Blockchain.Contracts;
 using Phantasma.Blockchain.Contracts.Native;
 using Phantasma.Blockchain.Tokens;
 using Phantasma.Blockchain.Utils;
+using Phantasma.CodeGen.Assembler;
 using Phantasma.Core.Log;
 using Phantasma.Core.Types;
 using Phantasma.Cryptography;
@@ -72,8 +73,33 @@ namespace Phantasma.Spook.Nachomen
             chainSimulator.GenerateToken(ownerKeys, Constants.NACHO_SYMBOL, "Nachomen Token", nachoSupply, Constants.NACHO_TOKEN_DECIMALS, TokenFlags.Transferable | TokenFlags.Fungible | TokenFlags.Finite | TokenFlags.Divisible);
             chainSimulator.MintTokens(ownerKeys, Constants.NACHO_SYMBOL, nachoSupply);
 
-            chainSimulator.GenerateToken(ownerKeys, Constants.WRESTLER_SYMBOL, "Nachomen Luchador", 0, 0, TokenFlags.Transferable);
-            chainSimulator.GenerateToken(ownerKeys, Constants.ITEM_SYMBOL, "Nachomen Item", 0, 0, TokenFlags.Transferable);
+            var tokenScript = new []
+            {
+                "alias r2 $address",
+                "alias r3 $tokenID",
+
+                "pop $address",
+                "pop $tokenID",
+
+                "load r0 \"OnSend\"",
+                "cmp r0, r1",
+                "jmpif @execTrigger",
+                "ret",
+
+                "@execTrigger:",
+                "load r0 \"nacho\"",
+                "ctx r0 r1",
+                "load r0 \"OnSendTrigger\"",
+                "push $address",
+                "push $tokenID",
+                "switch r1",
+                "ret"
+            };
+
+            var callScript = AssemblerUtils.BuildScript(tokenScript);
+
+            chainSimulator.GenerateToken(ownerKeys, Constants.WRESTLER_SYMBOL, "Nachomen Luchador", 0, 0, TokenFlags.Transferable, callScript);
+            chainSimulator.GenerateToken(ownerKeys, Constants.ITEM_SYMBOL, "Nachomen Item", 0, 0, TokenFlags.Transferable, callScript);
             chainSimulator.EndBlock();
 
             chainSimulator.BeginBlock();
