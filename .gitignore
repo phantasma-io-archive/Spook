@@ -4,3 +4,4 @@ Spook.CLI/obj/*
 Spook.CLI/bin/*
 Spook.CLI/Publish/*
 Storage/*
+Spook.CLI/Properties/launchSettings.json
