@@ -620,8 +620,8 @@ namespace Phantasma.Spook
             }
 
 
-            cryptoCompareAPIKey = settings.GetString("cryptocompare.apikey");
-            if (cryptoCompareAPIKey != null)
+            cryptoCompareAPIKey = settings.GetString("cryptocompare.apikey", "");
+            if (!string.IsNullOrEmpty(cryptoCompareAPIKey))
             {
                 logger.Message($"CryptoCompare API enabled...");
             }
