@@ -31,6 +31,7 @@ using Phantasma.Storage;
 using Logger = Phantasma.Core.Log.Logger;
 using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
 using System.Globalization;
+using Phantasma.Spook.Oracles;
 
 namespace Phantasma.Spook
 {
@@ -95,6 +96,58 @@ namespace Phantasma.Spook
         private ConsoleGUI gui;
 
         private List<IPlugin> plugins = new List<IPlugin>();
+
+        private string cryptoCompareAPIKey = null;
+
+        private const string interopTag = "interop://";
+        private const string priceTag = "price://";
+
+        private byte[] ReadFromOracle(/*Hash hash, */string url)
+        {
+
+            if (url.StartsWith(interopTag))
+            {
+                url = url.Substring(interopTag.Length);
+                var args = url.Split('/');
+
+                var chainName = args[0];
+                args = args.Skip(1).ToArray();
+
+                switch (chainName)
+                {
+                    case "neo":
+                        return OracleUtils.ReadNEO(args);
+
+                    default:
+                        throw new OracleException("invalid oracle chain: " + chainName);
+                }
+            }
+            else
+            if (url.StartsWith(priceTag))
+            {
+                url = url.Substring(interopTag.Length);
+                var symbols = url.Split('/');
+                if (symbols.Length != 2)
+                {
+                    throw new OracleException("invalid oracle price request");
+                }
+
+                var baseSymbol = symbols[0];
+                var quoteSymbol = symbols[1];
+
+                if (cryptoCompareAPIKey != null)
+                {
+                    var price = CryptoCompareUtils.GetCoinRate(baseSymbol, quoteSymbol, cryptoCompareAPIKey);
+                    var val = UnitConversion.ToBigInteger(price, 8);
+                    return val.ToByteArray();
+                }
+
+                return OracleUtils.ReadPrice(symbols[0], symbols[1]);
+            }
+            {
+                throw new OracleException("unknown oracle protocol");
+            }
+        }
 
         private static BigInteger FetchBalance(JSONRPC_Client rpc, Logger logger, string host, Address address)
         {
@@ -538,7 +591,7 @@ namespace Phantasma.Spook
 
             // mempool setup
             int blockTime = settings.GetInt("node.blocktime", Mempool.MinimumBlockTime);
-            this.mempool = new Mempool(node_keys, nexus, blockTime);
+            this.mempool = new Mempool(node_keys, nexus, blockTime, ReadFromOracle);
             mempool.Start(ThreadPriority.AboveNormal);
 
             mempool.OnTransactionFailed += Mempool_OnTransactionFailed;
@@ -563,6 +616,13 @@ namespace Phantasma.Spook
                 logger.Message($"REST server listening on port {restPort}...");
                 var restServer = new RESTServer(api, "/api", restPort, (level, text) => WebLogMapper("rest", level, text));
                 restServer.Start(ThreadPriority.AboveNormal);
+            }
+
+
+            cryptoCompareAPIKey = settings.GetString("cryptocompare.apikey");
+            if (cryptoCompareAPIKey != null)
+            {
+                logger.Message($"CryptoCompare API enabled...");
             }
 
             // node setup
