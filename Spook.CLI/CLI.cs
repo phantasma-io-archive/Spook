@@ -404,6 +404,11 @@ namespace Phantasma.Spook
             }
         }
 
+        private byte[] OracleCallback(string url)
+        {
+            throw new NotImplementedException();
+        }
+
         public CLI(string[] args)
         {
             var culture = new CultureInfo("en-US");
@@ -538,7 +543,7 @@ namespace Phantasma.Spook
 
             // mempool setup
             int blockTime = settings.GetInt("node.blocktime", Mempool.MinimumBlockTime);
-            this.mempool = new Mempool(node_keys, nexus, blockTime);
+            this.mempool = new Mempool(node_keys, nexus, blockTime, OracleCallback);
             mempool.Start(ThreadPriority.AboveNormal);
 
             mempool.OnTransactionFailed += Mempool_OnTransactionFailed;
