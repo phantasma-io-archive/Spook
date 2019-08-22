@@ -139,11 +139,12 @@ namespace Phantasma.Spook
                 {
                     var price = CryptoCompareUtils.GetCoinRate(baseSymbol, quoteSymbol, cryptoCompareAPIKey);
                     var val = UnitConversion.ToBigInteger(price, 8);
-                    return val.ToByteArray();
+                    return val.ToSignedByteArray();
                 }
 
-                return OracleUtils.ReadPrice(symbols[0], symbols[1]);
+                throw new OracleException("No support for prices");
             }
+            else
             {
                 throw new OracleException("unknown oracle protocol");
             }
