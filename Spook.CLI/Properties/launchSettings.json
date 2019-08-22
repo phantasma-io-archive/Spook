@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "Phantasma.CLI": {
-      "commandName": "Project",
-      "commandLineArgs": "-node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -rpc.enabled=true -simulator.enabled=true  -gui.enabled=true"
-    }
-  }
-}
