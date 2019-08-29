@@ -73,7 +73,7 @@ The files needed to run a node will now be in PhantasmaSpook\Phantasma.CLI\Publi
 As per above you can run it with the following command:
 
 ```
-Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet
+dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet
 #To enable the RPC server add this argument to the line above
 -rpc.enabled=true
 ```
