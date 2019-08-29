@@ -40,7 +40,7 @@ To bootstrap your own test net just run a single instance of Phantasma node usin
 Note - you will need .NET runtime 2.2 or higher installed on your desktop https://dotnet.microsoft.com/download
 
 ```
-Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet
+dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet
 #To enable the RPC server add this argument to the line above
 -rpc.enabled=true
 ```
