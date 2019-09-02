@@ -116,7 +116,7 @@ namespace Phantasma.Spook
                 switch (chainName)
                 {
                     case "neo":
-                        return OracleUtils.ReadNEO(args);
+                        return Oracles.OracleUtils.ReadNEO(args);
 
                     default:
                         throw new OracleException("invalid oracle chain: " + chainName);
