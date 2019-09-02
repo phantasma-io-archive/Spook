@@ -32,6 +32,7 @@ using Logger = Phantasma.Core.Log.Logger;
 using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
 using System.Globalization;
 using Phantasma.Spook.Oracles;
+using OracleUtils = Phantasma.Spook.Oracles.OracleUtils;
 
 namespace Phantasma.Spook
 {
