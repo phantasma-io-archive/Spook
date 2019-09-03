@@ -95,7 +95,7 @@ namespace Phantasma.Spook
                 }
 
                 var baseSymbol = symbols[0];
-                var quoteSymbol = symbols.Length>1? symbols[1]: "USD";
+                var quoteSymbol = symbols.Length>1? symbols[1]: Nexus.FiatTokenSymbol;
 
                 if (CLI.cryptoCompareAPIKey != null)
                 {
