@@ -52,6 +52,66 @@ namespace Phantasma.Spook
         void Update();
     }
 
+    public class SpookOracle : OracleReader
+    {
+        private const string interopTag = "interop://";
+        private const string priceTag = "price://";
+
+        public readonly CLI CLI;
+
+        public SpookOracle(CLI cli)
+        {
+            this.CLI = cli;
+        }
+
+        protected override byte[] PullData(string url)
+        {
+            if (url.StartsWith(interopTag))
+            {
+                url = url.Substring(interopTag.Length);
+                var args = url.Split('/');
+
+                var chainName = args[0];
+                args = args.Skip(1).ToArray();
+
+                switch (chainName)
+                {
+                    case "neo":
+                        return NeoScanUtils.ReadOracle(args);
+
+                    default:
+                        throw new OracleException("invalid oracle chain: " + chainName);
+                }
+            }
+            else
+            if (url.StartsWith(priceTag))
+            {
+                url = url.Substring(interopTag.Length);
+                var symbols = url.Split('/');
+                if (symbols.Length != 2)
+                {
+                    throw new OracleException("invalid oracle price request");
+                }
+
+                var baseSymbol = symbols[0];
+                var quoteSymbol = symbols[1];
+
+                if (CLI.cryptoCompareAPIKey != null)
+                {
+                    var price = CryptoCompareUtils.GetCoinRate(baseSymbol, quoteSymbol, CLI.cryptoCompareAPIKey);
+                    var val = UnitConversion.ToBigInteger(price, 8);
+                    return val.ToUnsignedByteArray();
+                }
+
+                throw new OracleException("No support for prices");
+            }
+            else
+            {
+                throw new OracleException("unknown oracle protocol");
+            }
+        }
+    }
+
     public class CLI
     {
         static void Main(string[] args)
@@ -97,58 +157,7 @@ namespace Phantasma.Spook
 
         private List<IPlugin> plugins = new List<IPlugin>();
 
-        private string cryptoCompareAPIKey = null;
-
-        private const string interopTag = "interop://";
-        private const string priceTag = "price://";
-
-        private byte[] ReadFromOracle(/*Hash hash, */string url)
-        {
-
-            if (url.StartsWith(interopTag))
-            {
-                url = url.Substring(interopTag.Length);
-                var args = url.Split('/');
-
-                var chainName = args[0];
-                args = args.Skip(1).ToArray();
-
-                switch (chainName)
-                {
-                    case "neo":
-                        return OracleUtils.ReadNEO(args);
-
-                    default:
-                        throw new OracleException("invalid oracle chain: " + chainName);
-                }
-            }
-            else
-            if (url.StartsWith(priceTag))
-            {
-                url = url.Substring(interopTag.Length);
-                var symbols = url.Split('/');
-                if (symbols.Length != 2)
-                {
-                    throw new OracleException("invalid oracle price request");
-                }
-
-                var baseSymbol = symbols[0];
-                var quoteSymbol = symbols[1];
-
-                if (cryptoCompareAPIKey != null)
-                {
-                    var price = CryptoCompareUtils.GetCoinRate(baseSymbol, quoteSymbol, cryptoCompareAPIKey);
-                    var val = UnitConversion.ToBigInteger(price, 8);
-                    return val.ToSignedByteArray();
-                }
-
-                throw new OracleException("No support for prices");
-            }
-            else
-            {
-                throw new OracleException("unknown oracle protocol");
-            }
-        }
+        public string cryptoCompareAPIKey { get; private set; } = null;
 
         private static BigInteger FetchBalance(JSONRPC_Client rpc, Logger logger, string host, Address address)
         {
@@ -468,6 +477,21 @@ namespace Phantasma.Spook
             var settings = new Arguments(args);
 
             /*
+            var rnd = new Random();
+            var publicKey = new byte[32];
+            rnd.NextBytes(publicKey);
+            for (byte opcode=0; opcode<255; opcode++)
+            {
+                var bytes = ByteArrayUtils.ConcatBytes(new byte[] { opcode }, publicKey);
+                var text = Base58.Encode(bytes);
+
+                Console.WriteLine(opcode + " => "+text);
+            }
+
+            Console.ReadLine();*/
+
+
+            /*
             for (int i = 0; i < 20; i++)
             {
                 var k = KeyPair.Generate();
@@ -557,7 +581,10 @@ namespace Phantasma.Spook
 
             var node_keys = KeyPair.FromWIF(wif);
 
-            nexus = new Nexus(logger, (name) => new BasicDiskStore(storagePath + name + ".txt"));
+            nexus = new Nexus(logger, 
+                (name) => new BasicDiskStore(storagePath + name + ".txt"),
+                () => new SpookOracle(this)
+                );
 
             bool bootstrap = false;
 
@@ -592,7 +619,7 @@ namespace Phantasma.Spook
 
             // mempool setup
             int blockTime = settings.GetInt("node.blocktime", Mempool.MinimumBlockTime);
-            this.mempool = new Mempool(node_keys, nexus, blockTime, ReadFromOracle);
+            this.mempool = new Mempool(node_keys, nexus, blockTime);
             mempool.Start(ThreadPriority.AboveNormal);
 
             mempool.OnTransactionFailed += Mempool_OnTransactionFailed;
