@@ -86,15 +86,16 @@ namespace Phantasma.Spook
             else
             if (url.StartsWith(priceTag))
             {
-                url = url.Substring(interopTag.Length);
+                url = url.Substring(priceTag.Length);
                 var symbols = url.Split('/');
-                if (symbols.Length != 2)
+
+                if (symbols.Length < 1 || symbols.Length > 2)
                 {
                     throw new OracleException("invalid oracle price request");
                 }
 
                 var baseSymbol = symbols[0];
-                var quoteSymbol = symbols[1];
+                var quoteSymbol = symbols.Length>1? symbols[1]: "USD";
 
                 if (CLI.cryptoCompareAPIKey != null)
                 {
