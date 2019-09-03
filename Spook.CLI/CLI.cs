@@ -593,7 +593,8 @@ namespace Phantasma.Spook
 
             // mempool setup
             int blockTime = settings.GetInt("node.blocktime", Mempool.MinimumBlockTime);
-            this.mempool = new Mempool(node_keys, nexus, blockTime, ReadFromOracle);
+            this.mempool = new Mempool(node_keys, nexus, blockTime);
+
             mempool.Start(ThreadPriority.AboveNormal);
 
             mempool.OnTransactionFailed += Mempool_OnTransactionFailed;
