@@ -784,7 +784,7 @@ namespace Phantasma.Spook.Nachomen
                     moveOverrides = new byte[0],
                     nickname = string.Empty,
                     perfumeTime = 0,
-                    praticeLevel = PraticeLevel.Gold,
+                    practiceLevel = PracticeLevel.Gold,
                     roomTime = 0,
                     score = 0,
                     stakeAmount = 0,
@@ -989,45 +989,45 @@ namespace Phantasma.Spook.Nachomen
             BigInteger botItemID;
             string introText = "";
 
-            var botLevel = (PraticeLevel)(botID);
+            var botLevel = (PracticeLevel)(botID);
             switch (botLevel)
             {
-                case PraticeLevel.Wood - (int)PraticeLevel.Wood * 2: // PraticeLevel.Wood = -1
+                case PracticeLevel.Wood - (int)PracticeLevel.Wood * 2: // PraticeLevel.Wood = -1
                     level = 1; botItemID = 0; genes = new byte[] { 120, 46, 40, 40, 131, 93, 80, 221, 68, 155, };
                     introText = "Beep boop... amigo, entrena conmigo!";
                     break;
 
-                case PraticeLevel.Iron - (int)PraticeLevel.Iron * 2: // PraticeLevel.Iron = -2
+                case PracticeLevel.Iron - (int)PracticeLevel.Iron * 2: // PraticeLevel.Iron = -2
                     level = 4; botItemID = 0; genes = new byte[] { 222, 50, 52, 48, 131, 88, 144, 8, 51, 104, };
                     introText = "I'm made from iron and because of that, I'm stronger than my wood brother!";
                     break;
 
-                case PraticeLevel.Steel - (int)PraticeLevel.Steel * 2: // PraticeLevel.Steel = -3
+                case PracticeLevel.Steel - (int)PracticeLevel.Steel * 2: // PraticeLevel.Steel = -3
                     level = 6; botItemID = 0; genes = new byte[] { 114, 50, 53, 59, 131, 123, 122, 223, 181, 184, };
                     introText = "Get ready.. because I'm faster and stronger than my iron brother!";
                     break;
 
-                case PraticeLevel.Silver - (int)PraticeLevel.Silver * 2: // PraticeLevel.Silver = -4
+                case PracticeLevel.Silver - (int)PracticeLevel.Silver * 2: // PraticeLevel.Silver = -4
                     level = 8; botItemID = 0; genes = new byte[] { 72, 59, 61, 64, 131, 115, 18, 108, 11, 195, };
                     introText = "Counters are for plebs!";
                     break;
 
-                case PraticeLevel.Gold - (int)PraticeLevel.Gold * 2: // PraticeLevel.Gold = -5
+                case PracticeLevel.Gold - (int)PracticeLevel.Gold * 2: // PraticeLevel.Gold = -5
                     level = 10; botItemID = 0; genes = new byte[] { 138, 66, 65, 61, 131, 51, 148, 143, 99, 55, };
                     introText = "Luchador... My congratulations for getting so far!";
                     break;
 
-                case PraticeLevel.Ruby - (int)PraticeLevel.Ruby * 2: // PraticeLevel.Ruby = -6
+                case PracticeLevel.Ruby - (int)PracticeLevel.Ruby * 2: // PraticeLevel.Ruby = -6
                     level = 13; botItemID = 0; genes = new byte[] { 12, 65, 68, 65, 131, 110, 146, 11, 100, 111 };
                     introText = "Amigo... I'm too strong to fail!";
                     break;
 
-                case PraticeLevel.Emerald - (int)PraticeLevel.Emerald * 2: // PraticeLevel.Emerald = -7
+                case PracticeLevel.Emerald - (int)PracticeLevel.Emerald * 2: // PraticeLevel.Emerald = -7
                     level = 16; botItemID = 329390; genes = new byte[] { 240, 76, 73, 79, 131, 68, 218, 145, 232, 20 };
                     introText = "Beep...Beep...My hobby is wasting time in asian basket weaving foruns...";
                     break;
 
-                case PraticeLevel.Diamond - (int)PraticeLevel.Diamond * 2: // PraticeLevel.Diamond = -8
+                case PracticeLevel.Diamond - (int)PracticeLevel.Diamond * 2: // PraticeLevel.Diamond = -8
                     level = 20; botItemID = 35808; genes = new byte[] { 144, 76, 77, 76, 131, 46, 168, 202, 141, 188, };
                     introText = "Beep... boop... I am become Death, the destroyer of worlds!";
                     break;

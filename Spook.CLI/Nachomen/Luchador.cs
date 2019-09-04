@@ -91,7 +91,7 @@ namespace Phantasma.Spook.Nachomen
         /// <summary>
         /// dont use directly, only if necessary to rewrite new genes for the harcoded genes in the contract
         /// </summary>
-        public static byte[] MineBotGenes(Random rnd, PraticeLevel level)
+        public static byte[] MineBotGenes(Random rnd, PracticeLevel level)
         {
             Hue hue;
             sbyte shade;
@@ -207,7 +207,7 @@ namespace Phantasma.Spook.Nachomen
             {
                 if (ID <= 8)
                 {
-                    return ((PraticeLevel)((int)ID)).ToString() + " dummy";
+                    return ((PracticeLevel)((int)ID)).ToString() + " dummy";
                 }
 
                 if (!string.IsNullOrEmpty(data.nickname))
@@ -433,7 +433,7 @@ namespace Phantasma.Spook.Nachomen
             return Constants.EXPERIENCE_MAP[level];
         }
 
-        public PraticeLevel praticeLevel => data.praticeLevel;
+        public PracticeLevel praticeLevel => data.practiceLevel;
 
         public Hue SkinHue
         {
@@ -873,60 +873,60 @@ namespace Phantasma.Spook.Nachomen
             }
         }
 
-        public static void GetDummyVisuals(PraticeLevel level, out Hue hue, out sbyte shade)
+        public static void GetDummyVisuals(PracticeLevel level, out Hue hue, out sbyte shade)
         {
             switch (level)
             {
-                case PraticeLevel.Wood:
+                case PracticeLevel.Wood:
                     {
                         hue = Hue.Brown;
                         shade = 0;
                         break;
                     }
 
-                case PraticeLevel.Iron:
+                case PracticeLevel.Iron:
                     {
                         hue = Hue.Gray;
                         shade = -1;
                         break;
                     }
 
-                case PraticeLevel.Steel:
+                case PracticeLevel.Steel:
                     {
                         hue = Hue.Blue;
                         shade = 0;
                         break;
                     }
 
-                case PraticeLevel.Silver:
+                case PracticeLevel.Silver:
                     {
                         hue = Hue.Gray;
                         shade = 1;
                         break;
                     }
 
-                case PraticeLevel.Gold:
+                case PracticeLevel.Gold:
                     {
                         hue = Hue.Brown;
                         shade = 2;
                         break;
                     }
 
-                case PraticeLevel.Ruby:
+                case PracticeLevel.Ruby:
                     {
                         hue = Hue.Pink;
                         shade = 0;
                         break;
                     }
 
-                case PraticeLevel.Emerald:
+                case PracticeLevel.Emerald:
                     {
                         hue = Hue.Green;
                         shade = 2;
                         break;
                     }
 
-                case PraticeLevel.Diamond:
+                case PracticeLevel.Diamond:
                     {
                         hue = Hue.Cyan;
                         shade = 1;
