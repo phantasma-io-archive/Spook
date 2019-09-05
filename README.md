@@ -263,17 +263,17 @@ Spook can do several operations related to wallet usage.
 
 To view the balances of a wallet use the wallet.balance command. You can optionally not pass a specific address to view the balance of the local node.
 ```
--wallet.balance TARGET_ADDRESS
+wallet.balance TARGET_ADDRESS
 
 eg:
--wallet.balance PGbGitREtLZi89QGxSLtBfs51Ukufs5PzhC9kky8Tet93
+wallet.balance PGbGitREtLZi89QGxSLtBfs51Ukufs5PzhC9kky8Tet93
 ```
 
 To transfer funds from the local node to other address use the wallet.transfer command.
 ```
--wallet.transfer TARGET_ADDRESS AMOUNT SYMBOL
+wallet.transfer TARGET_ADDRESS AMOUNT SYMBOL
 eg:
--wallet.transfer PGbGitREtLZi89QGxSLtBfs51Ukufs5PzhC9kky8Tet93 10.5 SOUL
+wallet.transfer PGbGitREtLZi89QGxSLtBfs51Ukufs5PzhC9kky8Tet93 10.5 SOUL
 ```
 
 
