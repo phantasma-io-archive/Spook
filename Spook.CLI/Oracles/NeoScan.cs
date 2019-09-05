@@ -109,7 +109,7 @@ namespace Phantasma.Spook.Oracles
                     var addrText = output.GetString("address_hash");
 
                     var assetSymbol = output.GetString("asset");
-                    var destination = NeoWallet.DecodeAddress(addrText);
+                    var destination = NeoWallet.EncodeAddress(addrText);
                     var value = output.GetFloat("value");
                     value *= (float)Math.Pow(10, 8);
                     var amount = new BigInteger((long)value);
@@ -124,7 +124,7 @@ namespace Phantasma.Spook.Oracles
                     eventList.Add(evt);
                 }
 
-                var source = NeoWallet.DecodeAddress(inputSource);
+                var source = NeoWallet.EncodeAddress(inputSource);
                 var sendEvt = new Event(EventKind.TokenSend, source, PackEvent(new TokenEventData() { chainAddress = chainAddress, value = inputAmount, symbol = inputAsset }));
                 eventList.Add(sendEvt);
 
