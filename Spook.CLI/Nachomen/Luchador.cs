@@ -433,7 +433,7 @@ namespace Phantasma.Spook.Nachomen
             return Constants.EXPERIENCE_MAP[level];
         }
 
-        public PracticeLevel praticeLevel => data.practiceLevel;
+        public PracticeLevel practiceLevel => data.practiceLevel;
 
         public Hue SkinHue
         {
