@@ -574,24 +574,24 @@ namespace Phantasma.Spook.Nachomen
 
             for (var n = 1; n <= 8; n++)
             {
-                var level = (PraticeLevel)n;
+                var level = (PracticeLevel)n;
 
                 HashSet<WrestlingMove> wantedMoves;
 
                 switch (level)
                 {
-                    case PraticeLevel.Wood:     wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Bash }); break;
-                    case PraticeLevel.Iron:     wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Block }); break;
-                    case PraticeLevel.Steel:    wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Corkscrew }); break;
-                    case PraticeLevel.Silver:   wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Bulk }); break;
-                    case PraticeLevel.Gold:     wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Chicken_Wing }); break;
-                    case PraticeLevel.Ruby:     wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Refresh }); break;
-                    case PraticeLevel.Emerald:  wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Rhino_Charge }); break;
-                    case PraticeLevel.Diamond:  wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Razor_Jab }); break;
+                    case PracticeLevel.Wood:     wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Bash }); break;
+                    case PracticeLevel.Iron:     wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Block }); break;
+                    case PracticeLevel.Steel:    wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Corkscrew }); break;
+                    case PracticeLevel.Silver:   wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Bulk }); break;
+                    case PracticeLevel.Gold:     wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Chicken_Wing }); break;
+                    case PracticeLevel.Ruby:     wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Refresh }); break;
+                    case PracticeLevel.Emerald:  wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Rhino_Charge }); break;
+                    case PracticeLevel.Diamond:  wantedMoves = new HashSet<WrestlingMove>(new WrestlingMove[] { WrestlingMove.Razor_Jab }); break;
                     default:                    throw new ContractException("No wanted moves for the bot: " + level);
                 }
 
-                //level = PraticeLevel.Wood;
+                //level = PracticeLevel.Wood;
                 //logger.Message("Mining bot: " + level);
 
                 var genes = Luchador.MineBotGenes(rnd, level/*, wantedMoves*);
@@ -784,7 +784,7 @@ namespace Phantasma.Spook.Nachomen
                     moveOverrides = new byte[0],
                     nickname = string.Empty,
                     perfumeTime = 0,
-                    praticeLevel = PraticeLevel.Gold,
+                    practiceLevel = PracticeLevel.Gold,
                     roomTime = 0,
                     score = 0,
                     stakeAmount = 0,
@@ -989,45 +989,45 @@ namespace Phantasma.Spook.Nachomen
             BigInteger botItemID;
             string introText = "";
 
-            var botLevel = (PraticeLevel)(botID);
+            var botLevel = (PracticeLevel)(botID);
             switch (botLevel)
             {
-                case PraticeLevel.Wood - (int)PraticeLevel.Wood * 2: // PraticeLevel.Wood = -1
+                case PracticeLevel.Wood - (int)PracticeLevel.Wood * 2: // PracticeLevel.Wood = -1
                     level = 1; botItemID = 0; genes = new byte[] { 120, 46, 40, 40, 131, 93, 80, 221, 68, 155, };
                     introText = "Beep boop... amigo, entrena conmigo!";
                     break;
 
-                case PraticeLevel.Iron - (int)PraticeLevel.Iron * 2: // PraticeLevel.Iron = -2
+                case PracticeLevel.Iron - (int)PracticeLevel.Iron * 2: // PracticeLevel.Iron = -2
                     level = 4; botItemID = 0; genes = new byte[] { 222, 50, 52, 48, 131, 88, 144, 8, 51, 104, };
                     introText = "I'm made from iron and because of that, I'm stronger than my wood brother!";
                     break;
 
-                case PraticeLevel.Steel - (int)PraticeLevel.Steel * 2: // PraticeLevel.Steel = -3
+                case PracticeLevel.Steel - (int)PracticeLevel.Steel * 2: // PracticeLevel.Steel = -3
                     level = 6; botItemID = 0; genes = new byte[] { 114, 50, 53, 59, 131, 123, 122, 223, 181, 184, };
                     introText = "Get ready.. because I'm faster and stronger than my iron brother!";
                     break;
 
-                case PraticeLevel.Silver - (int)PraticeLevel.Silver * 2: // PraticeLevel.Silver = -4
+                case PracticeLevel.Silver - (int)PracticeLevel.Silver * 2: // PracticeLevel.Silver = -4
                     level = 8; botItemID = 0; genes = new byte[] { 72, 59, 61, 64, 131, 115, 18, 108, 11, 195, };
                     introText = "Counters are for plebs!";
                     break;
 
-                case PraticeLevel.Gold - (int)PraticeLevel.Gold * 2: // PraticeLevel.Gold = -5
+                case PracticeLevel.Gold - (int)PracticeLevel.Gold * 2: // PracticeLevel.Gold = -5
                     level = 10; botItemID = 0; genes = new byte[] { 138, 66, 65, 61, 131, 51, 148, 143, 99, 55, };
                     introText = "Luchador... My congratulations for getting so far!";
                     break;
 
-                case PraticeLevel.Ruby - (int)PraticeLevel.Ruby * 2: // PraticeLevel.Ruby = -6
+                case PracticeLevel.Ruby - (int)PracticeLevel.Ruby * 2: // PracticeLevel.Ruby = -6
                     level = 13; botItemID = 0; genes = new byte[] { 12, 65, 68, 65, 131, 110, 146, 11, 100, 111 };
                     introText = "Amigo... I'm too strong to fail!";
                     break;
 
-                case PraticeLevel.Emerald - (int)PraticeLevel.Emerald * 2: // PraticeLevel.Emerald = -7
+                case PracticeLevel.Emerald - (int)PracticeLevel.Emerald * 2: // PracticeLevel.Emerald = -7
                     level = 16; botItemID = 329390; genes = new byte[] { 240, 76, 73, 79, 131, 68, 218, 145, 232, 20 };
                     introText = "Beep...Beep...My hobby is wasting time in asian basket weaving foruns...";
                     break;
 
-                case PraticeLevel.Diamond - (int)PraticeLevel.Diamond * 2: // PraticeLevel.Diamond = -8
+                case PracticeLevel.Diamond - (int)PracticeLevel.Diamond * 2: // PracticeLevel.Diamond = -8
                     level = 20; botItemID = 35808; genes = new byte[] { 144, 76, 77, 76, 131, 46, 168, 202, 141, 188, };
                     introText = "Beep... boop... I am become Death, the destroyer of worlds!";
                     break;
