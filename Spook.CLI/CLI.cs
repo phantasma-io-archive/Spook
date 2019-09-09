@@ -471,6 +471,7 @@ namespace Phantasma.Spook
         public CLI(string[] args)
         {
             var culture = new CultureInfo("en-US");
+            Thread.CurrentThread.CurrentCulture = culture;
             CultureInfo.DefaultThreadCurrentCulture = culture;
 
             var seeds = new List<string>();
