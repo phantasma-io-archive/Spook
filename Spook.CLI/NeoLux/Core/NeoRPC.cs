@@ -326,7 +326,6 @@ namespace Neo.Lux.Core
                 }
             }
         }
-
     }
 
     public class LocalRPCNode : NeoRPC

@@ -107,7 +107,7 @@ namespace Phantasma.Spook.Swaps
         {
             var swaps = new List<ChainSwap>();
 
-            var nexus = Swapper.API.Nexus;
+            var nexus = Swapper.nexusAPI.Nexus;
             var plugin = nexus.GetPlugin<AddressTransactionsPlugin>();
 
             var entries = plugin.GetAddressTransactions(this.ExternalAddress)

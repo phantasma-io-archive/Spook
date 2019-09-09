@@ -1,19 +1,27 @@
-﻿using LunarLabs.Parser.JSON;
+﻿using System;
+using System.Collections.Generic;
+using LunarLabs.Parser.JSON;
 using Phantasma.Blockchain;
 using Phantasma.Blockchain.Contracts;
 using Phantasma.Blockchain.Contracts.Native;
 using Phantasma.Cryptography;
 using Phantasma.Storage;
 using Phantasma.Numerics;
-using System;
-using System.Collections.Generic;
 using Phantasma.Pay.Chains;
+using Phantasma.Core;
 
 namespace Phantasma.Spook.Oracles
 {
-    public class NeoScanUtils
+    public class NeoScanAPI
     {
-        public static byte[] ReadOracle(string[] input)
+        public readonly string URL;
+
+        public NeoScanAPI(string url)
+        {
+            this.URL = url;
+        }
+
+        public byte[] ReadOracle(string[] input)
         {
             if (input == null || input.Length != 2)
             {
@@ -24,10 +32,10 @@ namespace Phantasma.Spook.Oracles
             switch (cmd)
             {
                 case "tx":
-                    return NeoScanUtils.ReadTransaction(input[1]);
+                    return ReadTransaction(input[1]);
 
                 case "block":
-                    return NeoScanUtils.ReadBlock(input[1]);
+                    return ReadBlock(input[1]);
 
                 default:
                     throw new OracleException("unknown neo oracle");
@@ -40,9 +48,15 @@ namespace Phantasma.Spook.Oracles
             return bytes;
         }
 
-        public static byte[] ReadTransaction(string hashText)
+        public string GetRequestURL(string request)
         {
-            var url = $"https://api.neoscan.io/api/main_net/v1/get_transaction/{hashText}";
+            Throw.If(request.StartsWith("/"), "request malformed");
+            return $"https://api.{URL}/api/main_net/v1/{request}";
+        }
+
+        public byte[] ReadTransaction(string hashText)
+        {
+            var url = GetRequestURL($"get_transaction/{hashText}");
 
             string json;
 
@@ -137,9 +151,9 @@ namespace Phantasma.Spook.Oracles
             }
         }
 
-        public static byte[] ReadBlock(string blockText)
+        public byte[] ReadBlock(string blockText)
         {
-            var url = $"https://api.neoscan.io/api/main_net/v1/get_block/{blockText}";
+            var url = GetRequestURL($"get_block/{blockText}");
 
             string json;
 

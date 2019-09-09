@@ -32,7 +32,7 @@ namespace Phantasma.Spook.Swaps
                 string json;
 
                 {
-                    var url = $"https://api.neoscan.io/api/main_net/v1/get_address_abstracts/{LocalAddress}/1";
+                    var url = Swapper.neoscanAPI.GetRequestURL($"get_address_abstracts/{LocalAddress}/1");
 
                     using (var wc = new System.Net.WebClient())
                     {
@@ -45,7 +45,7 @@ namespace Phantasma.Spook.Swaps
 
                 for (int page = maxPages; page>=1; page--)
                 {
-                    var url = $"https://api.neoscan.io/api/main_net/v1/get_address_abstracts/{LocalAddress}/{page}";
+                    var url = Swapper.neoscanAPI.GetRequestURL($"get_address_abstracts/{LocalAddress}/{page}");
 
                     using (var wc = new System.Net.WebClient())
                     {

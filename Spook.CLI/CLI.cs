@@ -77,7 +77,7 @@ namespace Phantasma.Spook
                 switch (chainName)
                 {
                     case "neo":
-                        return NeoScanUtils.ReadOracle(args);
+                        return CLI.NeoScanAPI.ReadOracle(args);
 
                     default:
                         throw new OracleException("invalid oracle chain: " + chainName);
@@ -150,6 +150,8 @@ namespace Phantasma.Spook
         private readonly Logger logger;
         private readonly Mempool mempool;
         private bool running = false;
+
+        public NeoScanAPI NeoScanAPI { get; private set; }
 
         private Nexus nexus;
         private NexusAPI api;
@@ -648,6 +650,7 @@ namespace Phantasma.Spook
                 restServer.Start(ThreadPriority.AboveNormal);
             }
 
+            this.NeoScanAPI = new NeoScanAPI(settings.GetString("neoscan.url", "neoscan.io"));
 
             cryptoCompareAPIKey = settings.GetString("cryptocompare.apikey", "");
             if (!string.IsNullOrEmpty(cryptoCompareAPIKey))
