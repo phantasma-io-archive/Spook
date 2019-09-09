@@ -7,6 +7,7 @@ using Phantasma.API;
 using Phantasma.Cryptography;
 using Phantasma.Spook.Oracles;
 using Phantasma.Core.Log;
+using Phantasma.Core.Utils;
 
 namespace Phantasma.Spook.Swaps
 {
@@ -25,7 +26,7 @@ namespace Phantasma.Spook.Swaps
         private static readonly string interopFile = "interops.csv";
         private static readonly string swapFile = "swaps.csv";
 
-        public TokenSwapper(KeyPair swapKey, NexusAPI nexusAPI, NeoScanAPI neoscanAPI, Logger logger)
+        public TokenSwapper(KeyPair swapKey, NexusAPI nexusAPI, NeoScanAPI neoscanAPI, Logger logger, Arguments arguments)
         {
             this.nexusAPI = nexusAPI;
             this.neoscanAPI = neoscanAPI;
@@ -39,6 +40,9 @@ namespace Phantasma.Spook.Swaps
 
             var wif = swapKey.ToWIF();
 
+            interopBlocks["phantasma"] = BigInteger.Parse(arguments.GetString("interop.phantasma.height", "0"));
+            interopBlocks["neo"] = BigInteger.Parse(arguments.GetString("interop.neo.height", "4261049"));
+
             if (File.Exists(interopFile))
             {
                 var lines = File.ReadAllLines(interopFile);
@@ -49,11 +53,6 @@ namespace Phantasma.Spook.Swaps
                     var blockHeight = BigInteger.Parse(entries[1]);
                     interopBlocks[chain] = blockHeight;
                 }
-            }
-            else
-            {
-                logger.Error("Interop file for swaps missing...");
-                return;
             }
 
             foreach (var entry in interopBlocks)
@@ -84,6 +83,12 @@ namespace Phantasma.Spook.Swaps
                 if (interop != null)
                 {
                     interopMap[entry.Key] = interop;
+                    if (!(interop is PhantasmaInterop))
+                    {
+                        logger.Message($"{interop.Name}.Swap.WIF: {interop.WIF}");
+                        logger.Message($"{interop.Name}.Swap.{interop.Name}: {interop.LocalAddress}");
+                        logger.Message($"{interop.Name}.Swap.Phantasma: {interop.ExternalAddress}");
+                    }
                 }
             }
 
@@ -107,16 +112,14 @@ namespace Phantasma.Spook.Swaps
                     swapMap[swap.sourceHash] = swap;
                 }
             }
+        }
 
-
-            while (true)
+        public void Run()
+        {
+            Thread.Sleep(3000);
+            foreach (var interop in interopMap.Values)
             {
-                foreach (var interop in interopMap.Values)
-                {
-                    interop.Update((swaps) => ProcessSwaps(interop, swaps));
-                }
-
-                Thread.Sleep(3000);
+                interop.Update((swaps) => ProcessSwaps(interop, swaps));
             }
         }
 

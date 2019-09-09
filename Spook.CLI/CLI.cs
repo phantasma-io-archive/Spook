@@ -32,6 +32,7 @@ using Logger = Phantasma.Core.Log.Logger;
 using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
 using System.Globalization;
 using Phantasma.Spook.Oracles;
+using Phantasma.Spook.Swaps;
 
 namespace Phantasma.Spook
 {
@@ -615,6 +616,19 @@ namespace Phantasma.Spook
 
             var dispatcher = new CommandDispatcher();
             SetupCommands(dispatcher);
+
+            if (wif == validatorWIFs[0])
+            {
+                logger.Message("Starting token swapping service...");
+                var swapper = new TokenSwapper(node_keys, api, NeoScanAPI, logger, settings);
+                new Thread(() =>
+                {
+                    while (node.IsRunning)
+                    {
+                        swapper.Run();
+                    }
+                }).Start();
+            }
 
             bool useSimulator = settings.GetBool("simulator.enabled", false);
             if (useSimulator && bootstrap)

@@ -64,8 +64,6 @@ namespace Phantasma.Spook.Swaps
             this.WIF = key.ToWIF();
             this.ExternalAddress = key.Address;
             this.currentHeight = currentBlock;
-
-            Console.WriteLine($"Interop key ({Name}) => {WIF}/{ExternalAddress}");
         }
 
         public abstract void Update(Action<IEnumerable<ChainSwap>> callback);
