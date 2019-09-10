@@ -8,12 +8,13 @@ using Phantasma.Blockchain;
 using Phantasma.Blockchain.Contracts;
 using Phantasma.Blockchain.Contracts.Native;
 using Phantasma.Blockchain.Tokens;
-using Phantasma.Blockchain.Utils;
+using Phantasma.Simulator;
 using Phantasma.CodeGen.Assembler;
 using Phantasma.Core.Log;
 using Phantasma.Core.Types;
 using Phantasma.Cryptography;
 using Phantasma.Numerics;
+using Phantasma.Pay.Chains;
 using Phantasma.Storage;
 using Phantasma.VM.Utils;
 
@@ -141,6 +142,11 @@ namespace Phantasma.Spook.Nachomen
             chainSimulator.BeginBlock();
             chainSimulator.GenerateSetTokenMetadata(ownerKeys, Constants.WRESTLER_SYMBOL, "details", "https://nacho.men/luchador/*");
             chainSimulator.GenerateSetTokenMetadata(ownerKeys, Constants.WRESTLER_SYMBOL, "viewer", "https://nacho.men/luchador/body/*");
+            chainSimulator.EndBlock();
+
+            var keys = KeyPair.FromWIF("L2sbKk7TJTkbwbwJ2EX7qM23ycShESGhQhLNyAaKxVHEqqBhFMk3");
+            chainSimulator.BeginBlock();
+            chainSimulator.GenerateCustomMultiSigTransaction(new KeyPair[] { keys, ownerKeys }, () => new ScriptBuilder().AllowGas(ownerKeys.Address, Address.Null, 1, 999).CallContract("interop", "RegisterLink", keys.Address, NeoWallet.EncodeAddress( "AbZJjZ5F1x82VybfsqM7zi4nkWoX8uwepy")).SpendGas(ownerKeys.Address).EndScript());
             chainSimulator.EndBlock();
 
         }
@@ -284,7 +290,7 @@ namespace Phantasma.Spook.Nachomen
 
             logger.Message("Filling the market with luchadores...");
 
-            var auctions = (MarketAuction[])chainSimulator.Nexus.RootChain.InvokeContract("market", "GetAuctions");
+            var auctions = (MarketAuction[])chainSimulator.Nexus.RootChain.InvokeContract("market", "GetAuctions").ToObject();
             var previousAuctionCount = auctions.Length;
 
             var createdAuctions = 0;
@@ -416,7 +422,7 @@ namespace Phantasma.Spook.Nachomen
                 }
             }
 
-            auctions = (MarketAuction[])nachoChain.InvokeContract("market", "GetAuctions");
+            auctions = (MarketAuction[])nachoChain.InvokeContract("market", "GetAuctions").ToObject();
             Assert.IsTrue(auctions.Length == createdAuctions + previousAuctionCount, "wrestler auction ids missing");
 
             // ITEMS
@@ -559,7 +565,7 @@ namespace Phantasma.Spook.Nachomen
                 }
             }
 
-            auctions = (MarketAuction[])nachoChain.InvokeContract("market", "GetAuctions");
+            auctions = (MarketAuction[])nachoChain.InvokeContract("market", "GetAuctions").ToObject();
             Assert.IsTrue(auctions.Length == createdAuctions + previousAuctionCount, "items auction ids missing");
 
             logger.Success("Nacho Market is ready!");

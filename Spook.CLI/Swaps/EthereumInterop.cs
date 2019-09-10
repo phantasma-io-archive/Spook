@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using Phantasma.Cryptography;
 using Phantasma.Numerics;
 
 namespace Phantasma.Spook.Swaps
 {
     public class EthereumInterop : ChainInterop
     {
-        public EthereumInterop(TokenSwapper swapper, string wif, BigInteger currentBlock) : base(swapper, wif, currentBlock)
+        public EthereumInterop(TokenSwapper swapper, KeyPair keys, BigInteger currentBlock) : base(swapper, keys, currentBlock)
         {
         }
 
@@ -24,7 +25,7 @@ namespace Phantasma.Spook.Swaps
             return ChainSwap.DummyHash;
         }
 
-        public override string ReceiveFunds(string address, TokenInfo token, decimal amount)
+        public override string ReceiveFunds(string sourceChain, Hash sourceHash, string address, TokenInfo token, decimal amount)
         {
             throw new NotImplementedException();
         }

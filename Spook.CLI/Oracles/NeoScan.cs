@@ -16,9 +16,15 @@ namespace Phantasma.Spook.Oracles
     {
         public readonly string URL;
 
-        public NeoScanAPI(string url)
+        private readonly Address chainAddress;
+        private static readonly string chainName = "NEO";
+
+        public NeoScanAPI(string url, KeyPair keys)
         {
             this.URL = url;
+
+            var key = InteropUtils.GenerateInteropKeys(keys, "NEO");
+            this.chainAddress = key.Address;
         }
 
         public byte[] ReadOracle(string[] input)
@@ -56,6 +62,11 @@ namespace Phantasma.Spook.Oracles
 
         public byte[] ReadTransaction(string hashText)
         {
+            if (hashText.StartsWith("0x"))
+            {
+                hashText = hashText.Substring(2);
+            }
+
             var url = GetRequestURL($"get_transaction/{hashText}");
 
             string json;
@@ -67,19 +78,16 @@ namespace Phantasma.Spook.Oracles
                     json = wc.DownloadString(url);
                 }
 
-                var chainName = "NEO";
-                var chainAddress = InteropUtils.GetInteropAddress(chainName);
-
                 var tx = new InteropTransaction();
                 tx.ChainName = chainName;
-                tx.ChainAddress = chainAddress;
                 tx.Hash = Hash.Parse(hashText);
 
                 var root = JSONReader.ReadFromString(json);
 
                 var eventList = new List<Event>();
 
-                var vins = root.GetNode("vins");
+                var vins = root.GetNode("vin");
+                Throw.IfNull(vins, nameof(vins));
 
                 string inputAsset = null;
                 string inputSource = null;
@@ -118,6 +126,8 @@ namespace Phantasma.Spook.Oracles
                 }
 
                 var vouts = root.GetNode("vouts");
+                Throw.IfNull(vouts, nameof(vouts));
+
                 foreach (var output in vouts.Children)
                 {
                     var addrText = output.GetString("address_hash");
@@ -153,6 +163,11 @@ namespace Phantasma.Spook.Oracles
 
         public byte[] ReadBlock(string blockText)
         {
+            if (blockText.StartsWith("0x"))
+            {
+                blockText = blockText.Substring(2);
+            }
+
             var url = GetRequestURL($"get_block/{blockText}");
 
             string json;
@@ -164,12 +179,8 @@ namespace Phantasma.Spook.Oracles
                     json = wc.DownloadString(url);
                 }
 
-                var chainName = "NEO";
-                var chainAddress = InteropUtils.GetInteropAddress(chainName);
-
                 var block = new InteropBlock();
                 block.ChainName = chainName;
-                block.ChainAddress = chainAddress;
                 block.Hash = Hash.Parse(blockText);
 
                 var root = JSONReader.ReadFromString(json);

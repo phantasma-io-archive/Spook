@@ -2,7 +2,7 @@
 using Phantasma.Cryptography;
 using System;
 using System.Collections.Generic;
-using System.IO;
+using Phantasma.Blockchain;
 
 namespace Phantasma.Spook.Swaps
 {
@@ -47,20 +47,10 @@ namespace Phantasma.Spook.Swaps
         public string WIF { get; private set; }
         public BigInteger currentHeight { get; protected set; }
 
-        // from Phantasma to local
-        private Dictionary<Address, string> fromMap = new Dictionary<Address, string>();
-
-        // from local to Phantasma 
-        private Dictionary<string, Address> toMap = new Dictionary<string, Address>();
-
-        private string MapFileName => Name + "_map.csv";
-
-        public ChainInterop(TokenSwapper swapper, string baseWif, BigInteger currentBlock)
+        public ChainInterop(TokenSwapper swapper, KeyPair keys, BigInteger currentBlock)
         {
             this.Swapper = swapper;
-            var temp = this.Name + "!" + baseWif;
-            var privateKey = CryptoExtensions.Sha256(temp);
-            var key = new KeyPair(privateKey);
+            var key = InteropUtils.GenerateInteropKeys(keys, this.Name);
             this.WIF = key.ToWIF();
             this.ExternalAddress = key.Address;
             this.currentHeight = currentBlock;
@@ -72,33 +62,6 @@ namespace Phantasma.Spook.Swaps
         public abstract string SendFunds(string address, TokenInfo token, decimal amount);
 
         // adds/mints funds in destination chain
-        public abstract string ReceiveFunds(string address, TokenInfo token, decimal amount);
-
-        public void RegisterMapping(string localAddress, Address externalAddress)
-        {
-            fromMap[externalAddress] = localAddress;
-            toMap[localAddress] = externalAddress;
-            File.AppendAllText(MapFileName, $"{Environment.NewLine}");
-        }
-
-        internal string FromExternalToLocal(Address sourceAddress)
-        {
-            if (fromMap.ContainsKey(sourceAddress))
-            {
-                return fromMap[sourceAddress];
-            }
-
-            throw new InteropException($"Could not map Phantasma address {sourceAddress} to {Name} address");
-        }
-
-        internal Address FromLocalToExternal(string sourceAddress)
-        {
-            if (toMap.ContainsKey(sourceAddress))
-            {
-                return toMap[sourceAddress];
-            }
-
-            throw new InteropException($"Could not map {Name} address {sourceAddress} to Phantasma address");
-        }
+        public abstract string ReceiveFunds(string sourceChain, Hash sourceHash, string address, TokenInfo token, decimal amount);
     }
 }

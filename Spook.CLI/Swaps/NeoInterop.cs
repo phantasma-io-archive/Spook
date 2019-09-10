@@ -3,23 +3,23 @@ using System;
 using System.Collections.Generic;
 using LunarLabs.Parser.JSON;
 using LunarLabs.Parser;
-using Neo.Lux.Core;
-using Neo.Lux.Cryptography;
+using Phantasma.Neo.Core;
+using Phantasma.Neo.Cryptography;
 
 namespace Phantasma.Spook.Swaps
 {
     public class NeoInterop : ChainInterop
     {
         private RemoteRPCNode api;
-        private KeyPair keys;
+        private KeyPair neoKeys;
 
-        public NeoInterop(TokenSwapper swapper, string baseWif, BigInteger blockHeight) : base(swapper, baseWif, blockHeight)
+        public NeoInterop(TokenSwapper swapper, Phantasma.Cryptography.KeyPair keys, BigInteger blockHeight) : base(swapper, keys, blockHeight)
         {
-            keys = KeyPair.FromWIF(this.WIF);
+            this.neoKeys = KeyPair.FromWIF(this.WIF);
             api = new RemoteRPCNode("http://neoscan.io", "http://seed6.ngd.network:10332", "http://seed.neoeconomy.io:10332");
         }
 
-        public override string LocalAddress => keys.address.ToString();
+        public override string LocalAddress => neoKeys.address.ToString();
         public override string Name => "NEO";
 
         public override void Update(Action<IEnumerable<ChainSwap>> callback)
@@ -56,7 +56,7 @@ namespace Phantasma.Spook.Swaps
 
                     var entries = root.GetNode("entries");
 
-                    for (int i = entries.ChildCount-1; i>=0; i++)
+                    for (int i = entries.ChildCount-1; i>=0; i--)
                     {
                         var entry = entries.GetNodeByIndex(i);
 
@@ -82,13 +82,13 @@ namespace Phantasma.Spook.Swaps
 
         private void ProcessTransaction(DataNode entry, List<ChainSwap> result)
         {
-            var destination = entry.GetString("address_to");
-            if (destination != this.LocalAddress)
+            var destinationAddress = entry.GetString("address_to");
+            if (destinationAddress != this.LocalAddress)
             {
                 return;
             }
 
-            var source = entry.GetString("address_from");
+            var sourceAddress = entry.GetString("address_from");
             var asset = entry.GetString("asset");
             var hash = entry.GetString("txid");
             var amount = entry.GetDecimal("amount");
@@ -100,13 +100,20 @@ namespace Phantasma.Spook.Swaps
                 return;
             }
 
+            var destChain = "phantasma";
+            var interop = Swapper.FindInterop(destChain);
+
+            var temp = Swapper.FromLocalToExternal(sourceAddress, this.Name);
+            destinationAddress = temp.Text;
+
             var swap = new ChainSwap()
             {
                 sourceHash = hash,
                 sourceChain = this.Name,
+                sourceAddress = sourceAddress,
                 amount = amount,
-                destinationAddress = destination,
-                sourceAddress = source,
+                destinationAddress = destinationAddress,
+                destinationChain = destChain,
                 symbol = token.symbol,
             };
 
@@ -118,18 +125,18 @@ namespace Phantasma.Spook.Swaps
             return ChainSwap.DummyHash;
         }
 
-        public override string ReceiveFunds(string address, TokenInfo token, decimal amount)
+        public override string ReceiveFunds(string sourceChain, Phantasma.Cryptography.Hash sourceHash, string address, TokenInfo token, decimal amount)
         {
             Transaction tx;
 
             if (token.symbol == "NEO" || token.symbol == "GAS")
             {
-                tx = api.SendAsset(keys, address, token.symbol, amount);
+                tx = api.SendAsset(neoKeys, address, token.symbol, amount);
             }
             else
             {
                 var nep5 = new NEP5(api, token.hash);
-                tx = nep5.Transfer(keys, address, amount);
+                tx = nep5.Transfer(neoKeys, address, amount);
             }
 
             if (tx == null)

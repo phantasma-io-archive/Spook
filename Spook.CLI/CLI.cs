@@ -20,7 +20,7 @@ using Phantasma.Network.P2P;
 using Phantasma.Spook.Modules;
 using Phantasma.Spook.Plugins;
 using Phantasma.Blockchain.Contracts;
-using Phantasma.Blockchain.Utils;
+using Phantasma.Simulator;
 using Phantasma.Blockchain.Plugins;
 using Phantasma.CodeGen.Assembler;
 using Phantasma.VM.Utils;
@@ -590,7 +590,7 @@ namespace Phantasma.Spook
                 restServer.Start(ThreadPriority.AboveNormal);
             }
 
-            this.NeoScanAPI = new NeoScanAPI(settings.GetString("neoscan.url", "neoscan.io"));
+            this.NeoScanAPI = new NeoScanAPI(settings.GetString("neoscan.url", "neoscan.io"), node_keys);
 
             cryptoCompareAPIKey = settings.GetString("cryptocompare.apikey", "");
             if (!string.IsNullOrEmpty(cryptoCompareAPIKey))
@@ -617,7 +617,7 @@ namespace Phantasma.Spook
             var dispatcher = new CommandDispatcher();
             SetupCommands(dispatcher);
 
-            if (wif == validatorWIFs[0])
+            if (wif == validatorWIFs[0] && settings.GetBool("swaps.enabled"))
             {
                 logger.Message("Starting token swapping service...");
                 var swapper = new TokenSwapper(node_keys, api, NeoScanAPI, logger, settings);
@@ -649,7 +649,15 @@ namespace Phantasma.Spook
                     for (int i = 0; i < 3; i++)
                     {
                         logger.Message("Generating sim block #" + i);
-                        simulator.GenerateRandomBlock();
+                        try
+                        {
+                            simulator.GenerateRandomBlock();
+                        }
+                        catch (Exception e)
+                        {
+                            logger.Error("Fatal error: " + e.ToString());
+                            Environment.Exit(-1);
+                        }
                     }
 
                     NachoServer.InitNachoServer(nexus, simulator, node_keys, logger);

@@ -29,7 +29,7 @@ namespace Phantasma.Spook.Oracles
 
                 switch (chainName)
                 {
-                    case "neo":
+                    case "NEO":
                         return CLI.NeoScanAPI.ReadOracle(args);
 
                     default:

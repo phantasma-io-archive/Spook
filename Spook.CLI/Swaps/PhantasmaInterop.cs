@@ -4,11 +4,13 @@ using System;
 using System.Collections.Generic;
 using Phantasma.Blockchain.Contracts;
 using Phantasma.Blockchain.Contracts.Native;
-using Phantasma.Storage;
 using Phantasma.API;
 using Phantasma.Blockchain.Plugins;
 using System.Linq;
 using Phantasma.Blockchain;
+using Phantasma.VM.Utils;
+using Phantasma.Core.Types;
+using System.Threading;
 
 namespace Phantasma.Spook.Swaps
 {
@@ -20,7 +22,7 @@ namespace Phantasma.Spook.Swaps
 
         private KeyPair keys;
 
-        public PhantasmaInterop(TokenSwapper swapper, string baseWif, BigInteger blockHeight) : base(swapper, baseWif, blockHeight)
+        public PhantasmaInterop(TokenSwapper swapper, KeyPair keys, BigInteger blockHeight) : base(swapper, keys, blockHeight)
         {
             this.keys = KeyPair.FromWIF(this.WIF);
         }
@@ -35,21 +37,6 @@ namespace Phantasma.Spook.Swaps
 
             foreach (var evt in events)
             {
-                if (evt.Kind == EventKind.Metadata)
-                {
-                    var eventData = evt.GetContent<MetadataEventData>();
-                    var interopTag = "interop.";
-                    if (eventData.type == "account" && eventData.metadata.key.StartsWith(interopTag))
-                    {
-                        var chainName = eventData.metadata.key.Substring(interopTag.Length);
-                        var interop = Swapper.FindInterop(chainName);
-
-                        var localAddress = eventData.metadata.value;
-                        interop.RegisterMapping(localAddress, evt.Address);
-                        Console.WriteLine($"Registed mapping: {localAddress} ({chainName}) => {evt.Address}");
-                    }
-                }
-                else
                 if (evt.Kind == EventKind.TokenReceive)
                 {
                     var chainName = Swapper.FindInteropByAddress(evt.Address);
@@ -64,7 +51,7 @@ namespace Phantasma.Spook.Swaps
                                 sourceAddress = otherEvt.Address;
 
                                 var interop = Swapper.FindInterop(chainName);
-                                destinationAddress = interop.FromExternalToLocal(sourceAddress);
+                                destinationAddress = Swapper.FromExternalToLocal(sourceAddress, chainName);
 
                                 symbol = eventData.symbol;
 
@@ -137,10 +124,41 @@ namespace Phantasma.Spook.Swaps
             // must burn here
         }
 
-        public override string ReceiveFunds(string address, TokenInfo token, decimal amount)
+        public override string ReceiveFunds(string sourceChain, Hash sourceHash, string address, TokenInfo token, decimal amount)
         {
-            throw new NotImplementedException();
-            // must mint here
+            var targetAddress = Address.FromText(address);
+            var targetAmount = UnitConversion.ToBigInteger(amount, token.decimals);
+            var script = new ScriptBuilder().AllowGas(Swapper.Keys.Address, Address.Null, 1, 9999).CallContract("interop", "SettleTransaction", Swapper.Keys.Address, sourceChain, sourceHash).SpendGas(Swapper.Keys.Address).EndScript();
+
+            var tx = new Transaction(Swapper.nexusAPI.Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5));
+            tx.Sign(Swapper.Keys);
+
+            var bytes = tx.ToByteArray(true);
+
+            var txData = Base16.Encode(bytes);
+            var result = this.Swapper.nexusAPI.SendRawTransaction(txData);
+            if (result is SingleResult)
+            {
+                var hash = (string)((SingleResult)result).value;
+
+                Swapper.logger.Message("Waiting for transaction confirmation: " + hash);
+                do
+                {
+                    Thread.Sleep(2000);
+
+                    result = this.Swapper.nexusAPI.GetTransaction(hash);
+
+                    if (result is TransactionResult)
+                    {
+                        break;
+                    }
+
+                } while (true);
+
+                return hash;
+            }
+
+            return null;
         }
 
         private string ExecuteTransaction()

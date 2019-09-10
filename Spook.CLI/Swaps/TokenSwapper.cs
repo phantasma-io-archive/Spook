@@ -8,11 +8,13 @@ using Phantasma.Cryptography;
 using Phantasma.Spook.Oracles;
 using Phantasma.Core.Log;
 using Phantasma.Core.Utils;
+using Phantasma.Pay;
 
 namespace Phantasma.Spook.Swaps
 {
     public class TokenSwapper
     {
+        public readonly KeyPair Keys;
         public readonly NexusAPI nexusAPI;
         public readonly NeoScanAPI neoscanAPI;
         public readonly Logger logger;
@@ -28,6 +30,7 @@ namespace Phantasma.Spook.Swaps
 
         public TokenSwapper(KeyPair swapKey, NexusAPI nexusAPI, NeoScanAPI neoscanAPI, Logger logger, Arguments arguments)
         {
+            this.Keys = swapKey;
             this.nexusAPI = nexusAPI;
             this.neoscanAPI = neoscanAPI;
             this.logger = logger;
@@ -37,8 +40,6 @@ namespace Phantasma.Spook.Swaps
             AddToken("NEO", "SOUL", "ed07cffad18f1308db51920d99a2af60ac66a7b3", 8);
 
             var interopBlocks = new Dictionary<string, BigInteger>();
-
-            var wif = swapKey.ToWIF();
 
             interopBlocks["phantasma"] = BigInteger.Parse(arguments.GetString("interop.phantasma.height", "0"));
             interopBlocks["neo"] = BigInteger.Parse(arguments.GetString("interop.neo.height", "4261049"));
@@ -64,15 +65,15 @@ namespace Phantasma.Spook.Swaps
                 switch (entry.Key)
                 {
                     case "phantasma":
-                        interop = new PhantasmaInterop(this, wif, blockHeight);
+                        interop = new PhantasmaInterop(this, swapKey, blockHeight);
                         break;
 
                     case "neo":
-                        interop = new NeoInterop(this, wif, blockHeight);
+                        interop = new NeoInterop(this, swapKey, blockHeight);
                         break;
 
                     case "ethereum":
-                        interop = new EthereumInterop(this, wif, blockHeight);
+                        interop = new EthereumInterop(this, swapKey, blockHeight);
                         break;
 
                     default:
@@ -134,7 +135,7 @@ namespace Phantasma.Spook.Swaps
             };
 
             tokenHashMap[hash] = token;
-            tokenHashMap[symbol] = token;
+            tokenSymbolMap[symbol] = token;
         }
 
         // finds which blockchain interop address matches the supplied address
@@ -190,6 +191,42 @@ namespace Phantasma.Spook.Swaps
             throw new InteropException("Could not find interop for " + chainName);
         }
 
+        internal string FromExternalToLocal(Address sourceAddress, string chainName)
+        {
+            var temp = nexusAPI.GetSwapAddress(sourceAddress.Text, chainName);
+            if (temp is SingleResult)
+            {
+                var addrText = (string)((SingleResult)temp).value;
+                var address = Address.FromText(addrText);
+                string resultChainName;
+                string resultAddress;
+                WalletUtils.DecodeChainAndAddress(address, out resultChainName, out resultAddress);
+
+                if (resultChainName != chainName)
+                {
+                    throw new InteropException($"Something went wrong, chain names dont match, {chainName} vs {resultChainName}");
+                }
+
+                return resultAddress;
+            }
+
+            throw new InteropException($"Could not map address {sourceAddress} to a {chainName} address");
+        }
+
+        internal Address FromLocalToExternal(string sourceAddress, string chainName)
+        {
+            var tempAddress = WalletUtils.EncodeAddress(sourceAddress, chainName);
+            var temp = nexusAPI.GetSwapAddress(tempAddress.Text, "phantasma");
+            if (temp is SingleResult)
+            {
+                var addrText = (string)((SingleResult)temp).value;
+                var address = Address.FromText(addrText);
+                return address;
+            }
+
+            throw new InteropException($"Could not map address {sourceAddress} to a Phantasma address");
+        }
+
         private void ProcessSwaps(ChainInterop interop, IEnumerable<ChainSwap> swaps)
         {
             bool didSwap = false;
@@ -223,7 +260,9 @@ namespace Phantasma.Spook.Swaps
                         throw new InteropException("Failed 'send' transaction for swap with hash " + swap.sourceHash);
                     }
 
-                    swap.receiveHash = destinationInterop.ReceiveFunds(swap.destinationAddress, token, swap.amount);
+                    var sourceHash = Hash.Parse(swap.sourceHash);
+
+                    swap.receiveHash = destinationInterop.ReceiveFunds(swap.sourceChain, sourceHash, swap.destinationAddress, token, swap.amount);
                     if (string.IsNullOrEmpty(swap.receiveHash))
                     {
                         throw new InteropException("Failed 'receive' transaction for swap with hash " + swap.sourceHash);
