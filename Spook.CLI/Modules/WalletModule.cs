@@ -19,11 +19,32 @@ namespace Phantasma.Spook.Modules
     [Module("wallet")]
     public static class WalletModule
     {
-        public static void Balance(Address address, NexusAPI api, Logger logger, string[] args)
+        public static KeyPair Keys;
+
+        public static void Open(Logger logger, string[] args)
         {
+            if (args.Length != 1)
+            {
+                throw new CommandException("Expected args: WIF");
+            }
+
+            var wif = args[0];
+            Keys = KeyPair.FromWIF(wif);
+
+            logger.Success($"Opened wallet with address {Keys.Address}.");
+        }
+
+        public static void Balance(NexusAPI api, Logger logger, string[] args)
+        {
+            Address address;
+
             if (args.Length == 1)
             {
                 address = Address.FromText(args[0]);
+            }
+            else
+            {
+                address = Keys.Address;
             }
 
             var account = (AccountResult) api.GetAccount(address.Text);
@@ -43,7 +64,7 @@ namespace Phantasma.Spook.Modules
             }
         }
 
-        public static void Transfer(KeyPair source, NexusAPI api, Logger logger, string[] args)
+        public static void Transfer(NexusAPI api, Logger logger, string[] args)
         {
             if (args.Length != 3)
             {
@@ -53,7 +74,7 @@ namespace Phantasma.Spook.Modules
             // TODO more arg validation
             var dest = Address.FromText(args[0]);
 
-            if (dest.Text == source.Address.Text)
+            if (dest.Text == Keys.Address.Text)
             {
                 throw new CommandException("Cannot transfer to same address");
             }
@@ -80,12 +101,12 @@ namespace Phantasma.Spook.Modules
             var amount = UnitConversion.ToBigInteger(tempAmount, tokenInfo.decimals);
 
             var script = ScriptUtils.BeginScript().
-                AllowGas(source.Address, Address.Null, 1, 9999).
-                CallContract("token", "TransferTokens", source.Address, dest, tokenSymbol, amount).
-                SpendGas(source.Address).
+                AllowGas(Keys.Address, Address.Null, 1, 9999).
+                CallContract("token", "TransferTokens", Keys.Address, dest, tokenSymbol, amount).
+                SpendGas(Keys.Address).
                 EndScript();
             var tx = new Transaction(api.Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5));
-            tx.Sign(source);
+            tx.Sign(Keys);
             var rawTx = tx.ToByteArray(true);
 
             logger.Message($"Sending {tempAmount} {tokenSymbol} to {dest.Text}...");
@@ -130,7 +151,7 @@ namespace Phantasma.Spook.Modules
             logger.Success($"Sent transaction with hash {hash}!");
         }
 
-        public static void Stake(KeyPair source, NexusAPI api, Logger logger, string[] args)
+        public static void Stake(NexusAPI api, Logger logger, string[] args)
         {
             if (args.Length != 3)
             {
@@ -140,7 +161,7 @@ namespace Phantasma.Spook.Modules
             // TODO more arg validation
             var dest = Address.FromText(args[0]);
 
-            if (dest.Text == source.Address.Text)
+            if (dest.Text == Keys.Address.Text)
             {
                 throw new CommandException("Cannot transfer to same address");
             }
@@ -162,12 +183,12 @@ namespace Phantasma.Spook.Modules
             var amount = UnitConversion.ToBigInteger(tempAmount, tokenInfo.decimals);
 
             var script = ScriptUtils.BeginScript().
-                AllowGas(source.Address, Address.Null, 1, 9999).
-                CallContract("energy", "Stake", source.Address, dest, amount).
-                SpendGas(source.Address).
+                AllowGas(Keys.Address, Address.Null, 1, 9999).
+                CallContract("energy", "Stake", Keys.Address, dest, amount).
+                SpendGas(Keys.Address).
                 EndScript();
             var tx = new Transaction(api.Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5));
-            tx.Sign(source);
+            tx.Sign(Keys);
             var rawTx = tx.ToByteArray(true);
 
             logger.Message($"Staking {tempAmount} {tokenSymbol} with {dest.Text}...");

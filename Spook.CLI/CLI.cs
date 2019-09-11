@@ -91,7 +91,7 @@ namespace Phantasma.Spook
         private readonly Mempool mempool;
         private bool running = false;
         private bool nodeReady = false;
-
+        
         public NeoScanAPI NeoScanAPI { get; private set; }
 
         private Nexus nexus;
@@ -525,6 +525,7 @@ namespace Phantasma.Spook
             logger.Message("Storage path: " + storagePath);
 
             var node_keys = KeyPair.FromWIF(wif);
+            WalletModule.Keys = KeyPair.FromWIF(wif);
 
             nexus = new Nexus(logger, 
                 (name) => new BasicDiskStore(storagePath + name + ".txt"),
@@ -794,17 +795,20 @@ namespace Phantasma.Spook
             dispatcher.RegisterCommand("script.compile", "Compiles a .sol file into Phantasma VM script format",
                 (args) => ScriptModule.CompileFile(args));
 
+            dispatcher.RegisterCommand("wallet.open", "Opens a wallet from a WIF key",
+            (args) => WalletModule.Open(logger, args));
+
             dispatcher.RegisterCommand("wallet.balance", "Shows the current wallet balance",
-                (args) => WalletModule.Balance(node.Address, api, logger, args));
+                (args) => WalletModule.Balance(api, logger, args));
 
             dispatcher.RegisterCommand("wallet.transfer", "Generates a new transfer transaction",
-                (args) => WalletModule.Transfer(node.Keys, api, logger, args));
+                (args) => WalletModule.Transfer(api, logger, args));
 
             dispatcher.RegisterCommand("wallet.stake", $"Stakes {Nexus.StakingTokenSymbol}",
-                (args) => WalletModule.Stake(node.Keys, api, logger, args));
+                (args) => WalletModule.Stake(api, logger, args));
 
             dispatcher.RegisterCommand("file.upload", "Uploads a file into Phantasma",
-                (args) => FileModule.Upload(node.Keys, api, logger, args));
+                (args) => FileModule.Upload(WalletModule.Keys, api, logger, args));
         }
     }
 }
