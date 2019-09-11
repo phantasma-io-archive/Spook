@@ -2,6 +2,7 @@
 
 using Phantasma.Blockchain;
 using Phantasma.Numerics;
+using Phantasma.Pay.Chains;
 
 namespace Phantasma.Spook.Oracles
 {
@@ -29,7 +30,7 @@ namespace Phantasma.Spook.Oracles
 
                 switch (chainName)
                 {
-                    case "NEO":
+                    case NeoWallet.NeoPlatform:
                         return CLI.NeoScanAPI.ReadOracle(args);
 
                     default:

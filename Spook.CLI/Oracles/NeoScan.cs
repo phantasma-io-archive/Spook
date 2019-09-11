@@ -16,8 +16,8 @@ namespace Phantasma.Spook.Oracles
     {
         public readonly string URL;
 
-        private readonly Address chainAddress;
-        private static readonly string chainName = "NEO";
+        private readonly Address platformAddress;
+        private static readonly string platformName = NeoWallet.NeoPlatform;
 
         private readonly Nexus nexus;
 
@@ -26,8 +26,8 @@ namespace Phantasma.Spook.Oracles
             this.URL = url;
             this.nexus = nexus;
 
-            var key = InteropUtils.GenerateInteropKeys(keys, "NEO");
-            this.chainAddress = key.Address;
+            var key = InteropUtils.GenerateInteropKeys(keys, platformName);
+            this.platformAddress = key.Address;
         }
 
         public byte[] ReadOracle(string[] input)
@@ -82,7 +82,7 @@ namespace Phantasma.Spook.Oracles
                 }
 
                 var tx = new InteropTransaction();
-                tx.Platform = chainName;
+                tx.Platform = platformName;
                 tx.Hash = Hash.Parse(hashText);
 
                 var root = JSONReader.ReadFromString(json);
@@ -164,10 +164,10 @@ namespace Phantasma.Spook.Oracles
                         var info = nexus.GetTokenInfo(symbol);
                         var amount = UnitConversion.ToBigInteger(inputAmount, info.Decimals);
 
-                        var sendEvt = new Event(EventKind.TokenSend, NeoWallet.EncodeAddress(sourceAddress), PackEvent(new TokenEventData() { chainAddress = chainAddress, value = amount, symbol = symbol }));
+                        var sendEvt = new Event(EventKind.TokenSend, NeoWallet.EncodeAddress(sourceAddress), PackEvent(new TokenEventData() { chainAddress = platformAddress, value = amount, symbol = symbol }));
                         eventList.Add(sendEvt);
 
-                        var receiveEvt = new Event(EventKind.TokenReceive, NeoWallet.EncodeAddress(destAddress), PackEvent(new TokenEventData() { chainAddress = chainAddress, value = amount, symbol = symbol }));
+                        var receiveEvt = new Event(EventKind.TokenReceive, NeoWallet.EncodeAddress(destAddress), PackEvent(new TokenEventData() { chainAddress = platformAddress, value = amount, symbol = symbol }));
                         eventList.Add(receiveEvt);
 
                         return;
@@ -208,7 +208,7 @@ namespace Phantasma.Spook.Oracles
                 }
 
                 var block = new InteropBlock();
-                block.Platform = chainName;
+                block.Platform = platformName;
                 block.Hash = Hash.Parse(blockText);
 
                 var root = JSONReader.ReadFromString(json);
