@@ -266,7 +266,7 @@ To do wallet operations inside Spook, you first need to open it. Note that walle
 wallet.open WIF
 
 eg:
-wallet.balance L2sbKk7TJTkbwbwJ2EX7qM23ycShESGhQhLNyAaKxVHEqqBhFMk3
+wallet.open L2sbKk7TJTkbwbwJ2EX7qM23ycShESGhQhLNyAaKxVHEqqBhFMk3
 ```
 
 To view the balances of a wallet use the wallet.balance command. You can optionally not pass a specific address to view the balance of the local node.
