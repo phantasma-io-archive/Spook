@@ -13,6 +13,7 @@ using Phantasma.Core.Log;
 using Phantasma.Numerics;
 using Phantasma.Core.Types;
 using System.Threading;
+using Phantasma.Pay.Chains;
 
 namespace Phantasma.Spook.Modules
 {
@@ -71,14 +72,6 @@ namespace Phantasma.Spook.Modules
                 throw new CommandException("Expected args: target_address amount symbol");
             }
 
-            // TODO more arg validation
-            var dest = Address.FromText(args[0]);
-
-            if (dest.Text == Keys.Address.Text)
-            {
-                throw new CommandException("Cannot transfer to same address");
-            }
-
             var tempAmount = decimal.Parse(args[1]);
             var tokenSymbol = args[2];
 
@@ -100,16 +93,36 @@ namespace Phantasma.Spook.Modules
 
             var amount = UnitConversion.ToBigInteger(tempAmount, tokenInfo.decimals);
 
+            var destName = args[0];
+
+            Address destAddress;
+
+            if (Address.IsValidAddress(destName))
+            {
+                destAddress = Address.FromText(destName);
+            }
+            else
+            if (NeoWallet.IsValidAddress(destName))
+            {
+                logger.Warning("Target is NEO address, a swap will be performed using an interop address.");
+                destAddress = NeoWallet.EncodeAddress(destName);
+            }
+
+            if (destAddress.Text == Keys.Address.Text)
+            {
+                throw new CommandException("Cannot transfer to same address");
+            }
+
             var script = ScriptUtils.BeginScript().
                 AllowGas(Keys.Address, Address.Null, 1, 9999).
-                CallContract("token", "TransferTokens", Keys.Address, dest, tokenSymbol, amount).
+                CallContract("token", "TransferTokens", Keys.Address, destAddress, tokenSymbol, amount).
                 SpendGas(Keys.Address).
                 EndScript();
             var tx = new Transaction(api.Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5));
             tx.Sign(Keys);
             var rawTx = tx.ToByteArray(true);
 
-            logger.Message($"Sending {tempAmount} {tokenSymbol} to {dest.Text}...");
+            logger.Message($"Sending {tempAmount} {tokenSymbol} to {destAddress.Text}...");
             try
             {
                 api.SendRawTransaction(Base16.Encode(rawTx));

@@ -278,6 +278,7 @@ wallet.balance PGbGitREtLZi89QGxSLtBfs51Ukufs5PzhC9kky8Tet93
 ```
 
 To transfer funds from the local node to other address use the wallet.transfer command.
+The destination address can be a Phantasma address or an address from a supported cross swap chain (eg: NEO).
 ```
 wallet.transfer TARGET_ADDRESS AMOUNT SYMBOL
 eg:
