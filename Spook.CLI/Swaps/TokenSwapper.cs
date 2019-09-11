@@ -82,7 +82,7 @@ namespace Phantasma.Spook.Swaps
                     interopMap[entry.Key] = interop;
                     if (!(interop is PhantasmaInterop))
                     {
-                        logger.Message($"{interop.Name}.Swap.WIF: {interop.WIF}");
+                        logger.Message($"{interop.Name}.Swap.Private: {interop.PrivateKey}");
                         logger.Message($"{interop.Name}.Swap.{interop.Name}: {interop.LocalAddress}");
                         logger.Message($"{interop.Name}.Swap.Phantasma: {interop.ExternalAddress}");
                     }

@@ -35,17 +35,19 @@ namespace Phantasma.Spook.Swaps
 
         public abstract string Name { get; }
         public abstract string LocalAddress { get; }
+        public abstract string PrivateKey { get; }
+
+        protected KeyPair Keys { get; private set; }
+
         public Address ExternalAddress { get; private set; }
 
-        public string WIF { get; private set; }
         public BigInteger currentHeight { get; protected set; }
 
         public ChainInterop(TokenSwapper swapper, KeyPair keys, BigInteger currentBlock)
         {
             this.Swapper = swapper;
-            var key = InteropUtils.GenerateInteropKeys(keys, this.Name);
-            this.WIF = key.ToWIF();
-            this.ExternalAddress = key.Address;
+            this.Keys = InteropUtils.GenerateInteropKeys(keys, this.Name);
+            this.ExternalAddress = Keys.Address;
             this.currentHeight = currentBlock;
         }
 

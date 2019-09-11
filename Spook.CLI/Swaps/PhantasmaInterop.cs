@@ -17,15 +17,12 @@ namespace Phantasma.Spook.Swaps
 {
     public class PhantasmaInterop : ChainInterop
     {
-        public override string LocalAddress => keys.Address.Text;
-
+        public override string LocalAddress => Keys.Address.Text;
         public override string Name => "Phantasma";
-
-        private KeyPair keys;
+        public override string PrivateKey => Keys.ToWIF();
 
         public PhantasmaInterop(TokenSwapper swapper, KeyPair keys, BigInteger blockHeight) : base(swapper, keys, blockHeight)
         {
-            this.keys = KeyPair.FromWIF(this.WIF);
         }
 
         private void ProcessTransaction(Transaction tx, IEnumerable<Event> events, List<ChainSwap> swaps)

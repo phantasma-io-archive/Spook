@@ -17,12 +17,13 @@ namespace Phantasma.Spook.Swaps
 
         public NeoInterop(TokenSwapper swapper, Phantasma.Cryptography.KeyPair keys, BigInteger blockHeight) : base(swapper, keys, blockHeight)
         {
-            this.neoKeys = NeoKey.FromWIF(this.WIF);
+            this.neoKeys = new NeoKey(this.Keys.PrivateKey);
             api = new RemoteRPCNode("http://neoscan.io", "http://seed6.ngd.network:10332", "http://seed.neoeconomy.io:10332");
         }
 
         public override string LocalAddress => neoKeys.address.ToString();
         public override string Name => NeoWallet.NeoPlatform;
+        public override string PrivateKey => Keys.ToWIF();
 
         public override void Update(Action<IEnumerable<ChainSwap>> callback)
         {
