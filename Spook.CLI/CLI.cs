@@ -90,6 +90,7 @@ namespace Phantasma.Spook
         private readonly Logger logger;
         private readonly Mempool mempool;
         private bool running = false;
+        private bool nodeReady = false;
 
         public NeoScanAPI NeoScanAPI { get; private set; }
 
@@ -625,7 +626,14 @@ namespace Phantasma.Spook
                 {
                     while (node.IsRunning)
                     {
-                        swapper.Run();
+                        if (nodeReady)
+                        {
+                            swapper.Run();
+                        }
+                        else
+                        {
+                            Thread.Sleep(2000);
+                        }
                     }
                 }).Start();
             }
@@ -676,6 +684,7 @@ namespace Phantasma.Spook
         private void MakeReady(CommandDispatcher dispatcher)
         {
             logger.Success("Node is ready");
+            nodeReady = true;
             gui?.MakeReady(dispatcher);
         }
 

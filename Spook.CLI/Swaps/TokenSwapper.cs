@@ -117,7 +117,7 @@ namespace Phantasma.Spook.Swaps
 
         public void Run()
         {
-            Thread.Sleep(3000);
+            Thread.Sleep(5000);
             foreach (var interop in interopMap.Values)
             {
                 interop.Update((swaps) => ProcessSwaps(interop, swaps));
@@ -242,7 +242,7 @@ namespace Phantasma.Spook.Swaps
 
                 if (interopMap.ContainsKey(swap.destinationChain))
                 {
-                    logger.Message($"Executing {swap.sourceChain} swap: {swap.sourceAddress} sent {swap.amount} {swap.symbol} to {swap.destinationAddress}");
+                    logger.Message($"Executing {swap.sourceChain} swap: {swap.sourceAddress} sent {swap.amount} {swap.symbol}");
 
                     var sourceInterop = interop;
                     var destinationInterop = FindInterop(swap.destinationChain);
@@ -271,6 +271,8 @@ namespace Phantasma.Spook.Swaps
                     File.AppendAllText(swapFile, $"{swap.sourceHash},{swap.sourceChain},{swap.sourceAddress},{swap.sendHash},{swap.receiveHash},{swap.destinationChain},{swap.destinationAddress},{swap.symbol},{swap.amount}{Environment.NewLine}");
                     didSwap = true;
                     swapMap[swap.sourceHash] = swap;
+
+                    logger.Success($"Finished {swap.sourceChain} swap: {swap.destinationAddress} received {swap.amount} {swap.symbol}");
                 }
                 else
                 {
