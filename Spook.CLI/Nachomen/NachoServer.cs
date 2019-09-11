@@ -146,7 +146,7 @@ namespace Phantasma.Spook.Nachomen
 
             var keys = KeyPair.FromWIF("L2sbKk7TJTkbwbwJ2EX7qM23ycShESGhQhLNyAaKxVHEqqBhFMk3");
             chainSimulator.BeginBlock();
-            chainSimulator.GenerateCustomMultiSigTransaction(new KeyPair[] { keys, ownerKeys }, () => new ScriptBuilder().AllowGas(ownerKeys.Address, Address.Null, 1, 999).CallContract("interop", "RegisterLink", keys.Address, NeoWallet.EncodeAddress( "AbZJjZ5F1x82VybfsqM7zi4nkWoX8uwepy")).SpendGas(ownerKeys.Address).EndScript());
+            chainSimulator.GenerateCustomTransaction(new KeyPair[] { keys, ownerKeys }, () => new ScriptBuilder().AllowGas(ownerKeys.Address, Address.Null, 1, 999).CallContract("interop", "RegisterLink", keys.Address, NeoWallet.EncodeAddress( "AbZJjZ5F1x82VybfsqM7zi4nkWoX8uwepy")).SpendGas(ownerKeys.Address).EndScript());
             chainSimulator.EndBlock();
 
         }
