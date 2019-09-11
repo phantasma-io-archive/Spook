@@ -139,15 +139,16 @@ namespace Phantasma.Spook.Swaps
             return null;
         }
 
-        public bool FindTokenByHash(string hash, out TokenInfo token)
+        public bool FindTokenByHash(string hashText, out TokenInfo token)
         {
             var nexus = nexusAPI.Nexus;
+
+            var hash = Hash.FromUnpaddedHex(hashText);
 
             foreach (var symbol in nexus.Tokens)
             {
                 var info = nexus.GetTokenInfo(symbol);
-                var temp = info.Hash.ToString().Substring(2);
-                if (temp.Equals(hash, StringComparison.OrdinalIgnoreCase))
+                if (hash.Equals(info.Hash))
                 {
                     token = info;
                     return true;
