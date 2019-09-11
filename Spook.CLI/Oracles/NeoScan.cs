@@ -19,9 +19,12 @@ namespace Phantasma.Spook.Oracles
         private readonly Address chainAddress;
         private static readonly string chainName = "NEO";
 
-        public NeoScanAPI(string url, KeyPair keys)
+        private readonly Nexus nexus;
+
+        public NeoScanAPI(string url, Nexus nexus, KeyPair keys)
         {
             this.URL = url;
+            this.nexus = nexus;
 
             var key = InteropUtils.GenerateInteropKeys(keys, "NEO");
             this.chainAddress = key.Address;
@@ -84,15 +87,10 @@ namespace Phantasma.Spook.Oracles
 
                 var root = JSONReader.ReadFromString(json);
 
-                var eventList = new List<Event>();
-
                 var vins = root.GetNode("vin");
                 Throw.IfNull(vins, nameof(vins));
 
-                string inputAsset = null;
                 string inputSource = null;
-
-                BigInteger inputAmount = 0;
 
                 foreach (var input in vins.Children)
                 {
@@ -100,57 +98,22 @@ namespace Phantasma.Spook.Oracles
                     if (inputSource == null)
                     {
                         inputSource = addrText;
+                        break;
                     }
                     else
                     if (inputSource != addrText)
                     {
                         throw new OracleException("transaction with multiple input sources, unsupported for now");
                     }
-
-                    var assetSymbol = input.GetString("asset");
-
-                    if (inputAsset == null)
-                    {
-                        inputAsset = assetSymbol;
-                    }
-                    else
-                    if (inputAsset != assetSymbol)
-                    {
-                        throw new OracleException("transaction with multiple input assets, unsupported for now");
-                    }
                 }
 
-                if (inputAsset == null || inputSource == null || inputAmount <= 0)
+                var eventList = new List<Event>();
+                FillEventList(hashText, inputSource, eventList);
+
+                if (eventList.Count <= 0)
                 {
                     throw new OracleException("transaction with invalid inputs, something failed");
                 }
-
-                var vouts = root.GetNode("vouts");
-                Throw.IfNull(vouts, nameof(vouts));
-
-                foreach (var output in vouts.Children)
-                {
-                    var addrText = output.GetString("address_hash");
-
-                    var assetSymbol = output.GetString("asset");
-                    var destination = NeoWallet.EncodeAddress(addrText);
-                    var value = output.GetFloat("value");
-                    value *= (float)Math.Pow(10, 8);
-                    var amount = new BigInteger((long)value);
-
-                    if (addrText == inputSource)
-                    {
-                        inputAmount -= amount;
-                        continue;
-                    }
-
-                    var evt = new Event(EventKind.TokenReceive, destination, PackEvent(new TokenEventData() { chainAddress = chainAddress, value = amount, symbol = assetSymbol }));
-                    eventList.Add(evt);
-                }
-
-                var source = NeoWallet.EncodeAddress(inputSource);
-                var sendEvt = new Event(EventKind.TokenSend, source, PackEvent(new TokenEventData() { chainAddress = chainAddress, value = inputAmount, symbol = inputAsset }));
-                eventList.Add(sendEvt);
 
                 tx.Events = eventList.ToArray();
                 return Serialization.Serialize(tx);
@@ -158,6 +121,71 @@ namespace Phantasma.Spook.Oracles
             catch (Exception e)
             {
                 throw new OracleException(e.Message);
+            }
+        }
+
+        private void FillEventList(string hashText, string inputAddress, List<Event> eventList)
+        {
+            int page = 1;
+            int maxPages = 9999;
+
+            string json;
+            while (page <= maxPages)
+            {
+                var url = GetRequestURL($"get_address_abstracts/{inputAddress}/{page}");
+
+                using (var wc = new System.Net.WebClient())
+                {
+                    json = wc.DownloadString(url);
+                }
+
+                var root = JSONReader.ReadFromString(json);
+                var entries = root.GetNode("entries");
+
+                for (int i = 0; i < entries.ChildCount; i++)
+                {
+                    var entry = entries.GetNodeByIndex(i);
+                    var txId = entry.GetString("txid");
+                    if (hashText.Equals(txId, StringComparison.OrdinalIgnoreCase))
+                    {
+                        var inputAsset = entry.GetString("asset");
+                        var symbol = FindSymbolFromAsset(inputAsset);
+
+                        if (symbol == null)
+                        {
+                            throw new OracleException("transaction contains unknown asset: " + inputAsset);
+                        }
+
+                        var inputAmount = entry.GetDecimal("amount");
+
+                        var sourceAddress = entry.GetString("address_from");
+                        var destAddress = entry.GetString("address_to");
+
+                        var info = nexus.GetTokenInfo(symbol);
+                        var amount = UnitConversion.ToBigInteger(inputAmount, info.Decimals);
+
+                        var sendEvt = new Event(EventKind.TokenSend, NeoWallet.EncodeAddress(sourceAddress), PackEvent(new TokenEventData() { chainAddress = chainAddress, value = amount, symbol = symbol }));
+                        eventList.Add(sendEvt);
+
+                        var receiveEvt = new Event(EventKind.TokenReceive, NeoWallet.EncodeAddress(destAddress), PackEvent(new TokenEventData() { chainAddress = chainAddress, value = amount, symbol = symbol }));
+                        eventList.Add(receiveEvt);
+
+                        return;
+                    }
+                }
+
+                page++;
+            }
+        }
+
+        private string FindSymbolFromAsset(string assetID)
+        {
+            switch (assetID)
+            {
+                case "ed07cffad18f1308db51920d99a2af60ac66a7b3": return "SOUL";
+                case "c56f33fc6ecfcd0c225c4ab356fee59390af8560be0e930faebe74a6daff7c9b": return "NEO";
+                case "602c79718b16e442de58778e148d0b1084e3b2dffd5de6b7b16cee7969282de7": return "GAS";
+                default: return null;
             }
         }
 
