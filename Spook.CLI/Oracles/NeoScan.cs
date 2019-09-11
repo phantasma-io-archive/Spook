@@ -23,6 +23,16 @@ namespace Phantasma.Spook.Oracles
 
         public NeoScanAPI(string url, Nexus nexus, KeyPair keys)
         {
+            if (url.StartsWith("https://"))
+            {
+                url = url.Substring(8);
+            }
+            else
+            if (url.StartsWith("http://"))
+            {
+                url = url.Substring(7);
+            }
+
             this.URL = url;
             this.nexus = nexus;
 
