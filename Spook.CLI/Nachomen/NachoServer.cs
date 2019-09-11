@@ -71,7 +71,7 @@ namespace Phantasma.Spook.Nachomen
             chainSimulator.GenerateAppRegistration(ownerKeys, "nachomen", "https://nacho.men", "Collect, train and battle against other players in Nacho Men!");
 
             var nachoSupply = UnitConversion.ToBigInteger(10000, Constants.NACHO_TOKEN_DECIMALS);
-            chainSimulator.GenerateToken(ownerKeys, Constants.NACHO_SYMBOL, "Nachomen Token", nachoSupply, Constants.NACHO_TOKEN_DECIMALS, TokenFlags.Transferable | TokenFlags.Fungible | TokenFlags.Finite | TokenFlags.Divisible);
+            chainSimulator.GenerateToken(ownerKeys, Constants.NACHO_SYMBOL, "Nachomen Token", Nexus.PlatformName, Hash.FromString(Constants.NACHO_SYMBOL), nachoSupply, Constants.NACHO_TOKEN_DECIMALS, TokenFlags.Transferable | TokenFlags.Fungible | TokenFlags.Finite | TokenFlags.Divisible);
             chainSimulator.MintTokens(ownerKeys, Constants.NACHO_SYMBOL, nachoSupply);
 
             var wrestlerTokenScript = new []
@@ -99,7 +99,7 @@ namespace Phantasma.Spook.Nachomen
 
             var wrestlerCallScript = AssemblerUtils.BuildScript(wrestlerTokenScript);
 
-            chainSimulator.GenerateToken(ownerKeys, Constants.WRESTLER_SYMBOL, "Nachomen Luchador", 0, 0, TokenFlags.Transferable, wrestlerCallScript);
+            chainSimulator.GenerateToken(ownerKeys, Constants.WRESTLER_SYMBOL, "Nachomen Luchador", Nexus.PlatformName, Hash.FromString(Constants.WRESTLER_SYMBOL), 0, 0, TokenFlags.Transferable, wrestlerCallScript);
 
             var itemTokenScript = new[]
             {
@@ -126,7 +126,7 @@ namespace Phantasma.Spook.Nachomen
 
             var itemCallScript = AssemblerUtils.BuildScript(itemTokenScript);
 
-            chainSimulator.GenerateToken(ownerKeys, Constants.ITEM_SYMBOL, "Nachomen Item", 0, 0, TokenFlags.Transferable, itemCallScript);
+            chainSimulator.GenerateToken(ownerKeys, Constants.ITEM_SYMBOL, "Nachomen Item", Nexus.PlatformName, Hash.FromString(Constants.ITEM_SYMBOL), 0, 0, TokenFlags.Transferable, itemCallScript);
             chainSimulator.EndBlock();
 
             chainSimulator.BeginBlock();

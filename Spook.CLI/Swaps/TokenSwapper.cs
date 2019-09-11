@@ -9,6 +9,7 @@ using Phantasma.Spook.Oracles;
 using Phantasma.Core.Log;
 using Phantasma.Core.Utils;
 using Phantasma.Pay;
+using Phantasma.Blockchain.Tokens;
 
 namespace Phantasma.Spook.Swaps
 {
@@ -21,8 +22,6 @@ namespace Phantasma.Spook.Swaps
 
         public Dictionary<string, ChainSwap> swapMap = new Dictionary<string, ChainSwap>();
 
-        public Dictionary<string, TokenInfo> tokenHashMap = new Dictionary<string, TokenInfo>();
-        public Dictionary<string, TokenInfo> tokenSymbolMap = new Dictionary<string, TokenInfo>();
         public Dictionary<string, ChainInterop> interopMap = new Dictionary<string, ChainInterop>();
 
         private static readonly string interopFile = "interops.csv";
@@ -35,14 +34,11 @@ namespace Phantasma.Spook.Swaps
             this.neoscanAPI = neoscanAPI;
             this.logger = logger;
 
-            AddToken("NEO", "NEO", "c56f33fc6ecfcd0c225c4ab356fee59390af8560be0e930faebe74a6daff7c9b", 0);
-            AddToken("NEO", "GAS", "602c79718b16e442de58778e148d0b1084e3b2dffd5de6b7b16cee7969282de7", 8);
-            AddToken("NEO", "SOUL", "ed07cffad18f1308db51920d99a2af60ac66a7b3", 8);
-
             var interopBlocks = new Dictionary<string, BigInteger>();
 
             interopBlocks["phantasma"] = BigInteger.Parse(arguments.GetString("interop.phantasma.height", "0"));
             interopBlocks["neo"] = BigInteger.Parse(arguments.GetString("interop.neo.height", "4261049"));
+            interopBlocks["ethereum"] = BigInteger.Parse(arguments.GetString("interop.ethereum.height", "4261049"));
 
             if (File.Exists(interopFile))
             {
@@ -124,20 +120,6 @@ namespace Phantasma.Spook.Swaps
             }
         }
 
-        private void AddToken(string chain, string symbol, string hash, int decimals)
-        {
-            var token = new TokenInfo()
-            {
-                chain = chain,
-                symbol = symbol,
-                hash = hash,
-                decimals = decimals
-            };
-
-            tokenHashMap[hash] = token;
-            tokenSymbolMap[symbol] = token;
-        }
-
         // finds which blockchain interop address matches the supplied address
         public string FindInteropByAddress(Address address)
         {
@@ -159,10 +141,17 @@ namespace Phantasma.Spook.Swaps
 
         public bool FindTokenByHash(string hash, out TokenInfo token)
         {
-            if (tokenHashMap.ContainsKey(hash))
+            var nexus = nexusAPI.Nexus;
+
+            foreach (var symbol in nexus.Tokens)
             {
-                token = tokenHashMap[hash];
-                return true;
+                var info = nexus.GetTokenInfo(symbol);
+                var temp = info.Hash.ToString().Substring(2);
+                if (temp.Equals(hash, StringComparison.OrdinalIgnoreCase))
+                {
+                    token = info;
+                    return true;
+                }
             }
 
             token = new TokenInfo();
@@ -171,9 +160,11 @@ namespace Phantasma.Spook.Swaps
 
         public bool FindTokenBySymbol(string symbol, out TokenInfo token)
         {
-            if (tokenSymbolMap.ContainsKey(symbol))
+            var nexus = nexusAPI.Nexus;
+
+            if (nexus.TokenExists(symbol))
             {
-                token = tokenSymbolMap[symbol];
+                token = nexus.GetTokenInfo(symbol);
                 return true;
             }
 

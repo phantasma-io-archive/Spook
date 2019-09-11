@@ -5,22 +5,24 @@ using LunarLabs.Parser.JSON;
 using LunarLabs.Parser;
 using Phantasma.Neo.Core;
 using Phantasma.Neo.Cryptography;
+using Phantasma.Pay.Chains;
+using Phantasma.Blockchain.Tokens;
 
 namespace Phantasma.Spook.Swaps
 {
     public class NeoInterop : ChainInterop
     {
         private RemoteRPCNode api;
-        private KeyPair neoKeys;
+        private NeoKey neoKeys;
 
         public NeoInterop(TokenSwapper swapper, Phantasma.Cryptography.KeyPair keys, BigInteger blockHeight) : base(swapper, keys, blockHeight)
         {
-            this.neoKeys = KeyPair.FromWIF(this.WIF);
+            this.neoKeys = NeoKey.FromWIF(this.WIF);
             api = new RemoteRPCNode("http://neoscan.io", "http://seed6.ngd.network:10332", "http://seed.neoeconomy.io:10332");
         }
 
         public override string LocalAddress => neoKeys.address.ToString();
-        public override string Name => "NEO";
+        public override string Name => NeoWallet.NeoPlatform;
 
         public override void Update(Action<IEnumerable<ChainSwap>> callback)
         {
@@ -114,7 +116,7 @@ namespace Phantasma.Spook.Swaps
                 amount = amount,
                 destinationAddress = destinationAddress,
                 destinationChain = destChain,
-                symbol = token.symbol,
+                symbol = token.Symbol,
             };
 
             result.Add(swap);
@@ -129,13 +131,13 @@ namespace Phantasma.Spook.Swaps
         {
             Transaction tx;
 
-            if (token.symbol == "NEO" || token.symbol == "GAS")
+            if (token.Symbol == "NEO" || token.Symbol == "GAS")
             {
-                tx = api.SendAsset(neoKeys, address, token.symbol, amount);
+                tx = api.SendAsset(neoKeys, address, token.Symbol, amount);
             }
             else
             {
-                var nep5 = new NEP5(api, token.hash);
+                var nep5 = new NEP5(api, token.Hash.ToString());
                 tx = nep5.Transfer(neoKeys, address, amount);
             }
 

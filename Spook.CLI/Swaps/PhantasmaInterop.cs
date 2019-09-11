@@ -11,6 +11,7 @@ using Phantasma.Blockchain;
 using Phantasma.VM.Utils;
 using Phantasma.Core.Types;
 using System.Threading;
+using Phantasma.Blockchain.Tokens;
 
 namespace Phantasma.Spook.Swaps
 {
@@ -58,7 +59,7 @@ namespace Phantasma.Spook.Swaps
                                 TokenInfo tokenInfo;
                                 if (Swapper.FindTokenBySymbol(symbol, out tokenInfo))
                                 {
-                                    amount = UnitConversion.ToDecimal(eventData.value, tokenInfo.decimals);
+                                    amount = UnitConversion.ToDecimal(eventData.value, tokenInfo.Decimals);
                                 }
                                 else
                                 {
@@ -127,7 +128,7 @@ namespace Phantasma.Spook.Swaps
         public override string ReceiveFunds(string sourceChain, Hash sourceHash, string address, TokenInfo token, decimal amount)
         {
             var targetAddress = Address.FromText(address);
-            var targetAmount = UnitConversion.ToBigInteger(amount, token.decimals);
+            var targetAmount = UnitConversion.ToBigInteger(amount, token.Decimals);
             var script = new ScriptBuilder().AllowGas(Swapper.Keys.Address, Address.Null, 1, 9999).CallContract("interop", "SettleTransaction", Swapper.Keys.Address, sourceChain, sourceHash).SpendGas(Swapper.Keys.Address).EndScript();
 
             var tx = new Transaction(Swapper.nexusAPI.Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5));

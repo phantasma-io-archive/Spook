@@ -82,7 +82,7 @@ namespace Phantasma.Spook.Oracles
                 }
 
                 var tx = new InteropTransaction();
-                tx.ChainName = chainName;
+                tx.Platform = chainName;
                 tx.Hash = Hash.Parse(hashText);
 
                 var root = JSONReader.ReadFromString(json);
@@ -208,7 +208,7 @@ namespace Phantasma.Spook.Oracles
                 }
 
                 var block = new InteropBlock();
-                block.ChainName = chainName;
+                block.Platform = chainName;
                 block.Hash = Hash.Parse(blockText);
 
                 var root = JSONReader.ReadFromString(json);

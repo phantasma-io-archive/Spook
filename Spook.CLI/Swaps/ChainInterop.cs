@@ -3,6 +3,7 @@ using Phantasma.Cryptography;
 using System;
 using System.Collections.Generic;
 using Phantasma.Blockchain;
+using Phantasma.Blockchain.Tokens;
 
 namespace Phantasma.Spook.Swaps
 {
@@ -19,14 +20,6 @@ namespace Phantasma.Spook.Swaps
         public string destinationChain;
         public string symbol;
         public decimal amount;
-    }
-
-    public struct TokenInfo
-    {
-        public string chain;
-        public string symbol;
-        public string hash;
-        public int decimals;
     }
 
     public class InteropException : Exception
