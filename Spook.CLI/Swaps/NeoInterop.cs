@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using LunarLabs.Parser.JSON;
 using LunarLabs.Parser;
 using Phantasma.Neo.Core;
-using Phantasma.Neo.Cryptography;
 using Phantasma.Pay.Chains;
 using Phantasma.Blockchain.Tokens;
 
@@ -32,14 +31,11 @@ namespace Phantasma.Spook.Swaps
             try
             {
                 int maxPages = 1;
-                string json;
-
                 {
-                    var url = Swapper.neoscanAPI.GetRequestURL($"get_address_abstracts/{LocalAddress}/1");
-
-                    using (var wc = new System.Net.WebClient())
+                    var json = Swapper.neoscanAPI.ExecuteRequest($"get_address_abstracts/{LocalAddress}/1");
+                    if (json == null)
                     {
-                        json = wc.DownloadString(url);
+                        throw new Blockchain.SwapException("failed to fetch address page");
                     }
 
                     var root = JSONReader.ReadFromString(json);
@@ -48,11 +44,10 @@ namespace Phantasma.Spook.Swaps
 
                 for (int page = maxPages; page>=1; page--)
                 {
-                    var url = Swapper.neoscanAPI.GetRequestURL($"get_address_abstracts/{LocalAddress}/{page}");
-
-                    using (var wc = new System.Net.WebClient())
+                    var json = Swapper.neoscanAPI.ExecuteRequest($"get_address_abstracts/{LocalAddress}/{page}");
+                    if (json == null)
                     {
-                        json = wc.DownloadString(url);
+                        throw new Blockchain.SwapException("failed to fetch address page");
                     }
 
                     var root = JSONReader.ReadFromString(json);

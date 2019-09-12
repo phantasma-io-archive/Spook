@@ -9,31 +9,29 @@ using Phantasma.Storage;
 using Phantasma.Numerics;
 using Phantasma.Pay.Chains;
 using Phantasma.Core;
+using Phantasma.Core.Log;
 
 namespace Phantasma.Spook.Oracles
 {
     public class NeoScanAPI
     {
         public readonly string URL;
+        public readonly Logger logger;
 
         private readonly Address platformAddress;
         private static readonly string platformName = NeoWallet.NeoPlatform;
 
         private readonly Nexus nexus;
 
-        public NeoScanAPI(string url, Nexus nexus, KeyPair keys)
+        public NeoScanAPI(string url, Logger logger, Nexus nexus, KeyPair keys)
         {
-            if (url.StartsWith("https://"))
+            if (!url.Contains("://"))
             {
-                url = url.Substring(8);
-            }
-            else
-            if (url.StartsWith("http://"))
-            {
-                url = url.Substring(7);
+                url = "http://" + url;
             }
 
             this.URL = url;
+            this.logger = logger;
             this.nexus = nexus;
 
             var key = InteropUtils.GenerateInteropKeys(keys, platformName);
@@ -67,10 +65,25 @@ namespace Phantasma.Spook.Oracles
             return bytes;
         }
 
-        public string GetRequestURL(string request)
+        public string ExecuteRequest(string request)
         {
             Throw.If(request.StartsWith("/"), "request malformed");
-            return $"https://api.{URL}/api/main_net/v1/{request}";
+            var url = $"{URL}/api/main_net/v1/{request}";
+
+            try
+            {
+                string json;
+                using (var wc = new System.Net.WebClient())
+                {
+                    json = wc.DownloadString(url);
+                    return json;
+                }
+            }
+            catch (Exception e)
+            {
+                logger.Error("Neoscan request failed: " + url);
+                return null;
+            }
         }
 
         public byte[] ReadTransaction(string hashText)
@@ -80,16 +93,14 @@ namespace Phantasma.Spook.Oracles
                 hashText = hashText.Substring(2);
             }
 
-            var url = GetRequestURL($"get_transaction/{hashText}");
-
-            string json;
+            var json = ExecuteRequest($"get_transaction/{hashText}");
+            if (json == null)
+            {
+                throw new OracleException("Network read failure");
+            }
 
             try
             {
-                using (var wc = new System.Net.WebClient())
-                {
-                    json = wc.DownloadString(url);
-                }
 
                 var tx = new InteropTransaction();
                 tx.Platform = platformName;
@@ -139,14 +150,12 @@ namespace Phantasma.Spook.Oracles
             int page = 1;
             int maxPages = 9999;
 
-            string json;
             while (page <= maxPages)
             {
-                var url = GetRequestURL($"get_address_abstracts/{inputAddress}/{page}");
-
-                using (var wc = new System.Net.WebClient())
+                var json = ExecuteRequest($"get_address_abstracts/{inputAddress}/{page}");
+                if (json == null)
                 {
-                    json = wc.DownloadString(url);
+                    throw new OracleException("Network read failure");
                 }
 
                 var root = JSONReader.ReadFromString(json);
@@ -206,17 +215,14 @@ namespace Phantasma.Spook.Oracles
                 blockText = blockText.Substring(2);
             }
 
-            var url = GetRequestURL($"get_block/{blockText}");
-
-            string json;
+            var json = ExecuteRequest($"get_block/{blockText}");
+            if (json == null)
+            {
+                throw new OracleException("Network read failure");
+            }
 
             try
             {
-                using (var wc = new System.Net.WebClient())
-                {
-                    json = wc.DownloadString(url);
-                }
-
                 var block = new InteropBlock();
                 block.Platform = platformName;
                 block.Hash = Hash.Parse(blockText);

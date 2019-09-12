@@ -592,7 +592,7 @@ namespace Phantasma.Spook
                 restServer.Start(ThreadPriority.AboveNormal);
             }
 
-            this.NeoScanAPI = new NeoScanAPI(settings.GetString("neoscan.url", "neoscan.io"), nexus, node_keys);
+            this.NeoScanAPI = new NeoScanAPI(settings.GetString("neoscan.url", "api.neoscan.io"), logger, nexus, node_keys);
 
             cryptoCompareAPIKey = settings.GetString("cryptocompare.apikey", "");
             if (!string.IsNullOrEmpty(cryptoCompareAPIKey))
