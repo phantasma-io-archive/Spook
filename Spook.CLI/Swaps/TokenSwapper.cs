@@ -192,7 +192,7 @@ namespace Phantasma.Spook.Swaps
                 var address = Address.FromText(addrText);
                 string resultChainName;
                 string resultAddress;
-                WalletUtils.DecodeChainAndAddress(address, out resultChainName, out resultAddress);
+                WalletUtils.DecodePlatformAndAddress(address, out resultChainName, out resultAddress);
 
                 if (resultChainName != chainName)
                 {
