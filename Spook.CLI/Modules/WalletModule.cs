@@ -14,6 +14,8 @@ using Phantasma.Numerics;
 using Phantasma.Core.Types;
 using System.Threading;
 using Phantasma.Pay.Chains;
+using Phantasma.Pay;
+using Phantasma.Neo.Core;
 
 namespace Phantasma.Spook.Modules
 {
@@ -65,15 +67,40 @@ namespace Phantasma.Spook.Modules
             }
         }
 
-        public static void Transfer(NexusAPI api, Logger logger, string[] args)
+        private static void NeoTransfer(NeoKey neoKeys, string toAddress, string tokenSymbol, decimal tempAmount, Logger logger)
         {
-            if (args.Length != 3)
+            var neoApi = new RemoteRPCNode("http://neoscan.io", "http://seed6.ngd.network:10332", "http://seed.neoeconomy.io:10332");
+
+            Neo.Core.Transaction neoTx;
+
+            logger.Message($"Sending {tempAmount} {tokenSymbol} to {toAddress}...");
+
+            if (tokenSymbol == "NEO" || tokenSymbol == "GAS")
             {
-                throw new CommandException("Expected args: target_address amount symbol");
+                neoTx = neoApi.SendAsset(neoKeys, toAddress, tokenSymbol, tempAmount);
+            }
+            else
+            {
+                var nep5 = neoApi.GetToken(tokenSymbol);
+                if (nep5 == null)
+                {
+                    throw new CommandException($"Could not find interface for NEP5: {tokenSymbol}");
+                }
+                neoTx = nep5.Transfer(neoKeys, toAddress, tempAmount);
             }
 
-            var tempAmount = decimal.Parse(args[1]);
-            var tokenSymbol = args[2];
+            logger.Success($"Sent transaction with hash {neoTx.Hash}!");
+        }
+
+        public static void Transfer(NexusAPI api, Logger logger, string[] args)
+        {
+            if (args.Length != 4)
+            {
+                throw new CommandException("Expected args: source_address target_address amount symbol");
+            }
+
+            var tempAmount = decimal.Parse(args[2]);
+            var tokenSymbol = args[3];
 
             TokenResult tokenInfo;
             try
@@ -93,8 +120,24 @@ namespace Phantasma.Spook.Modules
 
             var amount = UnitConversion.ToBigInteger(tempAmount, tokenInfo.decimals);
 
-            var destName = args[0];
+            var sourceName = args[0];
+            Address sourceAddress;
 
+            if (Address.IsValidAddress(sourceName))
+            {
+                sourceAddress = Address.FromText(sourceName);
+                if (sourceName != Keys.Address.Text)
+                {
+                    throw new CommandException("The current open wallet does not have keys that match address "+sourceName);
+                }
+            }
+            else
+            if (NeoWallet.IsValidAddress(sourceName))
+            {
+                sourceAddress = NeoWallet.EncodeAddress(sourceName);
+            }
+
+            var destName = args[1];
             Address destAddress;
 
             if (Address.IsValidAddress(destName))
@@ -104,13 +147,66 @@ namespace Phantasma.Spook.Modules
             else
             if (NeoWallet.IsValidAddress(destName))
             {
-                logger.Warning("Target is NEO address, a swap will be performed using an interop address.");
                 destAddress = NeoWallet.EncodeAddress(destName);
             }
 
-            if (destAddress.Text == Keys.Address.Text)
+            if (destAddress.Text == sourceAddress.Text)
             {
                 throw new CommandException("Cannot transfer to same address");
+            }
+
+            if (sourceAddress.IsInterop)
+            {
+                string sourcePlatform;
+                string fromAddress;
+
+                WalletUtils.DecodePlatformAndAddress(sourceAddress, out sourcePlatform, out fromAddress);
+
+                if (destAddress.IsInterop)
+                {
+                    string destPlatform;
+                    string toAddress;
+
+                    WalletUtils.DecodePlatformAndAddress(destAddress, out destPlatform, out toAddress);
+
+                    if (sourcePlatform != destPlatform)
+                    {
+                        throw new CommandException($"Cannot transfer directly from {sourcePlatform} to {destPlatform}");
+                    }
+                    else
+                    {
+                        switch (destPlatform)
+                        {
+                            case NeoWallet.NeoPlatform:
+                                {
+                                    var neoKeys = new NeoKey(Keys.PrivateKey);
+                                    NeoTransfer(neoKeys, toAddress, tokenSymbol, tempAmount, logger);
+                                }
+                                break;
+
+                            default:
+                                throw new CommandException($"Not implemented yet :(");
+                        }
+                    }
+                }
+                else
+                {
+                    logger.Warning($"Source is {sourcePlatform} address, a swap will be performed using an interop address.");
+
+                    //api.GetAccount(sourceAddress);
+                    throw new CommandException($"Not implemented yet :(");
+                }
+
+                return;
+            }
+            else
+            if (destAddress.IsInterop)
+            {
+                string platformName;
+                string outAddress;
+
+                WalletUtils.DecodePlatformAndAddress(destAddress, out platformName, out outAddress);
+                logger.Warning($"Target is {platformName} address, a swap will be performed using an interop address.");
             }
 
             var script = ScriptUtils.BeginScript().
@@ -118,7 +214,7 @@ namespace Phantasma.Spook.Modules
                 CallContract("token", "TransferTokens", Keys.Address, destAddress, tokenSymbol, amount).
                 SpendGas(Keys.Address).
                 EndScript();
-            var tx = new Transaction(api.Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5));
+            var tx = new Phantasma.Blockchain.Transaction(api.Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5));
             tx.Sign(Keys);
             var rawTx = tx.ToByteArray(true);
 
@@ -200,7 +296,7 @@ namespace Phantasma.Spook.Modules
                 CallContract("energy", "Stake", Keys.Address, dest, amount).
                 SpendGas(Keys.Address).
                 EndScript();
-            var tx = new Transaction(api.Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5));
+            var tx = new Phantasma.Blockchain.Transaction(api.Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5));
             tx.Sign(Keys);
             var rawTx = tx.ToByteArray(true);
 
