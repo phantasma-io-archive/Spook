@@ -16,6 +16,7 @@ using System.Threading;
 using Phantasma.Pay.Chains;
 using Phantasma.Pay;
 using Phantasma.Neo.Core;
+using Phantasma.Spook.Oracles;
 
 namespace Phantasma.Spook.Modules
 {
@@ -37,7 +38,7 @@ namespace Phantasma.Spook.Modules
             logger.Success($"Opened wallet with address {Keys.Address}.");
         }
 
-        public static void Balance(NexusAPI api, Logger logger, string[] args)
+        public static void Balance(NexusAPI api, Logger logger, int phantasmaRestPort, NeoScanAPI neoScanAPI, string[] args)
         {
             Address address;
 
@@ -50,38 +51,51 @@ namespace Phantasma.Spook.Modules
                 address = Keys.Address;
             }
 
-            var account = (AccountResult) api.GetAccount(address.Text);
+            logger.Message("Fetching balances...");
+            var wallets = new List<CryptoWallet>();
+            wallets.Add(new PhantasmaWallet(Keys, $"http://localhost:{phantasmaRestPort}/api"));
+            wallets.Add(new NeoWallet(Keys, neoScanAPI.URL));
 
-            logger.Message($"Balance for {account.name} ({address.Text})");
-            if (account.balances.Any())
+            foreach (var wallet in wallets)
             {
-                foreach (var entry in account.balances)
+                wallet.SyncBalances((success) =>
                 {
-                    var amount = BigInteger.Parse(entry.amount);
-                    logger.Success($"{entry.chain} => {UnitConversion.ToDecimal(amount, (int)entry.decimals)} {entry.symbol}");
-                }
-            }
-            else
-            {
-                logger.Warning("Empty wallet.");
+                    var temp = wallet.Name != wallet.Address ? $" ({wallet.Address})":"";
+                    logger.Message($"{wallet.Platform} balance for {wallet.Name}"+temp);
+                    if (success)
+                    {
+                        bool empty = true;
+                        foreach (var entry in wallet.Balances)
+                        {
+                            empty = false;
+                            logger.Message($"{entry.Amount} {entry.Symbol} @ {entry.Chain}");
+                        }
+                        if (empty)
+                        {
+                            logger.Warning("Empty wallet.");
+                        }
+                    }
+                    else
+                    {
+                        logger.Warning("Failed to fetch balances!");
+                    }
+                });
             }
         }
 
-        private static void NeoTransfer(NeoKey neoKeys, string toAddress, string tokenSymbol, decimal tempAmount, Logger logger)
+        private static void NeoTransfer(NeoKey neoKeys, string toAddress, string tokenSymbol, decimal tempAmount, NeoAPI neoAPI, Logger logger)
         {
-            var neoApi = new RemoteRPCNode("http://neoscan.io", "http://seed6.ngd.network:10332", "http://seed.neoeconomy.io:10332");
-
             Neo.Core.Transaction neoTx;
 
             logger.Message($"Sending {tempAmount} {tokenSymbol} to {toAddress}...");
 
             if (tokenSymbol == "NEO" || tokenSymbol == "GAS")
             {
-                neoTx = neoApi.SendAsset(neoKeys, toAddress, tokenSymbol, tempAmount);
+                neoTx = neoAPI.SendAsset(neoKeys, toAddress, tokenSymbol, tempAmount);
             }
             else
             {
-                var nep5 = neoApi.GetToken(tokenSymbol);
+                var nep5 = neoAPI.GetToken(tokenSymbol);
                 if (nep5 == null)
                 {
                     throw new CommandException($"Could not find interface for NEP5: {tokenSymbol}");
@@ -92,7 +106,7 @@ namespace Phantasma.Spook.Modules
             logger.Success($"Sent transaction with hash {neoTx.Hash}!");
         }
 
-        public static void Transfer(NexusAPI api, Logger logger, string[] args)
+        public static void Transfer(NexusAPI api, Logger logger, NeoAPI neoAPI, string[] args)
         {
             if (args.Length != 4)
             {
@@ -180,7 +194,7 @@ namespace Phantasma.Spook.Modules
                             case NeoWallet.NeoPlatform:
                                 {
                                     var neoKeys = new NeoKey(Keys.PrivateKey);
-                                    NeoTransfer(neoKeys, toAddress, tokenSymbol, tempAmount, logger);
+                                    NeoTransfer(neoKeys, toAddress, tokenSymbol, tempAmount, neoAPI, logger);
                                 }
                                 break;
 

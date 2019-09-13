@@ -11,13 +11,13 @@ namespace Phantasma.Spook.Swaps
 {
     public class NeoInterop : ChainInterop
     {
-        private RemoteRPCNode api;
+        private NeoAPI api;
         private NeoKey neoKeys;
 
-        public NeoInterop(TokenSwapper swapper, Phantasma.Cryptography.KeyPair keys, BigInteger blockHeight, string neoscanURL, string[] neoRpcURLs) : base(swapper, keys, blockHeight)
+        public NeoInterop(TokenSwapper swapper, Phantasma.Cryptography.KeyPair keys, BigInteger blockHeight, NeoAPI neoAPI) : base(swapper, keys, blockHeight)
         {
             this.neoKeys = new NeoKey(this.Keys.PrivateKey);
-            api = new RemoteRPCNode(neoscanURL, neoRpcURLs);
+            this.api = neoAPI;
         }
 
         public override string LocalAddress => neoKeys.address.ToString();

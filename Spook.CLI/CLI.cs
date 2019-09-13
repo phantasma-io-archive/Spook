@@ -93,7 +93,11 @@ namespace Phantasma.Spook
         private bool nodeReady = false;
         
         public NeoScanAPI NeoScanAPI { get; private set; }
+        public Neo.Core.NeoAPI NeoAPI { get; private set; }
 
+        public int rpcPort { get; private set; }
+        public int restPort { get; private set; }
+        
         private Nexus nexus;
         private NexusAPI api;
 
@@ -572,11 +576,12 @@ namespace Phantasma.Spook
 
             api = new NexusAPI(nexus, mempool);
 
+            rpcPort = settings.GetInt("rpc.port", 7077);
+            restPort = settings.GetInt("rest.port", 7078);
+
             // RPC setup
             if (hasRPC)
             {
-                int rpcPort = settings.GetInt("rpc.port", 7077);
-
                 logger.Message($"RPC server listening on port {rpcPort}...");
                 var rpcServer = new RPCServer(api, "/rpc", rpcPort, (level, text) => WebLogMapper("rpc", level, text));
                 rpcServer.Start(ThreadPriority.AboveNormal);
@@ -585,14 +590,14 @@ namespace Phantasma.Spook
             // REST setup
             if (hasREST)
             {
-                int restPort = settings.GetInt("rest.port", 7078);
-
                 logger.Message($"REST server listening on port {restPort}...");
                 var restServer = new RESTServer(api, "/api", restPort, (level, text) => WebLogMapper("rest", level, text));
                 restServer.Start(ThreadPriority.AboveNormal);
             }
 
             this.NeoScanAPI = new NeoScanAPI(settings.GetString("neoscan.url", "https://api.neoscan.io"), logger, nexus, node_keys);
+            var rpcList = settings.GetString("neo.rpc", "http://seed6.ngd.network:10332,http://seed.neoeconomy.io:10332");
+            var neoRpcURLs = rpcList.Split(',');
 
             cryptoCompareAPIKey = settings.GetString("cryptocompare.apikey", "");
             if (!string.IsNullOrEmpty(cryptoCompareAPIKey))
@@ -622,7 +627,7 @@ namespace Phantasma.Spook
             if (wif == validatorWIFs[0] && settings.GetBool("swaps.enabled"))
             {
                 logger.Message("Starting token swapping service...");
-                var swapper = new TokenSwapper(node_keys, api, NeoScanAPI, logger, settings);
+                var swapper = new TokenSwapper(node_keys, api, NeoScanAPI, NeoAPI, logger, settings);
                 new Thread(() =>
                 {
                     while (node.IsRunning)
@@ -799,10 +804,10 @@ namespace Phantasma.Spook
             (args) => WalletModule.Open(logger, args));
 
             dispatcher.RegisterCommand("wallet.balance", "Shows the current wallet balance",
-                (args) => WalletModule.Balance(api, logger, args));
+                (args) => WalletModule.Balance(api, logger, restPort, NeoScanAPI, args));
 
             dispatcher.RegisterCommand("wallet.transfer", "Generates a new transfer transaction",
-                (args) => WalletModule.Transfer(api, logger, args));
+                (args) => WalletModule.Transfer(api, logger, NeoAPI, args));
 
             dispatcher.RegisterCommand("wallet.stake", $"Stakes {Nexus.StakingTokenSymbol}",
                 (args) => WalletModule.Stake(api, logger, args));

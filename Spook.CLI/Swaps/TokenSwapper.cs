@@ -10,6 +10,7 @@ using Phantasma.Core.Log;
 using Phantasma.Core.Utils;
 using Phantasma.Pay;
 using Phantasma.Blockchain.Tokens;
+using Phantasma.Neo.Core;
 
 namespace Phantasma.Spook.Swaps
 {
@@ -27,7 +28,7 @@ namespace Phantasma.Spook.Swaps
         private static readonly string interopFile = "interops.csv";
         private static readonly string swapFile = "swaps.csv";
 
-        public TokenSwapper(KeyPair swapKey, NexusAPI nexusAPI, NeoScanAPI neoscanAPI, Logger logger, Arguments arguments)
+        public TokenSwapper(KeyPair swapKey, NexusAPI nexusAPI, NeoScanAPI neoscanAPI, NeoAPI neoAPI, Logger logger, Arguments arguments)
         {
             this.Keys = swapKey;
             this.nexusAPI = nexusAPI;
@@ -65,9 +66,7 @@ namespace Phantasma.Spook.Swaps
                         break;
 
                     case "neo":
-                        var rpcList = arguments.GetString("neo.rpc", "http://seed6.ngd.network:10332,http://seed.neoeconomy.io:10332");
-                        var neoRpcURLs = rpcList.Split(',');
-                        interop = new NeoInterop(this, swapKey, blockHeight, neoscanAPI.URL, neoRpcURLs);
+                        interop = new NeoInterop(this, swapKey, blockHeight, neoAPI);
                         break;
 
                     case "ethereum":
