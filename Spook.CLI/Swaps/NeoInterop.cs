@@ -14,10 +14,10 @@ namespace Phantasma.Spook.Swaps
         private RemoteRPCNode api;
         private NeoKey neoKeys;
 
-        public NeoInterop(TokenSwapper swapper, Phantasma.Cryptography.KeyPair keys, BigInteger blockHeight) : base(swapper, keys, blockHeight)
+        public NeoInterop(TokenSwapper swapper, Phantasma.Cryptography.KeyPair keys, BigInteger blockHeight, string neoscanURL, string[] neoRpcURLs) : base(swapper, keys, blockHeight)
         {
             this.neoKeys = new NeoKey(this.Keys.PrivateKey);
-            api = new RemoteRPCNode("http://neoscan.io", "http://seed6.ngd.network:10332", "http://seed.neoeconomy.io:10332");
+            api = new RemoteRPCNode(neoscanURL, neoRpcURLs);
         }
 
         public override string LocalAddress => neoKeys.address.ToString();

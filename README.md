@@ -286,6 +286,16 @@ eg:
 wallet.transfer PGbGitREtLZi89QGxSLtBfs51Ukufs5PzhC9kky8Tet93 PGam8Avq7NGPc8ViXXM1wre2XUWatVGFmKBLNsGhsDSuB 10.5 SOUL
 ```
 
+## Oracles
+
+Spook can optionally connect to a variety of builtin Oracles. In order to do so, you will need to configure the proper URLs.
+If you are running Spook as a block producer it is highly recommended to use URLs from services running in your own machines, to make sure you have full control of the data.
+
+Oracle 		| Argument | Example | Remarks
+:---------------------- | :------------| :------------| :------------
+Neo Blockchain (RPC) 		| -neo.rpc | http://seed6.ngd.network:10332,http://seed.neoeconomy.io:10332 | You can list several RPC endpoints by separating them with commas
+Neo Blockchain (NeoScan)	| -neoscan.url | https://api.neoscan.io |  |
+CryptoCompare 		| -cryptocompare.apikey | - | You will need to register with [CryptoCompare](https://www.cryptocompare.com) to obtain an API key |
 
 ## API
 
