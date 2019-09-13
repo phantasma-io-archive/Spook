@@ -25,6 +25,8 @@ namespace Phantasma.Spook
 
         public void ExecuteCommand(string input)
         {
+            input = input.Trim();
+
             var args = input.Split(' ');
             var name = args[0].ToLower();
 
