@@ -1,14 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using Phantasma.CodeGen.Core;
 using Phantasma.VM.Utils;
-using Phantasma.VM;
-using Phantasma.CodeGen.Assembler;
 using Phantasma.Cryptography;
 using Phantasma.Blockchain;
 using Phantasma.API;
-using System.Linq;
 using Phantasma.Core.Log;
 using Phantasma.Numerics;
 using Phantasma.Core.Types;
@@ -225,7 +220,7 @@ namespace Phantasma.Spook.Modules
                 string outAddress;
 
                 WalletUtils.DecodePlatformAndAddress(destAddress, out platformName, out outAddress);
-                logger.Warning($"Target is {platformName} address, a swap will be performed using an interop address.");
+                logger.Warning($"Target is {platformName} address, a swap will be performed through interop address {destAddress}.");
             }
 
             var script = ScriptUtils.BeginScript().

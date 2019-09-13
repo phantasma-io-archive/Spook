@@ -209,8 +209,6 @@ namespace Phantasma.Spook.Swaps
 
         private void ProcessSwaps(ChainInterop interop, IEnumerable<ChainSwap> swaps)
         {
-            bool didSwap = false;
-
             foreach (var temp in swaps)
             {
                 var swap = temp;
@@ -249,7 +247,6 @@ namespace Phantasma.Spook.Swaps
                     }
 
                     File.AppendAllText(swapFile, $"{swap.sourceHash},{swap.sourceChain},{swap.sourceAddress},{swap.sendHash},{swap.receiveHash},{swap.destinationChain},{swap.destinationAddress},{swap.symbol},{swap.amount}{Environment.NewLine}");
-                    didSwap = true;
                     swapMap[swap.sourceHash] = swap;
 
                     logger.Success($"Finished {swap.sourceChain} swap: {swap.destinationAddress} received {swap.amount} {swap.symbol}");
@@ -258,11 +255,6 @@ namespace Phantasma.Spook.Swaps
                 {
                     throw new InteropException("Unknown interop: " + swap.destinationChain);
                 }
-            }
-
-            if (didSwap)
-            {
-                File.AppendAllText(interopFile, $"{interop.Name},{interop.currentHeight}{Environment.NewLine}");
             }
         }
     }
