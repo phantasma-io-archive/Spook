@@ -65,7 +65,9 @@ namespace Phantasma.Spook.Swaps
                         break;
 
                     case "neo":
-                        interop = new NeoInterop(this, swapKey, blockHeight);
+                        var rpcList = arguments.GetString("neo.rpc", "http://seed6.ngd.network:10332,http://seed.neoeconomy.io:10332");
+                        var neoRpcURLs = rpcList.Split(',');
+                        interop = new NeoInterop(this, swapKey, blockHeight, neoscanAPI.URL, neoRpcURLs);
                         break;
 
                     case "ethereum":
