@@ -25,7 +25,6 @@ namespace Phantasma.Spook.Swaps
 
         public Dictionary<string, ChainInterop> interopMap = new Dictionary<string, ChainInterop>();
 
-        private static readonly string interopFile = "interops.csv";
         private static readonly string swapFile = "swaps.csv";
 
         public TokenSwapper(KeyPair swapKey, NexusAPI nexusAPI, NeoScanAPI neoscanAPI, NeoAPI neoAPI, Logger logger, Arguments arguments)
@@ -40,18 +39,6 @@ namespace Phantasma.Spook.Swaps
             interopBlocks["phantasma"] = BigInteger.Parse(arguments.GetString("interop.phantasma.height", "0"));
             interopBlocks["neo"] = BigInteger.Parse(arguments.GetString("interop.neo.height", "4261049"));
             interopBlocks["ethereum"] = BigInteger.Parse(arguments.GetString("interop.ethereum.height", "4261049"));
-
-            if (File.Exists(interopFile))
-            {
-                var lines = File.ReadAllLines(interopFile);
-                foreach (var line in lines)
-                {
-                    var entries = line.Split(',');
-                    var chain = entries[0].ToLower();
-                    var blockHeight = BigInteger.Parse(entries[1]);
-                    interopBlocks[chain] = blockHeight;
-                }
-            }
 
             foreach (var entry in interopBlocks)
             {

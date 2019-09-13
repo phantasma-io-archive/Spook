@@ -576,23 +576,30 @@ namespace Phantasma.Spook
 
             api = new NexusAPI(nexus, mempool);
 
-            rpcPort = settings.GetInt("rpc.port", 7077);
-            restPort = settings.GetInt("rest.port", 7078);
-
             // RPC setup
             if (hasRPC)
             {
+                rpcPort = settings.GetInt("rpc.port", 7077);
                 logger.Message($"RPC server listening on port {rpcPort}...");
                 var rpcServer = new RPCServer(api, "/rpc", rpcPort, (level, text) => WebLogMapper("rpc", level, text));
                 rpcServer.Start(ThreadPriority.AboveNormal);
+            }
+            else
+            {
+                rpcPort = 0;
             }
 
             // REST setup
             if (hasREST)
             {
+                restPort = settings.GetInt("rest.port", 7078);
                 logger.Message($"REST server listening on port {restPort}...");
                 var restServer = new RESTServer(api, "/api", restPort, (level, text) => WebLogMapper("rest", level, text));
                 restServer.Start(ThreadPriority.AboveNormal);
+            }
+            else
+            {
+                restPort = 0;
             }
 
             this.NeoScanAPI = new NeoScanAPI(settings.GetString("neoscan.url", "https://api.neoscan.io"), logger, nexus, node_keys);

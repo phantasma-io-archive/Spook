@@ -91,6 +91,18 @@ Below are instructions needed for the various operating systems supported.
 #Options: 'true' or 'false'
 #Enables or disables the RPC server
 
+-rpc.port=
+#Default: 7077
+#Changes the RPC port
+
+-rest.enabled=
+#Options: 'true' or 'false'
+#Enables or disables the REST API
+
+-rest.port=
+#Default: 7078
+#Changes the REST port
+
 -node.wif=
 #Key for the wallet - local test wallet is 'L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25'
 
@@ -101,9 +113,22 @@ Below are instructions needed for the various operating systems supported.
 #Options: 'true' or 'false'
 #Enables or disables the graphic when running spook - enabled doesn't work well in a scripted start
 
+-storage.path=
+#Default: /Storage
+#Selects the path where the node will save the chain data
+
 -simulator.enabled=
 #Options: 'true' or 'false'
-#Utilised when supporting Nachomen - Luchedores get ready for action in the startup when enabled
+#Utilised when supporting Nachomen - Luchadores get ready for action in the startup when enabled
+
+-interop.neo.height=
+#Defines initial NEO blockchain height to use for swap mechanims
+
+-interop.ethereum.height=
+#Defines initial Ethereum blockchain height to use for swap mechanims
+
+-interop.phantasma.height=
+#Defines initial Phantasma blockchain height to use for swap mechanims
 ```` 
 
 ### Ubuntu 18.04+
@@ -262,6 +287,8 @@ screen -d -r <number of screen from previous command>
 Spook can do several operations related to wallet usage.
 
 To do wallet operations inside Spook, you first need to open it. Note that wallet that corresponds to the node private key is open by default. This might change in the future.
+Also note that currently using the wallet feature requires you to enable the REST API in the code.
+
 ```
 wallet.open WIF
 

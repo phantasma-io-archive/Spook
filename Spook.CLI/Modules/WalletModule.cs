@@ -40,6 +40,11 @@ namespace Phantasma.Spook.Modules
 
         public static void Balance(NexusAPI api, Logger logger, int phantasmaRestPort, NeoScanAPI neoScanAPI, string[] args)
         {
+            if (phantasmaRestPort <= 0)
+            {
+                throw new CommandException("Please enable REST API on this node to use this feature");
+            }
+
             Address address;
 
             if (args.Length == 1)
