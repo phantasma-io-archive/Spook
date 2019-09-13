@@ -602,9 +602,11 @@ namespace Phantasma.Spook
                 restPort = 0;
             }
 
-            this.NeoScanAPI = new NeoScanAPI(settings.GetString("neoscan.url", "https://api.neoscan.io"), logger, nexus, node_keys);
+            var neoScanURL = settings.GetString("neoscan.url", "https://api.neoscan.io");
+            this.NeoScanAPI = new NeoScanAPI(neoScanURL, logger, nexus, node_keys);
             var rpcList = settings.GetString("neo.rpc", "http://seed6.ngd.network:10332,http://seed.neoeconomy.io:10332");
             var neoRpcURLs = rpcList.Split(',');
+            this.NeoAPI = new Neo.Core.RemoteRPCNode(neoScanURL, neoRpcURLs);
 
             cryptoCompareAPIKey = settings.GetString("cryptocompare.apikey", "");
             if (!string.IsNullOrEmpty(cryptoCompareAPIKey))

@@ -107,34 +107,37 @@ namespace Phantasma.Spook.Swaps
             var swap = new ChainSwap()
             {
                 sourceHash = hash,
-                sourceChain = this.Name,
+                sourcePlatform = this.Name,
                 sourceAddress = sourceAddress,
                 amount = amount,
                 destinationAddress = destinationAddress,
-                destinationChain = destChain,
+                destinationPlatform = destChain,
                 symbol = token.Symbol,
             };
 
             result.Add(swap);
         }
 
-        public override string SendFunds(string address, TokenInfo token, decimal amount)
-        {
-            return ChainSwap.DummyHash;
-        }
-
-        public override string ReceiveFunds(string sourceChain, Phantasma.Cryptography.Hash sourceHash, string address, TokenInfo token, decimal amount)
+        public override string ReceiveFunds(ChainSwap swap)
         {
             Transaction tx;
 
-            if (token.Symbol == "NEO" || token.Symbol == "GAS")
+            if (swap.symbol == "NEO" || swap.symbol == "GAS")
             {
-                tx = api.SendAsset(neoKeys, address, token.Symbol, amount);
+                tx = api.SendAsset(neoKeys, swap.destinationAddress, swap.symbol, swap.amount);
             }
             else
             {
-                var nep5 = new NEP5(api, token.Hash.ToString());
-                tx = nep5.Transfer(neoKeys, address, amount);
+                TokenInfo token;
+                if (!Swapper.FindTokenBySymbol(swap.symbol, out token))
+                {
+                    return null;
+                }
+
+                var scriptHash = token.Hash.ToString().Substring(0, 40);
+
+                var nep5 = new NEP5(api, scriptHash);
+                tx = nep5.Transfer(neoKeys, swap.destinationAddress, swap.amount);
             }
 
             if (tx == null)

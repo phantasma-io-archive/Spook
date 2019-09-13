@@ -85,14 +85,13 @@ namespace Phantasma.Spook.Swaps
                     var entries = line.Split(',');
                     var swap = new ChainSwap();
                     swap.sourceHash = entries[0];
-                    swap.sourceChain = entries[1];
+                    swap.sourcePlatform = entries[1];
                     swap.sourceAddress = entries[2];
-                    swap.sendHash = entries[3];
-                    swap.receiveHash = entries[4];
-                    swap.destinationChain = entries[5];
-                    swap.destinationAddress = entries[6];
-                    swap.symbol = entries[7];
-                    swap.amount = decimal.Parse(entries[8]);
+                    swap.destinationHash = entries[3];
+                    swap.destinationPlatform = entries[4];
+                    swap.destinationAddress = entries[5];
+                    swap.symbol = entries[6];
+                    swap.amount = decimal.Parse(entries[7]);
 
                     swapMap[swap.sourceHash] = swap;
                 }
@@ -218,42 +217,56 @@ namespace Phantasma.Spook.Swaps
                     continue;
                 }
 
-                if (interopMap.ContainsKey(swap.destinationChain))
+                if (interopMap.ContainsKey(swap.destinationPlatform))
                 {
-                    logger.Message($"Executing {swap.sourceChain} swap: {swap.sourceAddress} sent {swap.amount} {swap.symbol}");
+                    logger.Message($"Executing {swap.sourcePlatform} swap: {swap.sourceAddress} sent {swap.amount} {swap.symbol}");
 
                     var sourceInterop = interop;
-                    var destinationInterop = FindInterop(swap.destinationChain);
+                    var destinationInterop = FindInterop(swap.destinationPlatform);
 
-                    TokenInfo token;
-
-                    if (!FindTokenBySymbol(swap.symbol, out token))
+                    if (sourceInterop is PhantasmaInterop)
                     {
-                        throw new InteropException("Unknown token:" + swap.symbol);
+                        var phantasma = (PhantasmaInterop)sourceInterop;
+                        string brokerHash;
+                        
+                        var brokerResult = phantasma.PrepareBroker(swap, out brokerHash);
+                        if (brokerResult ==  BrokerResult.Error || string.IsNullOrEmpty(brokerHash))
+                        {
+                            throw new InteropException("Failed broker transaction for swap with hash " + swap.sourceHash);
+                        }
+
+                        if (brokerResult == BrokerResult.Skip)
+                        {
+                            continue;
+                        }
                     }
 
-                    swap.sendHash = sourceInterop.SendFunds(swap.sourceAddress, token, swap.amount);
-                    if (string.IsNullOrEmpty(swap.sendHash))
+                    swap.destinationHash = destinationInterop.ReceiveFunds(swap);
+                    if (string.IsNullOrEmpty(swap.destinationHash))
                     {
-                        throw new InteropException("Failed 'send' transaction for swap with hash " + swap.sourceHash);
+                        throw new InteropException("Failed destination transaction for swap with hash " + swap.sourceHash);
                     }
 
-                    var sourceHash = Hash.Parse(swap.sourceHash);
-
-                    swap.receiveHash = destinationInterop.ReceiveFunds(swap.sourceChain, sourceHash, swap.destinationAddress, token, swap.amount);
-                    if (string.IsNullOrEmpty(swap.receiveHash))
+                    if (sourceInterop is PhantasmaInterop)
                     {
-                        throw new InteropException("Failed 'receive' transaction for swap with hash " + swap.sourceHash);
+                        logger.Message($"Waiting for {swap.destinationPlatform} transaction confirmation: "+ swap.destinationHash);
+                        Thread.Sleep(60 * 1000);
+                        var phantasma = (PhantasmaInterop)sourceInterop;
+                        var settleHash = phantasma.SettleTransaction(swap.destinationHash, swap.destinationPlatform);
+                        if (string.IsNullOrEmpty(settleHash))
+                        {
+                            throw new InteropException("Failed settle transaction for swap with hash " + swap.sourceHash);
+                        }
                     }
 
-                    File.AppendAllText(swapFile, $"{swap.sourceHash},{swap.sourceChain},{swap.sourceAddress},{swap.sendHash},{swap.receiveHash},{swap.destinationChain},{swap.destinationAddress},{swap.symbol},{swap.amount}{Environment.NewLine}");
+                    File.AppendAllText(swapFile, $"{swap.sourceHash},{swap.sourcePlatform},{swap.sourceAddress},{swap.destinationHash},{swap.destinationPlatform},{swap.destinationAddress},{swap.symbol},{swap.amount}{Environment.NewLine}");
                     swapMap[swap.sourceHash] = swap;
 
-                    logger.Success($"Finished {swap.sourceChain} swap: {swap.destinationAddress} received {swap.amount} {swap.symbol}");
+                    logger.Success($"Finished {swap.sourcePlatform} swap: {swap.destinationAddress} received {swap.amount} {swap.symbol}");
                 }
                 else
                 {
-                    throw new InteropException("Unknown interop: " + swap.destinationChain);
+                    throw new InteropException("Unknown interop: " + swap.destinationPlatform);
                 }
             }
         }

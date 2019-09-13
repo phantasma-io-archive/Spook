@@ -10,6 +10,7 @@ using Phantasma.Numerics;
 using Phantasma.Pay.Chains;
 using Phantasma.Core;
 using Phantasma.Core.Log;
+using System.Threading;
 
 namespace Phantasma.Spook.Oracles
 {
@@ -101,7 +102,6 @@ namespace Phantasma.Spook.Oracles
 
             try
             {
-
                 var tx = new InteropTransaction();
                 tx.Platform = platformName;
                 tx.Hash = Hash.Parse(hashText);

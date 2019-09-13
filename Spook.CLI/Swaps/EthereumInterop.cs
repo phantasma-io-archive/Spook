@@ -26,12 +26,7 @@ namespace Phantasma.Spook.Swaps
             // TODO
         }
 
-        public override string SendFunds(string address, TokenInfo token, decimal amount)
-        {
-            return ChainSwap.DummyHash;
-        }
-
-        public override string ReceiveFunds(string sourceChain, Hash sourceHash, string address, TokenInfo token, decimal amount)
+        public override string ReceiveFunds(ChainSwap swap)
         {
             throw new NotImplementedException();
         }

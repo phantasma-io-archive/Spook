@@ -5,16 +5,22 @@ using System.Collections.Generic;
 using Phantasma.Blockchain.Contracts;
 using Phantasma.Blockchain.Contracts.Native;
 using Phantasma.API;
-using Phantasma.Blockchain.Plugins;
-using System.Linq;
 using Phantasma.Blockchain;
 using Phantasma.VM.Utils;
 using Phantasma.Core.Types;
 using System.Threading;
 using Phantasma.Blockchain.Tokens;
+using Phantasma.Pay;
 
 namespace Phantasma.Spook.Swaps
 {
+    public enum BrokerResult
+    {
+        Ready,
+        Skip,
+        Error
+    }
+
     public class PhantasmaInterop : ChainInterop
     {
         public override string LocalAddress => Keys.Address.Text;
@@ -25,108 +31,151 @@ namespace Phantasma.Spook.Swaps
         {
         }
 
-        private void ProcessTransaction(Transaction tx, IEnumerable<Event> events, List<ChainSwap> swaps)
-        {
-            string symbol = null;
-            Address sourceAddress = Address.Null;
-            string destinationChain = null;
-            string destinationAddress = null;
-            decimal amount = 0;
-
-            foreach (var evt in events)
-            {
-                if (evt.Kind == EventKind.TokenReceive)
-                {
-                    var chainName = Swapper.FindInteropByAddress(evt.Address);
-                    if (chainName != null)
-                    {
-                        destinationChain = chainName;
-                        foreach (var otherEvt in events)
-                        {
-                            if (otherEvt.Kind == EventKind.TokenSend)
-                            {
-                                var eventData = otherEvt.GetContent<TokenEventData>();
-                                sourceAddress = otherEvt.Address;
-
-                                var interop = Swapper.FindInterop(chainName);
-                                destinationAddress = Swapper.FromExternalToLocal(sourceAddress, chainName);
-
-                                symbol = eventData.symbol;
-
-                                TokenInfo tokenInfo;
-                                if (Swapper.FindTokenBySymbol(symbol, out tokenInfo))
-                                {
-                                    amount = UnitConversion.ToDecimal(eventData.value, tokenInfo.Decimals);
-                                }
-                                else
-                                {
-                                    amount = 0;
-                                }
-
-                            }
-                        }
-
-                    }
-
-                    break;
-                }
-            }
-
-            if (amount > 0)
-            {
-                var swap = new ChainSwap()
-                {
-                    sourceHash = tx.Hash.ToString(),
-                    sourceChain = this.Name,
-                    sourceAddress = sourceAddress.Text,
-                    destinationChain = destinationChain,
-                    destinationAddress = destinationAddress,
-                    amount = amount,
-                    symbol = symbol,
-                };
-                swaps.Add(swap);
-            }
-        }
-
         public override void Update(Action<IEnumerable<ChainSwap>> callback)
         {
             var swaps = new List<ChainSwap>();
 
             var nexus = Swapper.nexusAPI.Nexus;
-            var plugin = nexus.GetPlugin<AddressTransactionsPlugin>();
+            var chain = nexus.RootChain;
 
-            var entries = plugin.GetAddressTransactions(this.ExternalAddress)
-                .Select(hash =>
-                {
-                    var tx = nexus.FindTransactionByHash(hash);
-                    var block = nexus.FindBlockByTransaction(tx);
-                    return new KeyValuePair<Block, Transaction>(block, tx);
-                }).Where(x => x.Key.Height > currentHeight).OrderBy(x => x.Key.Timestamp.Value);
-
-            foreach (var entry in entries)
+            while (currentHeight <= chain.BlockHeight)
             {
-                var block = entry.Key;
-                var tx = entry.Value;
-                var evts = block.GetEventsForTransaction(tx.Hash);
+                if (currentHeight < 1)
+                {
+                    currentHeight = 1;
+                }
 
-                currentHeight = block.Height;
-                ProcessTransaction(tx, evts, swaps);
+                var block = chain.FindBlockByHeight(currentHeight);
+
+                foreach (var hash in block.TransactionHashes)
+                {
+                    var events = block.GetEventsForTransaction(hash);
+
+                    foreach (var evt in events)
+                    {
+                        if (evt.Kind == EventKind.BrokerRequest)
+                        {
+                            var target = evt.GetContent<Address>();
+                            ProcessBrokerRequest(hash, evt.Address, target, events, swaps);
+                        }
+                    }
+                }
+
+                currentHeight++;
             }
 
             callback(swaps);
         }
 
-        public override string SendFunds(string address, TokenInfo token, decimal amount)
+        private void ProcessBrokerRequest(Hash hash, Address from, Address target, IEnumerable<Event> events, List<ChainSwap> swaps)
         {
-            throw new NotImplementedException();
-            // must burn here
+            string symbol = null;
+            BigInteger amount = 0;
+
+            foreach (var evt in events)
+            {
+                if (evt.Kind == EventKind.TokenBurn)
+                {
+                    var data = evt.GetContent<TokenEventData>();
+                    symbol = data.symbol;
+                    amount = data.value;
+                    break;
+                }
+            }
+
+            if (symbol == null || amount <= 0)
+            {
+                return;
+            }
+
+            TokenInfo tokenInfo;
+            
+            if (!Swapper.FindTokenBySymbol(symbol, out tokenInfo))
+            {
+                return;
+            }
+
+            string destinationAddress;
+            string destinationPlatform;
+
+            WalletUtils.DecodePlatformAndAddress(target, out destinationPlatform, out destinationAddress);
+
+            var swap = new ChainSwap()
+            {
+                symbol = symbol,
+                amount = UnitConversion.ToDecimal(amount, tokenInfo.Decimals),
+                destinationAddress = destinationAddress,
+                destinationPlatform = destinationPlatform,
+                sourceHash = hash.ToString(),
+                sourceAddress = from.Text,
+                sourcePlatform = Nexus.PlatformName,
+            };
+
+            swaps.Add(swap);
         }
 
-        public override string ReceiveFunds(string sourceChain, Hash sourceHash, string address, TokenInfo token, decimal amount)
+        public BrokerResult PrepareBroker(ChainSwap swap, out string hash)
         {
-            var targetAddress = Address.FromText(address);
-            var targetAmount = UnitConversion.ToBigInteger(amount, token.Decimals);
-            var script = new ScriptBuilder().AllowGas(Swapper.Keys.Address, Address.Null, 1, 9999).CallContract("interop", "SettleTransaction", Swapper.Keys.Address, sourceChain, sourceHash).SpendGas(Swapper.Keys.Address).EndScript();
+            var sourceHash = Hash.Parse(swap.sourceHash);
+            var nexus = Swapper.nexusAPI.Nexus;
+
+            hash = ChainSwap.DummyHash;
+
+            var brokerAddress = nexus.RootChain.InvokeContract("interop", "GetBroker", swap.destinationPlatform, sourceHash).AsAddress();
+            if (brokerAddress == Swapper.Keys.Address)
+            {
+                return BrokerResult.Ready;
+            }
+            else
+            if (brokerAddress != Address.Null)
+            {
+                return BrokerResult.Skip;
+            }
+
+            TokenInfo token;
+            if (!Swapper.FindTokenBySymbol(swap.symbol, out token))
+            {
+                return BrokerResult.Error;
+            }
+
+            var script = new ScriptBuilder().AllowGas(Swapper.Keys.Address, Address.Null, 1, 9999).CallContract("interop", "SetBroker", Swapper.Keys.Address, sourceHash).SpendGas(Swapper.Keys.Address).EndScript();
+
+            var tx = new Transaction(Swapper.nexusAPI.Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5));
+            tx.Sign(Swapper.Keys);
+
+            var bytes = tx.ToByteArray(true);
+
+            var txData = Base16.Encode(bytes);
+            var result = this.Swapper.nexusAPI.SendRawTransaction(txData);
+            if (result is SingleResult)
+            {
+                hash = (string)((SingleResult)result).value;
+
+                Swapper.logger.Message("Waiting for transaction confirmation: " + hash);
+                do
+                {
+                    Thread.Sleep(2000);
+
+                    result = this.Swapper.nexusAPI.GetTransaction(hash);
+
+                    if (result is TransactionResult)
+                    {
+                        break;
+                    }
+
+                } while (true);
+
+                return BrokerResult.Ready;
+            }
+
+            return BrokerResult.Error;
+        }
+
+        public string SettleTransaction(string sourceHashText, string sourcePlatform)
+        {
+            var sourceHash = Hash.Parse(sourceHashText);
+
+            var script = new ScriptBuilder().AllowGas(Swapper.Keys.Address, Address.Null, 1, 9999).CallContract("interop", "SettleTransaction", Swapper.Keys.Address, sourcePlatform, sourceHash).SpendGas(Swapper.Keys.Address).EndScript();
 
             var tx = new Transaction(Swapper.nexusAPI.Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5));
             tx.Sign(Swapper.Keys);
@@ -159,9 +208,9 @@ namespace Phantasma.Spook.Swaps
             return null;
         }
 
-        private string ExecuteTransaction()
+        public override string ReceiveFunds(ChainSwap swap)
         {
-            throw new NotImplementedException();
+            return SettleTransaction(swap.sourceHash, swap.sourcePlatform);
         }
     }
 }

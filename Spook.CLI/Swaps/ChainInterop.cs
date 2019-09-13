@@ -12,12 +12,11 @@ namespace Phantasma.Spook.Swaps
         public const string DummyHash = "none";
 
         public string sourceHash;
-        public string sourceChain;
+        public string sourcePlatform;
         public string sourceAddress;
-        public string sendHash;
-        public string receiveHash;
+        public string destinationHash;
+        public string destinationPlatform;
         public string destinationAddress;
-        public string destinationChain;
         public string symbol;
         public decimal amount;
     }
@@ -53,10 +52,7 @@ namespace Phantasma.Spook.Swaps
 
         public abstract void Update(Action<IEnumerable<ChainSwap>> callback);
 
-        // removes/burns funds from source chain
-        public abstract string SendFunds(string address, TokenInfo token, decimal amount);
-
         // adds/mints funds in destination chain
-        public abstract string ReceiveFunds(string sourceChain, Hash sourceHash, string address, TokenInfo token, decimal amount);
+        public abstract string ReceiveFunds(ChainSwap swap);
     }
 }
