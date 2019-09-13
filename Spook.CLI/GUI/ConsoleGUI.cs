@@ -381,7 +381,7 @@ namespace Phantasma.Spook.GUI
                 maxIndex = 0;
             }
 
-            int srcIndex = _logIndex - MaxLines;
+            int srcIndex = 1 + _logIndex - MaxLines;
             int count = 0;
 
             if (srcIndex < 0)
