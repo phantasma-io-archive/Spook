@@ -15,19 +15,17 @@ namespace Phantasma.Spook.GUI
         Content = 0x4
     }
 
-    public delegate void ContentDisplay(int curY, int maxLines);
+    public delegate void ContentDisplay(int curY);
 
     public class ConsoleGUI: Logger
     {
         public struct LogEntry
         {
-            public string Channel;
             public LogEntryKind Kind;
             public string Text;
 
-            public LogEntry(string channel, LogEntryKind kind, string text)
+            public LogEntry(LogEntryKind kind, string text)
             {
-                this.Channel = channel;
                 this.Kind = kind;
                 this.Text = text;
             }
@@ -35,11 +33,10 @@ namespace Phantasma.Spook.GUI
 
         private byte[] logo;
         private ConsoleColor defaultBG;
-        private List<LogEntry> _text = new List<LogEntry>();
+        private Dictionary<string, List<LogEntry>> _channels = new Dictionary<string, List<LogEntry>>();
         private RedrawFlags redrawFlags = RedrawFlags.None;
         private ContentDisplay currentDisplay;
 
-        private bool ready = false;
         private bool initializing = true;
         private int animationCounter = 0;
         private DateTime lastRedraw;
@@ -49,6 +46,8 @@ namespace Phantasma.Spook.GUI
         private int _logIndex;
 
         private CommandDispatcher dispatcher;
+
+        private const int MaxLines = 17;
 
         private string prompt = "";
 
@@ -81,7 +80,6 @@ namespace Phantasma.Spook.GUI
         public void MakeReady(CommandDispatcher dispatcher)
         {
             this.dispatcher = dispatcher;
-            ready = true;
             initializing = false;
             redrawFlags |= RedrawFlags.Content | RedrawFlags.Logo | RedrawFlags.Prompt;
         }
@@ -93,7 +91,7 @@ namespace Phantasma.Spook.GUI
 
         public void WriteToChannel(string channel, LogEntryKind kind, string input)
         {
-            lock (_text)
+            lock (_channels)
             {
                 var lines = input.Split('\n');
                 foreach (var temp in lines)
@@ -116,7 +114,23 @@ namespace Phantasma.Spook.GUI
                             msg = msg.Substring(maxWidth);
                         }
 
-                        _text.Add(new LogEntry(channel, kind, str));
+                        List<LogEntry> list;
+
+                        if (_channels.ContainsKey(channel))
+                        {
+                            list = _channels[channel];
+                        }
+                        else
+                        {
+                            list = new List<LogEntry>();
+                            _channels[channel] = list;
+                        }
+
+                        list.Add(new LogEntry(kind, str));
+                        if (channel == currentChannel)
+                        {
+                            _logIndex = list.Count - 1;
+                        }
                     }
                 }
 
@@ -234,9 +248,7 @@ namespace Phantasma.Spook.GUI
                 FillLine('.');
 
                 curY++;
-                int maxLines = (Console.WindowHeight - 1) - (curY + 1);
-
-                currentDisplay(curY, maxLines);
+                currentDisplay(curY);
             }
         }
 
@@ -247,14 +259,14 @@ namespace Phantasma.Spook.GUI
             graphs[channel] = graph;
         }
 
-        private void DisplayGraph(int curY, int maxLines)
+        private void DisplayGraph(int curY)
         {
             var graph = graphs.ContainsKey(currentChannel) ? graphs[currentChannel] : null;
             if (graph == null)
             {
                 Console.SetCursorPosition(0, curY);
                 Console.Write($"No graph data available for '{currentChannel}'.");
-                for (int j=1; j<maxLines; j++)
+                for (int j=1; j<MaxLines; j++)
                 {
                     Console.SetCursorPosition(0, curY +j);
                     FillLine(' ');
@@ -266,15 +278,15 @@ namespace Phantasma.Spook.GUI
 
             int graphWidth = Console.WindowWidth - (padLeft + 1);
 
-            int divisions = (int)(graph.maxPoint / (maxLines+1));
+            int divisions = (int)(graph.maxPoint / (MaxLines+1));
             if (divisions < 1)
             {
                 divisions = 1;
             }
 
-            for (int j=0; j<maxLines; j++)
+            for (int j=0; j<MaxLines; j++)
             {
-                int n = (maxLines-j) * divisions;
+                int n = (MaxLines-j) * divisions;
                 Console.SetCursorPosition(0, curY + j);
                 Console.Write(graph.formatter(n).PadRight(padLeft - 1));
                 Console.Write('|');
@@ -294,22 +306,22 @@ namespace Phantasma.Spook.GUI
                 int val = index >= 0 && index < graph.data.Count ? (int)graph.data[index] : 0;
                 val /= divisions;
 
-                if (val > maxLines)
+                if (val > MaxLines)
                 {
-                    val = maxLines;
+                    val = MaxLines;
                 }
 
-                if (val < maxLines / 3)
+                if (val < MaxLines / 3)
                 {
                     Console.ForegroundColor = ConsoleColor.DarkBlue;
                 }
                 else
-                if (val < maxLines / 2)
+                if (val < MaxLines / 2)
                 {
                     Console.ForegroundColor = ConsoleColor.Blue;
                 }
                 else
-                if (val < (maxLines / 3) * 2)
+                if (val < (MaxLines / 3) * 2)
                 {
                     Console.ForegroundColor = ConsoleColor.DarkCyan;
                 }
@@ -318,7 +330,7 @@ namespace Phantasma.Spook.GUI
                     Console.ForegroundColor = ConsoleColor.Cyan;
                 }
 
-                for (int j=0; j<maxLines; j++)
+                for (int j=0; j<MaxLines; j++)
                 {
                     char ch;
                     if (j < val)
@@ -347,7 +359,7 @@ namespace Phantasma.Spook.GUI
                         ch = ' ';
                     }
 
-                    Console.SetCursorPosition(i + padLeft, curY + (maxLines - ( 1+ j)));
+                    Console.SetCursorPosition(i + padLeft, curY + (MaxLines - ( 1+ j)));
                     Console.Write(ch);
                 }
            }
@@ -355,41 +367,42 @@ namespace Phantasma.Spook.GUI
             redrawFlags |= RedrawFlags.Content;
         }
 
-        private void DisplayLog(int curY, int maxLines)
+        private void DisplayLog(int curY)
         {
-            int availableCount = _text.Sum(x => x.Channel == currentChannel ? 1 : 0);
-            int maxIndex =  availableCount - maxLines;
+            if (!_channels.ContainsKey(currentChannel))
+            {
+                return;
+            }
+
+            var list = _channels[currentChannel];
+            int maxIndex =  list.Count - MaxLines;
             if (maxIndex < 0)
             {
                 maxIndex = 0;
             }
 
-            if (_logIndex > maxIndex)
-            {
-                _logIndex = maxIndex;
-            }
-
-            int srcIndex = _logIndex;
+            int srcIndex = _logIndex - MaxLines;
             int count = 0;
 
-            while (count < maxLines)
+            if (srcIndex < 0)
+            {
+                srcIndex = 0;
+            }
+
+            while (count < MaxLines)
             {
                 LogEntry entry;
 
-                if (srcIndex < _text.Count)
+                if (srcIndex >= 0 && srcIndex < list.Count)
                 {
-                    entry = _text[srcIndex];
-                    srcIndex++;
-                    if (entry.Channel != currentChannel)
-                    {
-                        continue;
-                    }
+                    entry = list[srcIndex];
                 }
                 else
                 {
-                    entry = new LogEntry(DefaultChannel, LogEntryKind.Message, "");
+                    entry = new LogEntry(LogEntryKind.Message, "");
                 }
 
+                srcIndex++;
                 Console.SetCursorPosition(0, curY + count);
 
                 switch (entry.Kind)
@@ -404,19 +417,6 @@ namespace Phantasma.Spook.GUI
                 Console.Write(entry.Text);
                 FillLine(' ');
                 count++;
-            }
-
-            if (_logIndex < maxIndex)
-            {
-                _logIndex++;
-                redrawFlags |= RedrawFlags.Content;
-
-                if (_logIndex == maxIndex && ready)
-                {
-                    initializing = false;
-                    ready = false;
-                    redrawFlags |= RedrawFlags.Content | RedrawFlags.Logo | RedrawFlags.Prompt;
-                }
             }
         }
 
@@ -448,6 +448,25 @@ namespace Phantasma.Spook.GUI
             {
                 switch (press.Key)
                 {
+                    case ConsoleKey.UpArrow:
+                        if (_logIndex > MaxLines)
+                        {
+                            _logIndex--;
+                            redrawFlags |= RedrawFlags.Content;
+                        }
+                        break;
+
+                    case ConsoleKey.DownArrow:
+                        {
+                            var list = _channels[currentChannel];
+                            if (_logIndex < list.Count - 1)
+                            {
+                                _logIndex++;
+                                redrawFlags |= RedrawFlags.Content;
+                            }
+                        }
+                        break;
+
                     case ConsoleKey.Enter:
                         {
                             if (!string.IsNullOrEmpty(prompt))
@@ -545,7 +564,7 @@ namespace Phantasma.Spook.GUI
             }
 
             if (redrawFlags != RedrawFlags.None) {
-                lock (_text)
+                lock (_channels)
                 {
                     Redraw();
                 }
