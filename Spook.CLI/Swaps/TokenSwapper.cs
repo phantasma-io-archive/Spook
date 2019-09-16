@@ -101,9 +101,17 @@ namespace Phantasma.Spook.Swaps
         public void Run()
         {
             Thread.Sleep(5000);
-            foreach (var interop in interopMap.Values)
+            try
             {
-                interop.Update((swaps) => ProcessSwaps(interop, swaps));
+                foreach (var interop in interopMap.Values)
+                {
+                    interop.Update((swaps) => ProcessSwaps(interop, swaps));
+                }
+            }
+            catch (Exception e)
+            {
+                logger.Error("Swapper exception: " + e.Message);
+                Thread.Sleep(5000);
             }
         }
 
