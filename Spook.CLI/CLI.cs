@@ -690,6 +690,37 @@ namespace Phantasma.Spook
             }
             else
             {
+                if (useSimulator)
+                {
+                    bool genBlocks = settings.GetBool("simulator.blocks", false);
+
+                    if (genBlocks)
+                    {
+                        logger.Message("Initializing simulator...");
+                        var simulator = new ChainSimulator(this.nexus, node_keys, 1234);
+
+                        new Thread(() =>
+                        {
+                            int blockNumber = 0;
+                            while (running)
+                            {
+                                Thread.Sleep(5000);
+                                blockNumber++;
+                                logger.Message("Generating sim block #" + blockNumber);
+                                try
+                                {
+                                    simulator.GenerateRandomBlock();
+                                }
+                                catch (Exception e)
+                                {
+                                    logger.Error("Fatal error: " + e.ToString());
+                                    Environment.Exit(-1);
+                                }
+                            }
+                        }).Start();
+                    }
+                }
+
                 MakeReady(dispatcher);
             }
 
