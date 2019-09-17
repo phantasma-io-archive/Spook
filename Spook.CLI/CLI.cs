@@ -675,6 +675,7 @@ namespace Phantasma.Spook
                         try
                         {
                             simulator.GenerateRandomBlock();
+                            Thread.Sleep(3000);
                         }
                         catch (Exception e)
                         {
@@ -695,6 +696,7 @@ namespace Phantasma.Spook
                         logger.Message("Generating sim block #" + blockNumber);
                         try
                         {
+                            simulator.CurrentTime = DateTime.UtcNow;
                             simulator.GenerateRandomBlock();
                         }
                         catch (Exception e)
