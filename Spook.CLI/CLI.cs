@@ -103,6 +103,9 @@ namespace Phantasma.Spook
 
         private ConsoleGUI gui;
 
+        private ChainSimulator simulator;
+        private bool useSimulator;
+
         private List<IPlugin> plugins = new List<IPlugin>();
 
         public string cryptoCompareAPIKey { get; private set; } = null;
@@ -630,6 +633,8 @@ namespace Phantasma.Spook
                 Terminate();
             };
 
+            useSimulator = settings.GetBool("simulator.enabled", false);
+
             var dispatcher = new CommandDispatcher();
             SetupCommands(dispatcher);
 
@@ -653,13 +658,12 @@ namespace Phantasma.Spook
                 }).Start();
             }
 
-            bool useSimulator = settings.GetBool("simulator.enabled", false);
             if (useSimulator && bootstrap)
             {
                 new Thread(() =>
                 {
                     logger.Message("Initializing simulator...");
-                    var simulator = new ChainSimulator(this.nexus, node_keys, 1234);
+                    simulator = new ChainSimulator(this.nexus, node_keys, 1234);
 
                     logger.Message("Bootstrapping validators");
                     simulator.BeginBlock();
@@ -843,6 +847,20 @@ namespace Phantasma.Spook
 
             dispatcher.RegisterCommand("file.upload", "Uploads a file into Phantasma",
                 (args) => FileModule.Upload(WalletModule.Keys, api, logger, args));
+
+            if (useSimulator)
+            {
+                dispatcher.RegisterCommand("simulator.timeskip", $"Skips minutse in simulator",
+                    (args) =>
+                    {
+                        if (args.Length != 1) {
+                            throw new CommandException("Expected: minutes");
+                        }
+                        var minutes = int.Parse(args[0]);
+                        simulator.CurrentTime += TimeSpan.FromMinutes(minutes);
+                        logger.Success($"Simulator time advanced by {minutes}");
+                    });
+            }
         }
     }
 }
