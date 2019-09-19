@@ -513,6 +513,8 @@ namespace Phantasma.Spook
                 storagePath += '/';
             }
 
+            InteropUtils.Seed = settings.GetString("swaps.seed", InteropUtils.Seed);
+
             var storageFix = settings.GetBool("storage.fix", false);
 
             // TODO remove this later
