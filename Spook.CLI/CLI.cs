@@ -673,40 +673,28 @@ namespace Phantasma.Spook
                     }
                     simulator.EndBlock();
 
-                    for (int i = 0; i < 3; i++)
-                    {
-                        logger.Message("Generating sim block #" + i);
-                        try
-                        {
-                            simulator.GenerateRandomBlock();
-                            Thread.Sleep(3000);
-                        }
-                        catch (Exception e)
-                        {
-                            logger.Error("Fatal error: " + e.ToString());
-                            Environment.Exit(-1);
-                        }
-                    }
-
                     NachoServer.InitNachoServer(nexus, simulator, node_keys, logger);
                     MakeReady(dispatcher);
 
                     bool genBlocks = settings.GetBool("simulator.blocks", false);
-                    int blockNumber = 0;
-                    while (running)
+                    if (genBlocks)
                     {
-                        Thread.Sleep(5000);
-                        blockNumber++;
-                        logger.Message("Generating sim block #" + blockNumber);
-                        try
+                        int blockNumber = 0;
+                        while (running)
                         {
-                            simulator.CurrentTime = DateTime.UtcNow;
-                            simulator.GenerateRandomBlock();
-                        }
-                        catch (Exception e)
-                        {
-                            logger.Error("Fatal error: " + e.ToString());
-                            Environment.Exit(-1);
+                            Thread.Sleep(5000);
+                            blockNumber++;
+                            logger.Message("Generating sim block #" + blockNumber);
+                            try
+                            {
+                                simulator.CurrentTime = DateTime.UtcNow;
+                                simulator.GenerateRandomBlock();
+                            }
+                            catch (Exception e)
+                            {
+                                logger.Error("Fatal error: " + e.ToString());
+                                Environment.Exit(-1);
+                            }
                         }
                     }
                 }).Start();
