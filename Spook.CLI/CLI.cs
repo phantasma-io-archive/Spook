@@ -580,7 +580,9 @@ namespace Phantasma.Spook
 
             mempool.OnTransactionFailed += Mempool_OnTransactionFailed;
 
-            api = new NexusAPI(nexus, mempool);
+            this.node = new Node(nexus, mempool, node_keys, port, seeds, logger);
+
+            api = new NexusAPI(nexus, mempool, node);
 
             // RPC setup
             if (hasRPC)
@@ -621,8 +623,6 @@ namespace Phantasma.Spook
                 logger.Message($"CryptoCompare API enabled...");
             }
 
-            // node setup
-            this.node = new Node(nexus, mempool, node_keys, port, seeds, logger);
             node.Start();
 
             if (gui != null)
