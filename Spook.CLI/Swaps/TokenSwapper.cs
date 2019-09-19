@@ -11,6 +11,7 @@ using Phantasma.Core.Utils;
 using Phantasma.Pay;
 using Phantasma.Blockchain.Tokens;
 using Phantasma.Neo.Core;
+using System.Linq;
 
 namespace Phantasma.Spook.Swaps
 {
@@ -39,6 +40,9 @@ namespace Phantasma.Spook.Swaps
             interopBlocks["phantasma"] = BigInteger.Parse(arguments.GetString("interop.phantasma.height", "0"));
             interopBlocks["neo"] = BigInteger.Parse(arguments.GetString("interop.neo.height", "4261049"));
             interopBlocks["ethereum"] = BigInteger.Parse(arguments.GetString("interop.ethereum.height", "4261049"));
+
+
+            var platforms = ((ArrayResult)nexusAPI.GetPlatforms()).values.Select(x => (PlatformResult)x).ToArray();
 
             foreach (var entry in interopBlocks)
             {
@@ -73,6 +77,18 @@ namespace Phantasma.Spook.Swaps
                         logger.Message($"{interop.Name}.Swap.Private: {interop.PrivateKey}");
                         logger.Message($"{interop.Name}.Swap.{interop.Name}: {interop.LocalAddress}");
                         logger.Message($"{interop.Name}.Swap.Phantasma: {interop.ExternalAddress}");
+
+                        for (int i=0; i<platforms.Length; i++)
+                        {
+                            var temp = platforms[i];
+                            if (temp.platform == interop.Name)
+                            {
+                                if (temp.address != interop.LocalAddress)
+                                {
+                                    logger.Error($"{interop.Name} address mismatch, should be {temp.address}. Make sure you are using the proper swap seed.");
+                                }
+                            }
+                        }
                     }
                 }
             }

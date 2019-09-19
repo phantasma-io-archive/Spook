@@ -428,6 +428,9 @@ namespace Phantasma.Spook
 
             var settings = new Arguments(args);
 
+            // this line needs to be here, to be executed as soon as possible
+            InteropUtils.Seed = settings.GetString("swaps.seed", InteropUtils.Seed);
+
             /*
             var rnd = new Random();
             var publicKey = new byte[32];
@@ -512,8 +515,6 @@ namespace Phantasma.Spook
             {
                 storagePath += '/';
             }
-
-            InteropUtils.Seed = settings.GetString("swaps.seed", InteropUtils.Seed);
 
             var storageFix = settings.GetBool("storage.fix", false);
 
