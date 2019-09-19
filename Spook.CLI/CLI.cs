@@ -610,6 +610,7 @@ namespace Phantasma.Spook
             var rpcList = settings.GetString("neo.rpc", "http://seed6.ngd.network:10332,http://seed.neoeconomy.io:10332");
             var neoRpcURLs = rpcList.Split(',');
             this.NeoAPI = new Neo.Core.RemoteRPCNode(neoScanURL, neoRpcURLs);
+            this.NeoAPI.SetLogger((s) => logger.Message(s));
 
             cryptoCompareAPIKey = settings.GetString("cryptocompare.apikey", "");
             if (!string.IsNullOrEmpty(cryptoCompareAPIKey))
@@ -836,12 +837,42 @@ namespace Phantasma.Spook
             dispatcher.RegisterCommand("file.upload", "Uploads a file into Phantasma",
                 (args) => FileModule.Upload(WalletModule.Keys, api, logger, args));
 
+            dispatcher.RegisterCommand("neo.deploy", "Deploys a contract into NEO",
+            (args) =>
+            {
+                if (args.Length != 2)
+                {
+                    throw new CommandException("Expected: WIF avm_path");
+                }
+                var avmPath = args[1];
+                if (!File.Exists(avmPath))
+                {
+                    throw new CommandException("path for avm not found");
+                }
+
+                var keys = Neo.Core.NeoKey.FromWIF(args[0]);
+                var script = File.ReadAllBytes(avmPath);
+                var scriptHash = Neo.Utils.CryptoUtils.ToScriptHash(script);
+                logger.Message("Deploying contract " + scriptHash);
+
+                try
+                {
+                    var tx = NeoAPI.DeployContract(keys, script, Base16.Decode("0710"), 0x05, Neo.Core.ContractProperties.HasStorage | Neo.Core.ContractProperties.Payable, "Contract", "1.0", "Author", "email@gmail.com", "Description");
+                    logger.Success("Deployed contract via transaction: " + tx.Hash);
+                }
+                catch (Exception e)
+                {
+                    logger.Error("Failed to deploy contract: " + e.Message);
+                }
+            });
+
             if (useSimulator)
             {
                 dispatcher.RegisterCommand("simulator.timeskip", $"Skips minutse in simulator",
                     (args) =>
                     {
-                        if (args.Length != 1) {
+                        if (args.Length != 1)
+                        {
                             throw new CommandException("Expected: minutes");
                         }
                         var minutes = int.Parse(args[0]);
