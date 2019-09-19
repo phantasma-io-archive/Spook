@@ -12,6 +12,7 @@ using Phantasma.Pay;
 using Phantasma.Blockchain.Tokens;
 using Phantasma.Neo.Core;
 using System.Linq;
+using Phantasma.Blockchain;
 
 namespace Phantasma.Spook.Swaps
 {
@@ -28,6 +29,8 @@ namespace Phantasma.Spook.Swaps
 
         private static readonly string swapFile = "swaps.csv";
 
+        private bool ready = false;
+
         public TokenSwapper(KeyPair swapKey, NexusAPI nexusAPI, NeoScanAPI neoscanAPI, NeoAPI neoAPI, Logger logger, Arguments arguments)
         {
             this.Keys = swapKey;
@@ -40,7 +43,6 @@ namespace Phantasma.Spook.Swaps
             interopBlocks["phantasma"] = BigInteger.Parse(arguments.GetString("interop.phantasma.height", "0"));
             interopBlocks["neo"] = BigInteger.Parse(arguments.GetString("interop.neo.height", "4261049"));
             interopBlocks["ethereum"] = BigInteger.Parse(arguments.GetString("interop.ethereum.height", "4261049"));
-
 
             var platforms = ((ArrayResult)nexusAPI.GetPlatforms()).values.Select(x => (PlatformResult)x).ToArray();
 
@@ -71,7 +73,8 @@ namespace Phantasma.Spook.Swaps
 
                 if (interop != null)
                 {
-                    interopMap[entry.Key] = interop;
+                    bool shouldAdd = true;
+
                     if (!(interop is PhantasmaInterop))
                     {
                         logger.Message($"{interop.Name}.Swap.Private: {interop.PrivateKey}");
@@ -86,11 +89,33 @@ namespace Phantasma.Spook.Swaps
                                 if (temp.address != interop.LocalAddress)
                                 {
                                     logger.Error($"{interop.Name} address mismatch, should be {temp.address}. Make sure you are using the proper swap seed.");
+                                    shouldAdd = false;
                                 }
                             }
                         }
                     }
+
+                    if (shouldAdd)
+                    {
+                        interopMap[entry.Key] = interop;
+                    }
                 }
+            }
+
+            bool interopsAvailable = false;
+            foreach (var entry in interopMap)
+            {
+                if (entry.Key != Nexus.PlatformName)
+                {
+                    interopsAvailable = true;
+                    break;
+                }
+            }
+
+            if (!interopsAvailable)
+            {
+                logger.Error($"No interops available, disabling token swapping.");
+                return;
             }
 
             if (File.Exists(swapFile))
@@ -112,11 +137,19 @@ namespace Phantasma.Spook.Swaps
                     swapMap[swap.sourceHash] = swap;
                 }
             }
+
+            ready = true;
         }
 
         public void Run()
         {
             Thread.Sleep(5000);
+
+            if (!ready)
+            {
+                return;
+            }
+
             try
             {
                 foreach (var interop in interopMap.Values)
