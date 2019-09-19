@@ -28,9 +28,17 @@ namespace Phantasma.Spook.Modules
             }
 
             var wif = args[0];
-            Keys = KeyPair.FromWIF(wif);
 
-            logger.Success($"Opened wallet with address {Keys.Address}.");
+            try
+            {
+                Keys = KeyPair.FromWIF(wif);
+                logger.Success($"Opened wallet with address {Keys.Address}.");
+            }
+            catch (Exception e)
+            {
+                logger.Error($"Failed to open wallet. Make sure you valid a correct WIF key.");
+            }
+
         }
 
         public static void Balance(NexusAPI api, Logger logger, int phantasmaRestPort, NeoScanAPI neoScanAPI, string[] args)
