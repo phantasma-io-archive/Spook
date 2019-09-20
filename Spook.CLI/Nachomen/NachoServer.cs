@@ -32,7 +32,7 @@ namespace Phantasma.Spook.Nachomen
 
         private static BigInteger _nextItemID;
 
-        public static void InitNachoServer(Nexus nexus, ChainSimulator simulator, KeyPair ownerKeys, Logger logger)
+        public static void InitNachoServer(Nexus nexus, ChainSimulator simulator, KeyPair ownerKeys, bool fillMarket, Logger logger)
         {
             GenerateTokens(nexus, simulator, ownerKeys, logger);
 
@@ -40,7 +40,10 @@ namespace Phantasma.Spook.Nachomen
 
             //InitialNachoFill();
 
-            FillNachoMarket(nexus, simulator, ownerKeys, logger);
+            if (fillMarket)
+            {
+                FillNachoMarket(nexus, simulator, ownerKeys, logger);
+            }
         }
 
         public static void GenerateTokens(Nexus nexus, ChainSimulator simulator, KeyPair ownerKeys, Logger logger)
