@@ -145,6 +145,17 @@ namespace Phantasma.Spook.Nachomen
             simulator.GenerateSetTokenMetadata(ownerKeys, Constants.WRESTLER_SYMBOL, "viewer", "https://nacho.men/luchador/body/*");
             simulator.EndBlock();
 
+            // TODO this should be a feature from Spook, enabled from args
+            simulator.BeginBlock();
+            simulator.GenerateCustomTransaction(ownerKeys, () =>
+            {
+                return new ScriptBuilder()
+                .AllowGas(ownerKeys.Address, Address.Null, simulator.MinimumFee, 9999)
+                .CallContract("gas", "StartLend", ownerKeys.Address, ownerKeys.Address)
+                .SpendGas(ownerKeys.Address).EndScript();
+            });
+            simulator.EndBlock();
+
             var keys = KeyPair.FromWIF("L2sbKk7TJTkbwbwJ2EX7qM23ycShESGhQhLNyAaKxVHEqqBhFMk3");
             simulator.BeginBlock();
             simulator.GenerateCustomTransaction(new KeyPair[] { keys, ownerKeys }, () => new ScriptBuilder().AllowGas(ownerKeys.Address, Address.Null, simulator.MinimumFee, 999).CallContract("interop", "RegisterLink", keys.Address, NeoWallet.EncodeAddress( "AbZJjZ5F1x82VybfsqM7zi4nkWoX8uwepy")).SpendGas(ownerKeys.Address).EndScript());

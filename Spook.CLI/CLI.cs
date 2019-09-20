@@ -539,7 +539,7 @@ namespace Phantasma.Spook
 
             nexus = new Nexus(logger, 
                 (name) => new BasicDiskStore(storagePath + name + ".txt"),
-                () => new SpookOracle(this)
+                (n) => new SpookOracle(this, n)
                 );
 
             bool bootstrap = false;

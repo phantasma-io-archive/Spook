@@ -39,27 +39,6 @@ namespace Phantasma.Spook.Oracles
             this.platformAddress = key.Address;
         }
 
-        public byte[] ReadOracle(string[] input)
-        {
-            if (input == null || input.Length != 2)
-            {
-                throw new OracleException("missing oracle input");
-            }
-
-            var cmd = input[0].ToLower();
-            switch (cmd)
-            {
-                case "tx":
-                    return ReadTransaction(input[1]);
-
-                case "block":
-                    return ReadBlock(input[1]);
-
-                default:
-                    throw new OracleException("unknown neo oracle");
-            }
-        }
-
         private static byte[] PackEvent(object content)
         {
             var bytes = content == null ? new byte[0] : Serialization.Serialize(content);
@@ -87,12 +66,9 @@ namespace Phantasma.Spook.Oracles
             }
         }
 
-        public byte[] ReadTransaction(string hashText)
+        public InteropTransaction ReadTransaction(Hash hash)
         {
-            if (hashText.StartsWith("0x"))
-            {
-                hashText = hashText.Substring(2);
-            }
+            var hashText = hash.ToString();
 
             var json = ExecuteRequest($"get_transaction/{hashText}");
             if (json == null)
@@ -137,7 +113,7 @@ namespace Phantasma.Spook.Oracles
                 }
 
                 tx.Events = eventList.ToArray();
-                return Serialization.Serialize(tx);
+                return tx;
             }
             catch (Exception e)
             {
@@ -208,8 +184,10 @@ namespace Phantasma.Spook.Oracles
             }
         }
 
-        public byte[] ReadBlock(string blockText)
+        public InteropBlock ReadBlock(Hash hash)
         {
+            var blockText = hash.ToString();
+
             if (blockText.StartsWith("0x"))
             {
                 blockText = blockText.Substring(2);
@@ -234,12 +212,12 @@ namespace Phantasma.Spook.Oracles
 
                 foreach (var entry in transactions.Children)
                 {
-                    var hash = Hash.Parse(entry.Value);
-                    hashes.Add(hash);
+                    var txHash = Hash.Parse(entry.Value);
+                    hashes.Add(txHash);
                 }
 
                 block.Transactions = hashes.ToArray();
-                return Serialization.Serialize(block);
+                return block;
             }
             catch (Exception e)
             {
