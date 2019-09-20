@@ -261,8 +261,8 @@ namespace Phantasma.Spook.Nachomen
         {
             logger.Message("Filling initial nacho market");
 
- //           var nachoChain = chainSimulator.Nexus.FindChainByName("nacho");
-            var nachoChain = simulator.Nexus.RootChain;
+            var nachoChain = simulator.Nexus.FindChainByName("nacho");
+            //var nachoChain = simulator.Nexus.RootChain;
 
             //_logger.Message("token owner: " + _ownerKeys.Address.Text + " | test user: " + testUser.Address.Text);
 
@@ -345,7 +345,16 @@ namespace Phantasma.Spook.Nachomen
                             tokenID = eventData.value;
                         }
                     }
-                    
+
+                    var fuelAmount = UnitConversion.ToBigInteger(10, Nexus.FuelTokenDecimals);
+                    var extraFee = UnitConversion.ToBigInteger(0.001m, Nexus.FuelTokenDecimals);
+
+                    // transfer wrestler nft from main chain to nacho chain
+                    simulator.BeginBlock();
+                    simulator.GenerateSideChainSend(ownerKeys, Nexus.FuelTokenSymbol, nexus.RootChain, ownerKeys.Address, nachoChain, fuelAmount, 0);
+                    simulator.GenerateNftSidechainTransfer(ownerKeys, ownerKeys.Address, nexus.RootChain, nachoChain, wrestlerToken.Symbol, tokenID);
+                    simulator.EndBlock();
+
                     // Create auction
                     decimal minPrice, maxPrice;
 
@@ -449,6 +458,15 @@ namespace Phantasma.Spook.Nachomen
                             tokenID = eventData.value;
                         }
                     }
+
+                    var fuelAmount = UnitConversion.ToBigInteger(10, Nexus.FuelTokenDecimals);
+                    var extraFee = UnitConversion.ToBigInteger(0.001m, Nexus.FuelTokenDecimals);
+
+                    // transfer wrestler nft from main chain to nacho chain
+                    simulator.BeginBlock();
+                    simulator.GenerateSideChainSend(ownerKeys, Nexus.FuelTokenSymbol, nexus.RootChain, ownerKeys.Address, nachoChain, fuelAmount, 0);
+                    simulator.GenerateNftSidechainTransfer(ownerKeys, ownerKeys.Address, nexus.RootChain, nachoChain, itemToken.Symbol, tokenID);
+                    simulator.EndBlock();
 
                     // Create auction
                     decimal minPrice, maxPrice;
