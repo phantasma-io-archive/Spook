@@ -575,10 +575,20 @@ namespace Phantasma.Spook
 
             // mempool setup
             int blockTime = settings.GetInt("node.blocktime", Mempool.MinimumBlockTime);
-            var minimumFee = settings.GetInt("mempool.fee", 100000);
-            if (minimumFee < 1)
+
+            int minimumFee;
+            try
             {
-                minimumFee = 1;
+                minimumFee = settings.GetInt("mempool.fee", 100000);
+                if (minimumFee < 1)
+                {
+                    logger.Error("Invalid mempool fee value. Expected a positive value.");
+                }
+            }
+            catch (Exception e)
+            {
+                logger.Error("Invalid mempool fee value. Expected something in fixed point format.");
+                return;
             }
 
             this.mempool = new Mempool(node_keys, nexus, blockTime, minimumFee);
