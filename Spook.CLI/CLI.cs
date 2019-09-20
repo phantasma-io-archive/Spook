@@ -575,7 +575,13 @@ namespace Phantasma.Spook
 
             // mempool setup
             int blockTime = settings.GetInt("node.blocktime", Mempool.MinimumBlockTime);
-            this.mempool = new Mempool(node_keys, nexus, blockTime);
+            var minimumFee = settings.GetInt("mempool.fee", 100000);
+            if (minimumFee < 1)
+            {
+                minimumFee = 1;
+            }
+
+            this.mempool = new Mempool(node_keys, nexus, blockTime, minimumFee);
             mempool.Start(ThreadPriority.AboveNormal);
 
             mempool.OnTransactionFailed += Mempool_OnTransactionFailed;
@@ -668,6 +674,7 @@ namespace Phantasma.Spook
                 {
                     logger.Message("Initializing simulator...");
                     simulator = new ChainSimulator(this.nexus, node_keys, 1234);
+                    simulator.MinimumFee = minimumFee;
 
                     logger.Message("Bootstrapping validators");
                     simulator.BeginBlock();
