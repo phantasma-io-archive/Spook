@@ -22,6 +22,7 @@ namespace Phantasma.Spook.Swaps
         public readonly NexusAPI nexusAPI;
         public readonly NeoScanAPI neoscanAPI;
         public readonly Logger logger;
+        public readonly BigInteger MinFee;
 
         public Dictionary<string, ChainSwap> swapMap = new Dictionary<string, ChainSwap>();
 
@@ -31,12 +32,15 @@ namespace Phantasma.Spook.Swaps
 
         private bool ready = false;
 
-        public TokenSwapper(KeyPair swapKey, NexusAPI nexusAPI, NeoScanAPI neoscanAPI, NeoAPI neoAPI, Logger logger, Arguments arguments)
+
+
+        public TokenSwapper(KeyPair swapKey, NexusAPI nexusAPI, NeoScanAPI neoscanAPI, NeoAPI neoAPI, BigInteger minFee, Logger logger, Arguments arguments)
         {
             this.Keys = swapKey;
             this.nexusAPI = nexusAPI;
             this.neoscanAPI = neoscanAPI;
             this.logger = logger;
+            this.MinFee = minFee;
 
             var interopBlocks = new Dictionary<string, BigInteger>();
 

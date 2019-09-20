@@ -294,6 +294,7 @@ namespace Phantasma.Spook.Nachomen
 
             foreach (var rarity in luchadorCounts.Keys)
             {
+                break;
                 if (rarity == Rarity.Legendary)
                 {
                     if (_legendaryWrestlerDelay > 0)
@@ -408,6 +409,7 @@ namespace Phantasma.Spook.Nachomen
             //foreach (var rarity in itemCounts.Keys)
             foreach (var rarity in _itemQueue.Keys)
             {
+                break;
                 if (rarity == Rarity.Legendary)
                 {
                     if (_legendaryItemDelay > 0)

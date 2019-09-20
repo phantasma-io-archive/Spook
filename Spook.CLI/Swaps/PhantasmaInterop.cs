@@ -138,7 +138,7 @@ namespace Phantasma.Spook.Swaps
                 return BrokerResult.Error;
             }
 
-            var script = new ScriptBuilder().AllowGas(Swapper.Keys.Address, Address.Null, 1, 9999).CallContract("interop", "SetBroker", Swapper.Keys.Address, sourceHash).SpendGas(Swapper.Keys.Address).EndScript();
+            var script = new ScriptBuilder().AllowGas(Swapper.Keys.Address, Address.Null, Swapper.MinFee, 9999).CallContract("interop", "SetBroker", Swapper.Keys.Address, sourceHash).SpendGas(Swapper.Keys.Address).EndScript();
 
             var tx = new Transaction(Swapper.nexusAPI.Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5));
             tx.Sign(Swapper.Keys);
@@ -175,7 +175,7 @@ namespace Phantasma.Spook.Swaps
         {
             var sourceHash = Hash.Parse(sourceHashText);
 
-            var script = new ScriptBuilder().AllowGas(Swapper.Keys.Address, Address.Null, 1, 9999).CallContract("interop", "SettleTransaction", Swapper.Keys.Address, sourcePlatform, sourceHash).SpendGas(Swapper.Keys.Address).EndScript();
+            var script = new ScriptBuilder().AllowGas(Swapper.Keys.Address, Address.Null, Swapper.MinFee, 9999).CallContract("interop", "SettleTransaction", Swapper.Keys.Address, sourcePlatform, sourceHash).SpendGas(Swapper.Keys.Address).EndScript();
 
             var tx = new Transaction(Swapper.nexusAPI.Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5));
             tx.Sign(Swapper.Keys);

@@ -651,7 +651,7 @@ namespace Phantasma.Spook
             if (wif == validatorWIFs[0] && settings.GetBool("swaps.enabled"))
             {
                 logger.Message("Starting token swapping service...");
-                var swapper = new TokenSwapper(node_keys, api, NeoScanAPI, NeoAPI, logger, settings);
+                var swapper = new TokenSwapper(node_keys, api, NeoScanAPI, NeoAPI, minimumFee, logger, settings);
                 new Thread(() =>
                 {
                     while (node.IsRunning)
