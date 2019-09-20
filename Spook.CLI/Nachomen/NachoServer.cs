@@ -280,7 +280,7 @@ namespace Phantasma.Spook.Nachomen
 
             // Transfer Fuel Tokens to the test user address
             simulator.BeginBlock();
-            simulator.GenerateTransfer(ownerKeys, testUser.Address, nexus.RootChain, Nexus.FuelTokenSymbol, 1000000);
+            simulator.GenerateTransfer(ownerKeys, testUser.Address, nexus.RootChain, Nexus.FuelTokenSymbol, 1000);
             simulator.EndBlock();
 
             // WRESTLERS
@@ -294,7 +294,6 @@ namespace Phantasma.Spook.Nachomen
 
             foreach (var rarity in luchadorCounts.Keys)
             {
-                break;
                 if (rarity == Rarity.Legendary)
                 {
                     if (_legendaryWrestlerDelay > 0)
@@ -347,8 +346,8 @@ namespace Phantasma.Spook.Nachomen
                         }
                     }
 
-                    var fuelAmount = UnitConversion.ToBigInteger(10, Nexus.FuelTokenDecimals);
-                    var extraFee = UnitConversion.ToBigInteger(0.001m, Nexus.FuelTokenDecimals);
+                    var fuelAmount = UnitConversion.ToBigInteger(0.1m, Nexus.FuelTokenDecimals);
+                    var extraFee = UnitConversion.ToBigInteger(0.0001m, Nexus.FuelTokenDecimals);
 
                     // transfer wrestler nft from main chain to nacho chain
                     simulator.BeginBlock();
@@ -409,7 +408,6 @@ namespace Phantasma.Spook.Nachomen
             //foreach (var rarity in itemCounts.Keys)
             foreach (var rarity in _itemQueue.Keys)
             {
-                break;
                 if (rarity == Rarity.Legendary)
                 {
                     if (_legendaryItemDelay > 0)
@@ -465,8 +463,8 @@ namespace Phantasma.Spook.Nachomen
                         }
                     }
 
-                    var fuelAmount = UnitConversion.ToBigInteger(10, Nexus.FuelTokenDecimals);
-                    var extraFee = UnitConversion.ToBigInteger(0.001m, Nexus.FuelTokenDecimals);
+                    var fuelAmount = UnitConversion.ToBigInteger(1, Nexus.FuelTokenDecimals);
+                    var extraFee = UnitConversion.ToBigInteger(0.0001m, Nexus.FuelTokenDecimals);
 
                     // transfer wrestler nft from main chain to nacho chain
                     simulator.BeginBlock();
