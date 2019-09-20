@@ -275,7 +275,7 @@ namespace Phantasma.Spook.Nachomen
                 [Rarity.Legendary] = 1
             };
 
-            var testUser = KeyPair.FromWIF("L3ydJBTWrKwRLZ5PxpygUnxkeJ4gxGHUDs3d3bDZkLTnB6Bpga87"); // => PGasVpbFYdu7qERihCsR22nTDQp1JwVAjfuJ38T8NtrCB
+            var testUser = KeyPair.FromWIF("L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25"); // => PKtRvkhUhAiHsg4YnaxSM9dyyLBogTpHwtUEYvMYDKuV8
 
             // Transfer Fuel Tokens to the test user address
             chainSimulator.BeginBlock();
