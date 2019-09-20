@@ -353,6 +353,10 @@ namespace Phantasma.Spook.Nachomen
                     simulator.BeginBlock();
                     simulator.GenerateSideChainSend(ownerKeys, Nexus.FuelTokenSymbol, nexus.RootChain, ownerKeys.Address, nachoChain, fuelAmount, 0);
                     simulator.GenerateNftSidechainTransfer(ownerKeys, ownerKeys.Address, nexus.RootChain, nachoChain, wrestlerToken.Symbol, tokenID);
+                    var blockB = simulator.EndBlock().First();
+
+                    simulator.BeginBlock();
+                    simulator.GenerateSideChainSettlement(ownerKeys, nexus.RootChain, nachoChain, blockB.Hash);
                     simulator.EndBlock();
 
                     // Create auction
@@ -466,6 +470,10 @@ namespace Phantasma.Spook.Nachomen
                     simulator.BeginBlock();
                     simulator.GenerateSideChainSend(ownerKeys, Nexus.FuelTokenSymbol, nexus.RootChain, ownerKeys.Address, nachoChain, fuelAmount, 0);
                     simulator.GenerateNftSidechainTransfer(ownerKeys, ownerKeys.Address, nexus.RootChain, nachoChain, itemToken.Symbol, tokenID);
+                    var blockB = simulator.EndBlock().First();
+
+                    simulator.BeginBlock();
+                    simulator.GenerateSideChainSettlement(ownerKeys, nexus.RootChain, nachoChain, blockB.Hash);
                     simulator.EndBlock();
 
                     // Create auction
