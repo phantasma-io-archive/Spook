@@ -443,17 +443,17 @@ namespace Phantasma.Spook
                 Console.WriteLine(opcode + " => "+text);
             }
 
-            Console.ReadLine();*/
+            Console.ReadLine();
 
 
-            /*
-            for (int i = 0; i < 20; i++)
+            for (int i = 0; i < 200; i++)
             {
                 var k = KeyPair.Generate();
                 Console.WriteLine(k.ToWIF() + " => " + k.Address.Text);
-            }*/
+            }
+            Console.ReadLine();*/ 
 
-            var useGUI = settings.GetBool("gui.enabled", true);
+             var useGUI = settings.GetBool("gui.enabled", true);
 
             if (useGUI)
             {

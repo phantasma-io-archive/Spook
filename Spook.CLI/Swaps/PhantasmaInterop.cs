@@ -127,7 +127,7 @@ namespace Phantasma.Spook.Swaps
                 return BrokerResult.Ready;
             }
             else
-            if (brokerAddress != Address.Null)
+            if (!brokerAddress.IsNull)
             {
                 return BrokerResult.Skip;
             }

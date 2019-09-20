@@ -49,16 +49,14 @@ namespace Phantasma.Spook.Nachomen
             chainSimulator.GenerateChain(ownerKeys, nexus.RootChain, "nacho", "nacho", "market");
             chainSimulator.EndBlock();
 
-            var nachoAddress = Address.FromText("PGasVpbFYdu7qERihCsR22nTDQp1JwVAjfuJ38T8NtrCB");
-            var nachoAddress2 = Address.FromText("P2f7ZFuj6NfZ76ymNMnG3xRBT5hAMicDrQRHE4S7SoxEr");
-
+            var nachoAddress = Address.FromText("PWx9mn1hEtQCNxBEhKPj32L3yjJZFiEcLEGVJtY7xg8Ss");
+            
             var nachoFuel = UnitConversion.ToBigInteger(5, Nexus.FuelTokenDecimals);
             var nachoChain = nexus.FindChainByName("nacho");
 
             chainSimulator.BeginBlock();
             chainSimulator.GenerateSideChainSend(ownerKeys, Nexus.FuelTokenSymbol, nexus.RootChain, ownerKeys.Address, nachoChain, nachoFuel, 0);
             chainSimulator.GenerateSideChainSend(ownerKeys, Nexus.FuelTokenSymbol, nexus.RootChain, nachoAddress, nachoChain, nachoFuel, 9999);
-            chainSimulator.GenerateSideChainSend(ownerKeys, Nexus.FuelTokenSymbol, nexus.RootChain, nachoAddress2, nachoChain, nachoFuel, 0);
 
             //_chainSimulator.GenerateSideChainSend(_ownerKeys, Nexus.FuelTokenSymbol, _nexus.RootChain, nachoAddress2, nachoChain, nachoFuel, 9999);
             var blockA = chainSimulator.EndBlock().First();
@@ -131,7 +129,7 @@ namespace Phantasma.Spook.Nachomen
 
             chainSimulator.BeginBlock();
             chainSimulator.GenerateSideChainSend(ownerKeys, Constants.NACHO_SYMBOL, nexus.RootChain, nachoAddress, nachoChain, UnitConversion.ToBigInteger(1000, Constants.NACHO_TOKEN_DECIMALS), 1);
-            chainSimulator.GenerateSideChainSend(ownerKeys, Constants.NACHO_SYMBOL, nexus.RootChain, nachoAddress2, nachoChain, UnitConversion.ToBigInteger(1000, Constants.NACHO_TOKEN_DECIMALS), 1);
+            chainSimulator.GenerateSideChainSend(ownerKeys, Constants.NACHO_SYMBOL, nexus.RootChain, ownerKeys.Address, nachoChain, UnitConversion.ToBigInteger(1000, Constants.NACHO_TOKEN_DECIMALS), 1);
             //_chainSimulator.GenerateSideChainSend(_ownerKeys, Constants.NACHO_SYMBOL, _nexus.RootChain, nachoAddress2, nachoChain, UnitConversion.ToBigInteger(1000, 10), 1);
             var blockB = chainSimulator.EndBlock().First();
 
@@ -263,13 +261,10 @@ namespace Phantasma.Spook.Nachomen
         {
             logger.Message("Filling initial nacho market");
 
-            var testUser        = KeyPair.Generate();
-
-            var nachoChain = chainSimulator.Nexus.FindChainByName("nacho");
+ //           var nachoChain = chainSimulator.Nexus.FindChainByName("nacho");
+            var nachoChain = chainSimulator.Nexus.RootChain;
 
             //_logger.Message("token owner: " + _ownerKeys.Address.Text + " | test user: " + testUser.Address.Text);
-
-            var nachoUser       = KeyPair.FromWIF("L3ydJBTWrKwRLZ5PxpygUnxkeJ4gxGHUDs3d3bDZkLTnB6Bpga87"); // => PGasVpbFYdu7qERihCsR22nTDQp1JwVAjfuJ38T8NtrCB
 
             var luchadorCounts = new Dictionary<Rarity, int>
             {
@@ -280,10 +275,11 @@ namespace Phantasma.Spook.Nachomen
                 [Rarity.Legendary] = 1
             };
 
+            var testUser = KeyPair.FromWIF("L3ydJBTWrKwRLZ5PxpygUnxkeJ4gxGHUDs3d3bDZkLTnB6Bpga87"); // => PGasVpbFYdu7qERihCsR22nTDQp1JwVAjfuJ38T8NtrCB
+
             // Transfer Fuel Tokens to the test user address
             chainSimulator.BeginBlock();
             chainSimulator.GenerateTransfer(ownerKeys, testUser.Address, nexus.RootChain, Nexus.FuelTokenSymbol, 1000000);
-            chainSimulator.GenerateTransfer(ownerKeys, nachoUser.Address, nexus.RootChain, Nexus.FuelTokenSymbol, 1000000);
             chainSimulator.EndBlock();
 
             // WRESTLERS
@@ -311,10 +307,8 @@ namespace Phantasma.Spook.Nachomen
                 var count = luchadorCounts[rarity];
                 logger.Message($"Generating {count} {rarity} luchadores...");
 
-                // Transfer Fuel Tokens to the test user address
-                chainSimulator.BeginBlock();
-                chainSimulator.GenerateTransfer(ownerKeys, testUser.Address, nexus.RootChain, Nexus.FuelTokenSymbol, 1000000);
-                chainSimulator.EndBlock();
+                var wrestlerToken = chainSimulator.Nexus.GetTokenInfo(Constants.WRESTLER_SYMBOL);
+                Assert.IsTrue(nexus.TokenExists(Constants.WRESTLER_SYMBOL), "Can't find the token symbol");
 
                 for (var i = 1; i <= count; i++)
                 {
@@ -324,20 +318,12 @@ namespace Phantasma.Spook.Nachomen
                     var rand        = new Random();
                     var isWrapped   = rand.Next(0, 100) < 50; // TODO update logic for the lootboxes (1 wrestler lootbox = 1 wrapped wrestler)
 
-                    var wrestlerToken = chainSimulator.Nexus.GetTokenInfo(Constants.WRESTLER_SYMBOL);
-                    Assert.IsTrue(nexus.TokenExists(Constants.WRESTLER_SYMBOL), "Can't find the token symbol");
-
-                    // verify nft presence on the user pre-mint
-                    var ownerships      = new OwnershipSheet(Constants.WRESTLER_SYMBOL);
-                    var ownedTokenList  = ownerships.Get(nexus.RootChain.Storage, testUser.Address);
-                    Assert.IsTrue(!ownedTokenList.Any(), "How does the sender already have a Wrestler Token?");
-
                     // Mint a new Wrestler Token directly on the user
                     var tokenROM = new byte[0];     //wrestlerBytes;
                     var tokenRAM = wrestlerBytes;   //new byte[0];
 
                     chainSimulator.BeginBlock();
-                    var mintTx = chainSimulator.MintNonFungibleToken(ownerKeys, testUser.Address, Constants.WRESTLER_SYMBOL, tokenROM, tokenRAM, 0);
+                    var mintTx = chainSimulator.MintNonFungibleToken(ownerKeys, ownerKeys.Address, Constants.WRESTLER_SYMBOL, tokenROM, tokenRAM, 0);
                     var blockA = chainSimulator.EndBlock().First();
 
                     var tokenID = BigInteger.Zero;
@@ -358,42 +344,7 @@ namespace Phantasma.Spook.Nachomen
                             tokenID = eventData.value;
                         }
                     }
-
-                    // verify nft presence on the user post-mint
-                    ownedTokenList = ownerships.Get(nexus.RootChain.Storage, testUser.Address);
-                    Assert.IsTrue(ownedTokenList.Count() == 1, "How does the sender not have one now?");
                     
-                    //verify that the present nft is the same we actually tried to create
-                    var nft = nexus.GetNFT(Constants.WRESTLER_SYMBOL, tokenID);
-                    Assert.IsTrue(nft.ROM.SequenceEqual(wrestlerBytes) || nft.RAM.SequenceEqual(wrestlerBytes), "And why is this NFT different than expected? Not the same data");
-
-                    // verify nft presence on the receiver pre-transfer
-                    ownedTokenList = ownerships.Get(nachoChain.Storage, nachoUser.Address);
-                    Assert.IsTrue(!ownedTokenList.Any(), "How does the receiver already have a Wrestler Token?");
-
-                    // transfer that nft from sender to receiver
-                    chainSimulator.BeginBlock();
-                    chainSimulator.GenerateNftSidechainTransfer(testUser, nachoUser.Address, nexus.RootChain, nachoChain, Constants.WRESTLER_SYMBOL, tokenID);
-                    var blockB = chainSimulator.EndBlock().First();
-                    
-                    // finish the chain transfer
-                    chainSimulator.BeginBlock();
-                    chainSimulator.GenerateSideChainSettlement(nachoUser, nexus.RootChain, nachoChain, blockB.Hash);
-                    Assert.IsTrue(chainSimulator.EndBlock().Any());
-
-                    // verify the sender no longer has it
-                    ownedTokenList = ownerships.Get(nexus.RootChain.Storage, testUser.Address);
-                    Assert.IsTrue(!ownedTokenList.Any(), "How does the sender still have one?");
-
-                    // verify nft presence on the receiver post-transfer
-                    ownedTokenList = ownerships.Get(nachoChain.Storage, nachoUser.Address);
-                    Assert.IsTrue(ownedTokenList.Count() == 1, "How does the receiver not have one now?");
-
-                    //verify that the transferred nft is the same we actually tried to create
-                    tokenID = ownedTokenList.ElementAt(0);
-                    nft     = nexus.GetNFT(Constants.WRESTLER_SYMBOL, tokenID);
-                    Assert.IsTrue(nft.ROM.SequenceEqual(wrestlerBytes) || nft.RAM.SequenceEqual(wrestlerBytes), "And why is this NFT different than expected? Not the same data");
-
                     // Create auction
                     decimal minPrice, maxPrice;
 
@@ -410,12 +361,12 @@ namespace Phantasma.Spook.Nachomen
                     Timestamp endWrestlerAuctionDate = chainSimulator.CurrentTime + TimeSpan.FromDays(2);
 
                     chainSimulator.BeginBlock();
-                    chainSimulator.GenerateCustomTransaction(nachoUser, nachoChain, () =>
+                    chainSimulator.GenerateCustomTransaction(ownerKeys, nachoChain, () =>
                         ScriptUtils.
                             BeginScript().
-                            AllowGas(nachoUser.Address, Address.Null, 1, 9999).
-                            CallContract("market", "SellToken", nachoUser.Address, wrestlerToken.Symbol, Constants.NACHO_SYMBOL, tokenID, finalPrice, endWrestlerAuctionDate).
-                            SpendGas(nachoUser.Address).
+                            AllowGas(ownerKeys.Address, Address.Null, 1, 9999).
+                            CallContract("market", "SellToken", ownerKeys.Address, wrestlerToken.Symbol, Constants.NACHO_SYMBOL, tokenID, finalPrice, endWrestlerAuctionDate).
+                            SpendGas(ownerKeys.Address).
                             EndScript()
                     );
                     chainSimulator.EndBlock();
@@ -459,6 +410,10 @@ namespace Phantasma.Spook.Nachomen
 
                 logger.Message($"Generating {count} {rarity} items...");
 
+
+                var itemToken = chainSimulator.Nexus.GetTokenInfo(Constants.ITEM_SYMBOL);
+                Assert.IsTrue(nexus.TokenExists(Constants.ITEM_SYMBOL), "Can't find the token symbol");
+
                 for (var i = 1; i <= count; i++)
                 {
                     var item        = DequeueItem(rarity, logger);
@@ -467,20 +422,12 @@ namespace Phantasma.Spook.Nachomen
                     var rand        = new Random();
                     var isWrapped   = rand.Next(0, 100) < 50; // TODO update logic for the lootboxes (1 item lootbox = 1 wrapped item)
 
-                    var itemToken = chainSimulator.Nexus.GetTokenInfo(Constants.ITEM_SYMBOL);
-                    Assert.IsTrue(nexus.TokenExists(Constants.ITEM_SYMBOL), "Can't find the token symbol");
-
-                    // verify nft presence on the user pre-mint
-                    var ownerships = new OwnershipSheet(Constants.ITEM_SYMBOL);
-                    var ownedTokenList = ownerships.Get(nachoChain.Storage, testUser.Address);
-                    Assert.IsTrue(!ownedTokenList.Any(), "How does the sender already have a Item Token?");
-
                     // Mint a new Item Token directly on the user
                     var tokenROM = new byte[0]; //itemBytes;
                     var tokenRAM = itemBytes;   //new byte[0];
 
                     chainSimulator.BeginBlock();
-                    var mintTx = chainSimulator.MintNonFungibleToken(ownerKeys, testUser.Address, Constants.ITEM_SYMBOL, tokenROM, tokenRAM, 0);
+                    var mintTx = chainSimulator.MintNonFungibleToken(ownerKeys, ownerKeys.Address, Constants.ITEM_SYMBOL, tokenROM, tokenRAM, 0);
                     var blockA = chainSimulator.EndBlock().First();
 
                     var tokenID = BigInteger.Zero;
@@ -502,41 +449,6 @@ namespace Phantasma.Spook.Nachomen
                         }
                     }
 
-                    // verify nft presence on the user post-mint
-                    ownedTokenList = ownerships.Get(nexus.RootChain.Storage, testUser.Address);
-                    Assert.IsTrue(ownedTokenList.Count() == 1, "How does the sender not have one now?");
-
-                    //verify that the present nft is the same we actually tried to create
-                    var nft = nexus.GetNFT(Constants.ITEM_SYMBOL, tokenID);
-                    Assert.IsTrue(nft.ROM.SequenceEqual(itemBytes) || nft.RAM.SequenceEqual(itemBytes), "And why is this NFT different than expected? Not the same data");
-
-                    // verify nft presence on the receiver pre-transfer
-                    ownedTokenList = ownerships.Get(nachoChain.Storage, nachoUser.Address);
-                    Assert.IsTrue(!ownedTokenList.Any(), "How does the receiver already have a Wrestler Token?");
-
-                    // transfer that nft from sender to receiver
-                    chainSimulator.BeginBlock();
-                    chainSimulator.GenerateNftSidechainTransfer(testUser, nachoUser.Address, nexus.RootChain, nachoChain, Constants.ITEM_SYMBOL, tokenID);
-                    var blockB = chainSimulator.EndBlock().First();
-
-                    // finish the chain transfer
-                    chainSimulator.BeginBlock();
-                    chainSimulator.GenerateSideChainSettlement(nachoUser, nexus.RootChain, nachoChain, blockB.Hash);
-                    Assert.IsTrue(chainSimulator.EndBlock().Any());
-
-                    // verify the sender no longer has it
-                    ownedTokenList = ownerships.Get(nexus.RootChain.Storage, testUser.Address);
-                    Assert.IsTrue(!ownedTokenList.Any(), "How does the sender still have one?");
-
-                    // verify nft presence on the receiver post-transfer
-                    ownedTokenList = ownerships.Get(nachoChain.Storage, nachoUser.Address);
-                    Assert.IsTrue(ownedTokenList.Count() == 1, "How does the receiver not have one now?");
-
-                    //verify that the transferred nft is the same we actually tried to create
-                    tokenID = ownedTokenList.ElementAt(0);
-                    nft     = nexus.GetNFT(Constants.ITEM_SYMBOL, tokenID);
-                    Assert.IsTrue(nft.ROM.SequenceEqual(itemBytes) || nft.RAM.SequenceEqual(itemBytes), "And why is this NFT different than expected? Not the same data");
-
                     // Create auction
                     decimal minPrice, maxPrice;
 
@@ -553,12 +465,12 @@ namespace Phantasma.Spook.Nachomen
                     Timestamp endItemAuctionDate = chainSimulator.CurrentTime + TimeSpan.FromDays(2);
 
                     chainSimulator.BeginBlock();
-                    chainSimulator.GenerateCustomTransaction(nachoUser, nachoChain, () =>
+                    chainSimulator.GenerateCustomTransaction(ownerKeys, nachoChain, () =>
                         ScriptUtils.
                             BeginScript().
-                            AllowGas(nachoUser.Address, Address.Null, 1, 9999).
-                            CallContract("market", "SellToken", nachoUser.Address, itemToken.Symbol, Constants.NACHO_SYMBOL, tokenID, finalPrice, endItemAuctionDate).
-                            SpendGas(nachoUser.Address).
+                            AllowGas(ownerKeys.Address, Address.Null, 1, 9999).
+                            CallContract("market", "SellToken", ownerKeys.Address, itemToken.Symbol, Constants.NACHO_SYMBOL, tokenID, finalPrice, endItemAuctionDate).
+                            SpendGas(ownerKeys.Address).
                             EndScript()
                     );
                     chainSimulator.EndBlock();
