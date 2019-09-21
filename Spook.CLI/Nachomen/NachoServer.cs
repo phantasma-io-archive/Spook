@@ -73,7 +73,7 @@ namespace Phantasma.Spook.Nachomen
 
             var nachoSupply = UnitConversion.ToBigInteger(10000, Constants.NACHO_TOKEN_DECIMALS);
             simulator.GenerateToken(ownerKeys, Constants.NACHO_SYMBOL, "Nachomen Token", Nexus.PlatformName, Hash.FromString(Constants.NACHO_SYMBOL), nachoSupply, Constants.NACHO_TOKEN_DECIMALS, TokenFlags.Transferable | TokenFlags.Fungible | TokenFlags.Finite | TokenFlags.Divisible);
-            simulator.MintTokens(ownerKeys, Constants.NACHO_SYMBOL, nachoSupply);
+            simulator.MintTokens(ownerKeys, ownerKeys.Address, Constants.NACHO_SYMBOL, nachoSupply);
 
             var wrestlerTokenScript = new []
             {
@@ -147,7 +147,7 @@ namespace Phantasma.Spook.Nachomen
 
             // TODO this should be a feature from Spook, enabled from args
             simulator.BeginBlock();
-            simulator.GenerateCustomTransaction(ownerKeys, () =>
+            simulator.GenerateCustomTransaction(ownerKeys, ProofOfWork.None, () =>
             {
                 return new ScriptBuilder()
                 .AllowGas(ownerKeys.Address, Address.Null, simulator.MinimumFee, 9999)
@@ -158,7 +158,7 @@ namespace Phantasma.Spook.Nachomen
 
             var keys = KeyPair.FromWIF("L2sbKk7TJTkbwbwJ2EX7qM23ycShESGhQhLNyAaKxVHEqqBhFMk3");
             simulator.BeginBlock();
-            simulator.GenerateCustomTransaction(new KeyPair[] { keys, ownerKeys }, () => new ScriptBuilder().AllowGas(ownerKeys.Address, Address.Null, simulator.MinimumFee, 999).CallContract("interop", "RegisterLink", keys.Address, NeoWallet.EncodeAddress( "AbZJjZ5F1x82VybfsqM7zi4nkWoX8uwepy")).SpendGas(ownerKeys.Address).EndScript());
+            simulator.GenerateCustomTransaction(new KeyPair[] { keys, ownerKeys }, ProofOfWork.None, () => new ScriptBuilder().AllowGas(ownerKeys.Address, Address.Null, simulator.MinimumFee, 999).CallContract("interop", "RegisterLink", keys.Address, NeoWallet.EncodeAddress( "AbZJjZ5F1x82VybfsqM7zi4nkWoX8uwepy")).SpendGas(ownerKeys.Address).EndScript());
             simulator.EndBlock();
 
         }
@@ -389,7 +389,7 @@ namespace Phantasma.Spook.Nachomen
                     Timestamp endWrestlerAuctionDate = simulator.CurrentTime + TimeSpan.FromDays(2);
 
                     simulator.BeginBlock();
-                    simulator.GenerateCustomTransaction(ownerKeys, nachoChain, () =>
+                    simulator.GenerateCustomTransaction(ownerKeys, ProofOfWork.None, nachoChain, () =>
                         ScriptUtils.
                             BeginScript().
                             AllowGas(ownerKeys.Address, Address.Null, simulator.MinimumFee, 9999).
@@ -506,7 +506,7 @@ namespace Phantasma.Spook.Nachomen
                     Timestamp endItemAuctionDate = simulator.CurrentTime + TimeSpan.FromDays(2);
 
                     simulator.BeginBlock();
-                    simulator.GenerateCustomTransaction(ownerKeys, nachoChain, () =>
+                    simulator.GenerateCustomTransaction(ownerKeys, ProofOfWork.None, nachoChain, () =>
                         ScriptUtils.
                             BeginScript().
                             AllowGas(ownerKeys.Address, Address.Null, simulator.MinimumFee, 9999).

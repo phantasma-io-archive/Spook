@@ -12,6 +12,7 @@ using Phantasma.Pay.Chains;
 using Phantasma.Pay;
 using Phantasma.Neo.Core;
 using Phantasma.Spook.Oracles;
+using Phantasma.Blockchain.Contracts;
 
 namespace Phantasma.Spook.Modules
 {

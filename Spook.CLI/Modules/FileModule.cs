@@ -13,6 +13,7 @@ using Phantasma.Core.Log;
 using Phantasma.Numerics;
 using Phantasma.Core.Types;
 using System.Threading;
+using Phantasma.Blockchain.Contracts;
 
 namespace Phantasma.Spook.Modules
 {

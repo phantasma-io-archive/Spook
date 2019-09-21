@@ -103,15 +103,39 @@ Below are instructions needed for the various operating systems supported.
 #Default: 7078
 #Changes the REST port
 
+-api.cache=
+#Default: true
+#Enables caching of the API, which affects both REST, RPC and the internal API.
+
 -node.wif=
 #Key for the wallet - local test wallet is 'L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25'
 
 -nexus.name=
 #Name of the network - 'simnet' is the self contained network
 
+-mempool.enabled=
+#Default: true
+#Enables or disables the mempool. Must be enabled for validator nodes.
+
 -mempool.fee=
 #Default: 10000
 #Defines the minimum fee for a transaction. Expected value should be in fixed point format, not decimal.
+
+-mempool.pow=
+#Default: 0
+#Defines the minimum proof of work for a transaction. Expected value should be between 0 and 5.
+
+-relay.enabled=
+#Default: true
+#Enables or disables Phantasma relay. Must be enabled for validator nodes.
+
+-archive.enabled=
+#Default: true
+#Enables or disables the chain archive. Must be enabled for validator nodes.
+
+-events.enabled=
+#Default: true
+#Enables or disables the event log.  Must be enabled for validator nodes.
 
 -gui.enabled=
 #Options: 'true' or 'false'
@@ -133,6 +157,18 @@ Below are instructions needed for the various operating systems supported.
 
 -interop.phantasma.height=
 #Defines initial Phantasma blockchain height to use for swap mechanims
+
+-plugin.tps=
+#Default: false
+#Enables the TPS graph plugin. View the graph with comand "gui.graph tps"
+
+-plugin.ram=
+#Default: false
+#Enables the RAM usage graph plugin. View the graph with comand "gui.graph ram"
+
+-plugin.mempool=
+#Default: false
+#Enables the mempool usage plugin. View the graph with comand "gui.graph mempool". Note, this is not the same as enabling the mempool.
 ```` 
 
 ### Ubuntu 18.04+

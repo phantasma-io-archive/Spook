@@ -468,6 +468,10 @@ namespace Phantasma.Spook
 
             string mode = settings.GetString("node.mode", "validator");
 
+            bool hasMempool = settings.GetBool("mempool.enabled", true);
+            bool hasEvents = settings.GetBool("events.enabled", true);
+            bool hasRelay = settings.GetBool("relay.enabled", true);
+            bool hasArchive = settings.GetBool("archive.enabled", true);
             bool hasRPC = settings.GetBool("rpc.enabled", false);
             bool hasREST = settings.GetBool("rest.enabled", false);
 
@@ -591,14 +595,64 @@ namespace Phantasma.Spook
                 return;
             }
 
-            this.mempool = new Mempool(node_keys, nexus, blockTime, minimumFee);
-            mempool.Start(ThreadPriority.AboveNormal);
+            int minimumPow;
+            try
+            {
+                minimumPow = settings.GetInt("mempool.pow", 0);
+                int maxPow = 5;
+                if (minimumPow < 0 || minimumPow > maxPow)
+                {
+                    logger.Error($"Invalid mempool pow value. Expected a value between 0 and {maxPow}.");
+                }
+            }
+            catch (Exception e)
+            {
+                logger.Error("Invalid mempool fee value. Expected something in fixed point format.");
+                return;
+            }
 
-            mempool.OnTransactionFailed += Mempool_OnTransactionFailed;
 
-            this.node = new Node(nexus, mempool, node_keys, port, seeds, logger);
+            if (hasMempool)
+            {
+                this.mempool = new Mempool(node_keys, nexus, blockTime, minimumFee);
+                mempool.OnTransactionFailed += Mempool_OnTransactionFailed;
+                mempool.Start(ThreadPriority.AboveNormal);
+            }
+            else
+            {
+                this.mempool = null;
+            }
 
-            api = new NexusAPI(nexus, mempool, node);
+            PeerCaps caps = PeerCaps.None;
+            if (hasMempool) { caps |= PeerCaps.Mempool; }
+            if (hasEvents) { caps |= PeerCaps.Events; }
+            if (hasRelay) { caps |= PeerCaps.Relay; }
+            if (hasArchive) { caps |= PeerCaps.Archive; }
+            if (hasRPC) { caps |= PeerCaps.RPC; }
+            if (hasREST) { caps |= PeerCaps.REST; }
+
+            var possibleCaps = Enum.GetValues(typeof(PeerCaps)).Cast<PeerCaps>().ToArray();
+            foreach (var cap in possibleCaps)
+            {
+                if (cap != PeerCaps.None && caps.HasFlag(cap))
+                {
+                    logger.Message("Feature enabled: " + cap);
+                }
+            }
+
+            try
+            {
+                this.node = new Node(nexus, mempool, node_keys, port, caps, seeds, logger);
+            }
+            catch (Exception e)
+            {
+                logger.Error(e.Message);
+                return;
+            }
+
+            var useAPICache = settings.GetBool("api.cache", true);
+            logger.Message($"API cache is {(useAPICache ? "enabled" : "disabled")}.");
+            api = new NexusAPI(nexus, mempool, node, useAPICache);
 
             // RPC setup
             if (hasRPC)
@@ -644,9 +698,21 @@ namespace Phantasma.Spook
             if (gui != null)
             {
                 int pluginPeriod = settings.GetInt("plugin.refresh", 1); // in seconds
-                RegisterPlugin(new TPSPlugin(logger, pluginPeriod));
-                RegisterPlugin(new RAMPlugin(logger, pluginPeriod));
-                RegisterPlugin(new MempoolPlugin(mempool, logger, pluginPeriod));
+
+                if (settings.GetBool("plugin.tps", false))
+                {
+                    RegisterPlugin(new TPSPlugin(logger, pluginPeriod));
+                }
+
+                if (settings.GetBool("plugin.ram", false))
+                {
+                    RegisterPlugin(new RAMPlugin(logger, pluginPeriod));
+                }
+
+                if (settings.GetBool("plugin.mempool", false))
+                {
+                    RegisterPlugin(new MempoolPlugin(mempool, logger, pluginPeriod));
+                }
             }
 
             Console.CancelKeyPress += delegate {
@@ -791,6 +857,13 @@ namespace Phantasma.Spook
         private void RegisterPlugin(IPlugin plugin)
         {
             var name = plugin.GetType().Name.Replace("Plugin", "");
+
+            if (this.gui == null)
+            {
+                logger.Warning("GUI mode required, plugin disabled: " + name);
+                return;
+            }
+
             logger.Message("Plugin enabled: " + name);
             plugins.Add(plugin);
 
