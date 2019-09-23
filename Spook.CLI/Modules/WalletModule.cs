@@ -33,7 +33,7 @@ namespace Phantasma.Spook.Modules
             try
             {
                 Keys = KeyPair.FromWIF(wif);
-                logger.Success($"Opened wallet with address {Keys.Address}.");
+                logger.Success($"Opened wallet with address: {Keys.Address}");
             }
             catch (Exception e)
             {

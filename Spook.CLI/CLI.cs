@@ -63,9 +63,9 @@ namespace Phantasma.Spook
         // testnet validators, hardcoded for now
         private static readonly string[] validatorWIFs = new string[]
         {
-            "L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25", //P2f7ZFuj6NfZ76ymNMnG3xRBT5hAMicDrQRHE4S7SoxEr
-            "L1sEB8Z6h5Y7aQKqxbAkrzQLY5DodmPacjqSkFPmcR82qdmHEEdY", // PGBinkbZA3Q6BxMnL2HnJSBubNvur3iC6GtQpEThDnvrr
-            "KxWUCAD2wECLfA7diT7sV7V3jcxAf9GSKqZy3cvAt79gQLHQ2Qo8", // PDiqQHDwe6MTcP6TH6DYjq7FTUouvy2YEkDXz2chCABCb
+            "L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25", // PKtRvkhUhAiHsg4YnaxSM9dyyLBogTpHwtUEYvMYDKuV8
+            "L1sEB8Z6h5Y7aQKqxbAkrzQLY5DodmPacjqSkFPmcR82qdmHEEdY", // PZR3AFPJkqSpxXSZkFTxbdQi7dRZAnvGBkwN96P7zJt78
+            "KxWUCAD2wECLfA7diT7sV7V3jcxAf9GSKqZy3cvAt79gQLHQ2Qo8", // PWx9mn1hEtQCNxBEhKPj32L3yjJZFiEcLEGVJtY7xg8Ss
             "L5VNC7EU4m1c72PMGyHepSqfGbV9XF2THGiZ7UW1aWVpr6eZEUDE", //PF8YN4mdsbguJYi3Bitcu9RPgms5JHaX31bjUXCnhA1DG
             "L5FnySofFC3v1YTkmfgVAyagdXrgYV9T6vCPYyzP72dHthg4DuWJ", //P14MYxtbo5pFrVVVY4eobQDRiJBU8dD74jn29ogzfvJAm
             "L2dj4B4XRoGXMSqUuWumvG4n12Qe37bd8QqH5PCPDpnKsF5wkkg8", //PF6EHJP6YTc189YXsiFZ8xVYQ87v9CoRzEHem3HS9yQvE
@@ -615,7 +615,16 @@ namespace Phantasma.Spook
             if (hasMempool)
             {
                 this.mempool = new Mempool(node_keys, nexus, blockTime, minimumFee);
-                mempool.OnTransactionFailed += Mempool_OnTransactionFailed;
+
+                var mempoolLogging = settings.GetBool("mempool.log", true);
+                if (mempoolLogging)
+                {
+                    mempool.OnTransactionFailed += Mempool_OnTransactionFailed;
+                    mempool.OnTransactionAdded += (tx) => logger.Message($"Received transaction {tx.Hash}");
+                    mempool.OnTransactionCommitted += (tx) => logger.Message($"Commited transaction {tx.Hash}");
+                    mempool.OnTransactionDiscarded += (tx) => logger.Message($"Discarded transaction {tx.Hash}");
+                }
+
                 mempool.Start(ThreadPriority.AboveNormal);
             }
             else
@@ -807,7 +816,6 @@ namespace Phantasma.Spook
         private void Mempool_OnTransactionFailed(Transaction tx)
         {
             var status = mempool.GetTransactionStatus(tx.Hash, out string reason);
-
             logger.Warning($"Rejected transaction {tx.Hash} => " + reason);
         }
 
