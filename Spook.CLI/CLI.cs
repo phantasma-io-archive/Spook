@@ -103,7 +103,7 @@ namespace Phantasma.Spook
 
         private ConsoleGUI gui;
 
-        private ChainSimulator simulator;
+        private NexusSimulator simulator;
         private bool useSimulator;
 
         private List<IPlugin> plugins = new List<IPlugin>();
@@ -749,7 +749,7 @@ namespace Phantasma.Spook
                 new Thread(() =>
                 {
                     logger.Message("Initializing simulator...");
-                    simulator = new ChainSimulator(this.nexus, node_keys, 1234);
+                    simulator = new NexusSimulator(this.nexus, node_keys, 1234);
                     simulator.MinimumFee = minimumFee;
 
                     logger.Message("Bootstrapping validators");

@@ -32,7 +32,7 @@ namespace Phantasma.Spook.Nachomen
 
         private static BigInteger _nextItemID;
 
-        public static void InitNachoServer(Nexus nexus, ChainSimulator simulator, KeyPair ownerKeys, bool fillMarket, Logger logger)
+        public static void InitNachoServer(Nexus nexus, NexusSimulator simulator, KeyPair ownerKeys, bool fillMarket, Logger logger)
         {
             GenerateTokens(nexus, simulator, ownerKeys, logger);
 
@@ -46,7 +46,7 @@ namespace Phantasma.Spook.Nachomen
             }
         }
 
-        public static void GenerateTokens(Nexus nexus, ChainSimulator simulator, KeyPair ownerKeys, Logger logger)
+        public static void GenerateTokens(Nexus nexus, NexusSimulator simulator, KeyPair ownerKeys, Logger logger)
         {
             simulator.BeginBlock();
             simulator.GenerateChain(ownerKeys, nexus.RootChain, "nacho", "nacho", "market");
@@ -271,7 +271,7 @@ namespace Phantasma.Spook.Nachomen
             //}
         }
 
-        private static void FillNachoMarket(Nexus nexus, ChainSimulator simulator, KeyPair ownerKeys, Logger logger)
+        private static void FillNachoMarket(Nexus nexus, NexusSimulator simulator, KeyPair ownerKeys, Logger logger)
         {
             logger.Message("Filling initial nacho market");
 
