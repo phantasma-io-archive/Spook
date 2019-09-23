@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-
 using Phantasma.Blockchain;
 using Phantasma.Blockchain.Contracts;
 using Phantasma.Blockchain.Contracts.Native;
@@ -17,6 +15,7 @@ using Phantasma.Numerics;
 using Phantasma.Pay.Chains;
 using Phantasma.Storage;
 using Phantasma.VM.Utils;
+using Phantasma.Core;
 
 namespace Phantasma.Spook.Nachomen
 {
@@ -323,7 +322,7 @@ namespace Phantasma.Spook.Nachomen
                 logger.Message($"Generating {count} {rarity} luchadores...");
 
                 var wrestlerToken = simulator.Nexus.GetTokenInfo(Constants.WRESTLER_SYMBOL);
-                Assert.IsTrue(nexus.TokenExists(Constants.WRESTLER_SYMBOL), "Can't find the token symbol");
+                Throw.If(!nexus.TokenExists(Constants.WRESTLER_SYMBOL), "Can't find the token symbol");
 
                 for (var i = 1; i <= count; i++)
                 {
@@ -345,10 +344,10 @@ namespace Phantasma.Spook.Nachomen
 
                     if (blockA != null)
                     {
-                        Assert.IsTrue(mintTx != null);
+                        Throw.IfNull(mintTx, nameof(mintTx));
 
                         var txEvents = blockA.GetEventsForTransaction(mintTx.Hash);
-                        Assert.IsTrue(txEvents.Any(x => x.Kind == EventKind.TokenMint));
+                        Throw.If(!txEvents.Any(x => x.Kind == EventKind.TokenMint), "missing mint event");
 
                         foreach (var evt in txEvents)
                         {
@@ -402,7 +401,7 @@ namespace Phantasma.Spook.Nachomen
             }
 
             auctions = (MarketAuction[])nachoChain.InvokeContract("market", "GetAuctions").ToObject();
-            Assert.IsTrue(auctions.Length == createdAuctions + previousAuctionCount, "wrestler auction ids missing");
+            Throw.If(auctions.Length != createdAuctions + previousAuctionCount, "wrestler auction ids missing");
 
             // ITEMS
 
@@ -440,7 +439,7 @@ namespace Phantasma.Spook.Nachomen
 
 
                 var itemToken = simulator.Nexus.GetTokenInfo(Constants.ITEM_SYMBOL);
-                Assert.IsTrue(nexus.TokenExists(Constants.ITEM_SYMBOL), "Can't find the token symbol");
+                Throw.If(!nexus.TokenExists(Constants.ITEM_SYMBOL), "Can't find the token symbol");
 
                 for (var i = 1; i <= count; i++)
                 {
@@ -462,10 +461,10 @@ namespace Phantasma.Spook.Nachomen
 
                     if (blockA != null)
                     {
-                        Assert.IsTrue(mintTx != null);
+                        Throw.IfNull(mintTx == null, nameof(mintTx));
 
                         var txEvents = blockA.GetEventsForTransaction(mintTx.Hash);
-                        Assert.IsTrue(txEvents.Any(x => x.Kind == EventKind.TokenMint));
+                        Throw.If(!txEvents.Any(x => x.Kind == EventKind.TokenMint), "mint event missing");
 
                         foreach (var evt in txEvents)
                         {
@@ -519,7 +518,7 @@ namespace Phantasma.Spook.Nachomen
             }
 
             auctions = (MarketAuction[])nachoChain.InvokeContract("market", "GetAuctions").ToObject();
-            Assert.IsTrue(auctions.Length == createdAuctions + previousAuctionCount, "items auction ids missing");
+            Throw.If(auctions.Length != createdAuctions + previousAuctionCount, "items auction ids missing");
 
             logger.Success("Nacho Market is ready!");
         }
@@ -830,7 +829,7 @@ namespace Phantasma.Spook.Nachomen
 
         private static NachoWrestler GetWrestler(Nexus nexus, KeyPair ownerKeys, BigInteger wrestlerID)
         {
-            Assert.IsTrue(wrestlerID > 0, "null or negative id");
+            Throw.If(wrestlerID <= 0, "null or negative id");
 
             if (wrestlerID < Constants.BASE_LUCHADOR_ID)
             {

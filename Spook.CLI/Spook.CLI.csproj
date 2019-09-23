@@ -28,7 +28,6 @@
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.Pay\Phantasma.Pay.csproj" />
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.Simulator\Phantasma.Simulator.csproj" />
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.Storage\Phantasma.Storage.csproj" />
-    <ProjectReference Include="..\..\PhantasmaChain\Phantasma.Tests\Phantasma.Tests.csproj" />
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.VM\Phantasma.VM.csproj" />
   </ItemGroup>
 
