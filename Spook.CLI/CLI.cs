@@ -26,6 +26,7 @@ using Phantasma.CodeGen.Assembler;
 using Phantasma.VM.Utils;
 using Phantasma.Core;
 using Phantasma.Network.P2P.Messages;
+using Phantasma.RocksDB;
 using Phantasma.Spook.Nachomen;
 using Phantasma.Storage;
 using Logger = Phantasma.Core.Log.Logger;
@@ -514,6 +515,10 @@ namespace Phantasma.Spook
             int port = settings.GetInt("node.port", defaultPort);
             var defaultStoragePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/Storage";
             var storagePath = settings.GetString("storage.path", defaultStoragePath);
+            var storageBackend = settings.GetString("storage.backend", "file");
+
+            logger.Message("Storage backend: " + storageBackend);
+
             storagePath = storagePath.Replace("\\", "/");
             if (!storagePath.EndsWith('/'))
             {
@@ -541,10 +546,24 @@ namespace Phantasma.Spook
             var node_keys = KeyPair.FromWIF(wif);
             WalletModule.Keys = KeyPair.FromWIF(wif);
 
-            nexus = new Nexus(logger, 
-                (name) => new BasicDiskStore(storagePath + name + ".txt"),
-                (n) => new SpookOracle(this, n)
-                );
+            if (storageBackend == "file")
+            {
+                nexus = new Nexus(logger, 
+                        (name) => new BasicDiskStore(storagePath + name + ".txt"),
+                        (n) => new SpookOracle(this, n)
+                        );
+            }
+            else if (storageBackend == "db")
+            {
+                nexus = new Nexus(logger, 
+                        (name) => new DBPartition(storagePath + name),
+                        (n) => new SpookOracle(this, n)
+                        );
+            }
+            else
+            {
+                throw new Exception("Backend has to be set to either \"db\" or \"file\"");
+            }
 
             bool bootstrap = false;
 
