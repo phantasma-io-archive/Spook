@@ -569,7 +569,7 @@ namespace Phantasma.Spook
 
             if (wif == validatorWIFs[0])
             {
-                if (!nexus.Ready)
+                if (!nexus.HasGenesis)
                 {
                     logger.Debug("Boostraping nexus...");
                     bootstrap = true;

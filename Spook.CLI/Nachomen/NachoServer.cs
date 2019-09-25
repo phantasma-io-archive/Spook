@@ -16,6 +16,7 @@ using Phantasma.Pay.Chains;
 using Phantasma.Storage;
 using Phantasma.VM.Utils;
 using Phantasma.Core;
+using Phantasma.Domain;
 
 namespace Phantasma.Spook.Nachomen
 {
