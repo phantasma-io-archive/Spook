@@ -10,6 +10,7 @@ using Phantasma.VM.Utils;
 using Phantasma.Core.Types;
 using System.Threading;
 using Phantasma.Blockchain.Tokens;
+using Phantasma.Domain;
 using Phantasma.Pay;
 
 namespace Phantasma.Spook.Swaps

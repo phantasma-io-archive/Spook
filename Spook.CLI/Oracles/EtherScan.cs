@@ -9,6 +9,7 @@ using Phantasma.Storage;
 using Phantasma.Numerics;
 using Phantasma.Pay.Chains;
 using Phantasma.Core;
+using Phantasma.Domain;
 
 namespace Phantasma.Spook.Oracles
 {

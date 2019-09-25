@@ -11,6 +11,7 @@ using Phantasma.Pay.Chains;
 using Phantasma.Core;
 using Phantasma.Core.Log;
 using System.Threading;
+using Phantasma.Domain;
 
 namespace Phantasma.Spook.Oracles
 {
