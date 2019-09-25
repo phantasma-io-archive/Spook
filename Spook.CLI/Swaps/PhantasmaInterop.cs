@@ -212,7 +212,7 @@ namespace Phantasma.Spook.Swaps
 
         public override string ReceiveFunds(ChainSwap swap)
         {
-            return SettleTransaction(swap.sourceHash, swap.sourcePlatform);
+            return ChainSwap.DummyHash; // SettleTransaction(swap.sourceHash, swap.sourcePlatform);
         }
     }
 }
