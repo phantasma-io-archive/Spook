@@ -480,6 +480,7 @@ namespace Phantasma.Spook
             showWebLogs = settings.GetBool("web.log", false);
             bool apiLog = settings.GetBool("api.log", true);
 
+            bool hasSync = settings.GetBool("sync.enabled", true);
             bool hasMempool = settings.GetBool("mempool.enabled", true);
             bool hasEvents = settings.GetBool("events.enabled", true);
             bool hasRelay = settings.GetBool("relay.enabled", true);
@@ -663,6 +664,7 @@ namespace Phantasma.Spook
             }
 
             PeerCaps caps = PeerCaps.None;
+            if (hasSync) { caps |= PeerCaps.Sync; }
             if (hasMempool) { caps |= PeerCaps.Mempool; }
             if (hasEvents) { caps |= PeerCaps.Events; }
             if (hasRelay) { caps |= PeerCaps.Relay; }
