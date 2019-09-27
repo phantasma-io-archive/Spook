@@ -210,12 +210,13 @@ namespace Phantasma.Spook.Modules
         {
             var script = new ScriptBuilder()
                 .CallContract("interop", "SettleTransaction", Keys.Address, platform, extHash)
-                .CallContract("swap", "SwapFee", Keys.Address, swapSymbol, DomainSettings.FuelTokenSymbol, UnitConversion.ToBigInteger(0.1m, DomainSettings.FuelTokenDecimals))
+                .CallContract("swap", "SwapFee", Keys.Address, swapSymbol, UnitConversion.ToBigInteger(0.1m, DomainSettings.FuelTokenDecimals))
                 .AllowGas(Keys.Address, Address.Null, minimumFee, 500)
                 .SpendGas(Keys.Address).EndScript();
 
             logger.Message("Settling swap on Phantasma");
             ExecuteTransaction(api, script, ProofOfWork.None);
+            logger.Success($"Swap of {swapSymbol} is complete!");
         }
 
         public static void Transfer(NexusAPI api, BigInteger minimumFee, NeoAPI neoAPI, string[] args)
