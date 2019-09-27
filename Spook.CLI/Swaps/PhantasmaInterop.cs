@@ -159,12 +159,12 @@ namespace Phantasma.Spook.Swaps
             var platforms = ((ArrayResult)Swapper.nexusAPI.GetPlatforms()).values.Select(x => (PlatformResult)x).ToArray();
             var platform = platforms.First(x => x.platform == swap.destinationPlatform);
 
-            var brokerBalance = nexus.RootChain.GetTokenBalance(nexus.RootStorage, platform.fuel, Swapper.Keys.Address);
-            var fuelToken = nexus.GetTokenInfo(platform.fuel);
-            var minBalance = UnitConversion.GetUnitValue(fuelToken.Decimals);
+            var brokerBalance = nexus.RootChain.GetTokenBalance(nexus.RootStorage, DomainSettings.FuelTokenSymbol, Swapper.Keys.Address);
+
+            var minBalance = UnitConversion.GetUnitValue(DomainSettings.FuelTokenDecimals);
             if (brokerBalance < minBalance)
             {
-                Swapper.logger.Warning($"Not enough {fuelToken.Symbol} balance to do broker operations");
+                Swapper.logger.Warning($"Not enough {DomainSettings.FuelTokenSymbol} balance to do broker operations");
                 return BrokerResult.Error;
             }
 
