@@ -955,7 +955,7 @@ namespace Phantasma.Spook
                 (args) => WalletModule.Balance(api, logger, restPort, NeoScanAPI, args));
 
             dispatcher.RegisterCommand("wallet.transfer", "Generates a new transfer transaction",
-                (args) => WalletModule.Transfer(api, logger, NeoAPI, args));
+                (args) => WalletModule.Transfer(api, this.mempool != null ? mempool.MinimumFee : 1, logger, NeoAPI, args));
 
             dispatcher.RegisterCommand("wallet.stake", $"Stakes {DomainSettings.StakingTokenSymbol}",
                 (args) => WalletModule.Stake(api, logger, args));

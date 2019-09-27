@@ -14,6 +14,7 @@ using Phantasma.Neo.Core;
 using Phantasma.Spook.Oracles;
 using Phantasma.Blockchain.Contracts;
 using Phantasma.Domain;
+using System.Linq;
 
 namespace Phantasma.Spook.Modules
 {
@@ -114,11 +115,13 @@ namespace Phantasma.Spook.Modules
             }
         }
 
-        private static void NeoTransfer(NeoKey neoKeys, string toAddress, string tokenSymbol, decimal tempAmount, NeoAPI neoAPI, Logger logger)
+        private static Hash NeoTransfer(NeoKey neoKeys, string toAddress, string tokenSymbol, decimal tempAmount, NeoAPI neoAPI, Logger logger)
         {
             Neo.Core.Transaction neoTx;
 
             logger.Message($"Sending {tempAmount} {tokenSymbol} to {toAddress}...");
+
+            Thread.Sleep(500);
 
             if (tokenSymbol == "NEO" || tokenSymbol == "GAS")
             {
@@ -134,10 +137,75 @@ namespace Phantasma.Spook.Modules
                 neoTx = nep5.Transfer(neoKeys, toAddress, tempAmount);
             }
 
+            Thread.Sleep(80000);
             logger.Success($"Sent transaction with hash {neoTx.Hash}!");
+
+            var hash = Hash.Parse(neoTx.Hash.ToString());
+            return hash;
         }
 
-        public static void Transfer(NexusAPI api, Logger logger, NeoAPI neoAPI, string[] args)
+        private static Hash ExecuteTransaction(NexusAPI api, byte[] script, Logger logger)
+        {
+            var tx = new Blockchain.Transaction(api.Nexus.Name, DomainSettings.RootChainName, script, Timestamp.Now + TimeSpan.FromMinutes(5));
+            tx.Sign(Keys);
+            var rawTx = tx.ToByteArray(true);
+
+            try
+            {
+                api.SendRawTransaction(Base16.Encode(rawTx));
+            }
+            catch (Exception e)
+            {
+                throw new CommandException(e.Message);
+            }
+
+            Thread.Sleep(3000);
+            var hash = tx.Hash.ToString();
+            do
+            {
+                try
+                {
+                    var result = api.GetTransaction(hash);
+                }
+                catch (Exception e)
+                {
+                    throw new CommandException(e.Message);
+                }
+                /*if (result is ErrorResult)
+                {
+                    var temp = (ErrorResult)result;
+                    if (temp.error.Contains("pending"))
+                    {
+                        Thread.Sleep(1000);
+                    }
+                    else
+                    {
+                        throw new CommandException(temp.error);
+                    }
+                }
+                else*/
+                {
+                    break;
+                }
+            } while (true);
+            logger.Success($"Sent transaction with hash {hash}!");
+
+            return Hash.Parse(hash);
+        }
+
+        private static void SettleSwap(NexusAPI api, BigInteger minimumFee, string platform, Hash extHash, Logger logger)
+        {
+            var script = new ScriptBuilder()
+                .CallContract("interop", "SettleTransaction", Keys.Address, platform, extHash)
+                .CallContract("swap", "SwapTokens", Keys.Address, DomainSettings.StakingTokenSymbol, DomainSettings.FuelTokenSymbol, UnitConversion.ToBigInteger(0.1m, DomainSettings.FuelTokenDecimals))
+                .AllowGas(Keys.Address, Address.Null, minimumFee, 500)
+                .SpendGas(Keys.Address).EndScript();
+
+            logger.Message("Settling swap on Phantasma");
+            ExecuteTransaction(api, script, logger);
+        }
+
+        public static void Transfer(NexusAPI api, BigInteger minimumFee, Logger logger, NeoAPI neoAPI, string[] args)
         {
             if (args.Length != 4)
             {
@@ -225,7 +293,7 @@ namespace Phantasma.Spook.Modules
                             case NeoWallet.NeoPlatform:
                                 {
                                     var neoKeys = new NeoKey(Keys.PrivateKey);
-                                    NeoTransfer(neoKeys, toAddress, tokenSymbol, tempAmount, neoAPI, logger);
+                                    var neoHash = NeoTransfer(neoKeys, toAddress, tokenSymbol, tempAmount, neoAPI, logger);
                                 }
                                 break;
 
@@ -238,8 +306,35 @@ namespace Phantasma.Spook.Modules
                 {
                     logger.Warning($"Source is {sourcePlatform} address, a swap will be performed using an interop address.");
 
-                    //api.GetAccount(sourceAddress);
-                    throw new CommandException($"Not implemented yet :(");
+                    PlatformResult platformInfo;
+                    
+                    try
+                    {
+                        platformInfo = ((ArrayResult)api.GetPlatforms()).values.Cast<PlatformResult>().Where(x => x.platform == sourcePlatform).First();
+                    }
+                    catch (Exception e)
+                    {
+                        logger.Error($"Platform {sourcePlatform} is not deployed in the nexus yet");
+                        return;
+                    }
+
+                    string platformAddress = platformInfo.interop;
+
+                    Hash extHash;
+                    switch (sourcePlatform)
+                    {
+                        case NeoWallet.NeoPlatform:
+                            var neoKeys = new NeoKey(Keys.PrivateKey);
+                            extHash = NeoTransfer(neoKeys, platformAddress, tokenSymbol, tempAmount, neoAPI, logger);
+
+                            break;
+
+                        default:
+                            logger.Error($"Transactions using platform {sourcePlatform} are not supported yet");
+                            return;
+                    }
+
+                    SettleSwap(api, minimumFee, sourcePlatform, extHash, logger);
                 }
 
                 return;
@@ -255,54 +350,13 @@ namespace Phantasma.Spook.Modules
             }
 
             var script = ScriptUtils.BeginScript().
-                AllowGas(Keys.Address, Address.Null, 1, 9999).
+                AllowGas(Keys.Address, Address.Null, minimumFee, 300).
                 CallContract("token", "TransferTokens", Keys.Address, destAddress, tokenSymbol, amount).
                 SpendGas(Keys.Address).
                 EndScript();
-            var tx = new Phantasma.Blockchain.Transaction(api.Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5));
-            tx.Sign(Keys);
-            var rawTx = tx.ToByteArray(true);
 
             logger.Message($"Sending {tempAmount} {tokenSymbol} to {destAddress.Text}...");
-            try
-            {
-                api.SendRawTransaction(Base16.Encode(rawTx));
-            }
-            catch (Exception e)
-            {
-                throw new CommandException(e.Message);
-            }
-
-            Thread.Sleep(3000);
-            var hash = tx.Hash.ToString();
-            do
-            {
-                try
-                {
-                    var result = api.GetTransaction(hash);
-                }
-                catch (Exception e)
-                {
-                    throw new CommandException(e.Message);
-                }
-                /*if (result is ErrorResult)
-                {
-                    var temp = (ErrorResult)result;
-                    if (temp.error.Contains("pending"))
-                    {
-                        Thread.Sleep(1000);
-                    }
-                    else
-                    {
-                        throw new CommandException(temp.error);
-                    }
-                }
-                else*/
-                {
-                    break;
-                }
-            } while (true);
-            logger.Success($"Sent transaction with hash {hash}!");
+            ExecuteTransaction(api, script, logger);
         }
 
         public static void Stake(NexusAPI api, Logger logger, string[] args)
