@@ -33,6 +33,8 @@ namespace Phantasma.Spook.Swaps
 
         private bool ready = false;
 
+        private string GetHeader() => nexusAPI.Nexus.Name+"."+nexusAPI.Nexus.GenesisAddress.Text;
+
         public TokenSwapper(KeyPair swapKey, NexusAPI nexusAPI, NeoScanAPI neoscanAPI, NeoAPI neoAPI, BigInteger minFee, Logger logger, Arguments arguments)
         {
             this.Keys = swapKey;
@@ -124,21 +126,32 @@ namespace Phantasma.Spook.Swaps
             if (File.Exists(swapFile))
             {
                 var lines = File.ReadAllLines(swapFile);
-                foreach (var line in lines)
+                var expectedHeader = GetHeader();
+                if (lines[0] == expectedHeader)
                 {
-                    var entries = line.Split(',');
-                    var swap = new ChainSwap();
-                    swap.sourceHash = entries[0];
-                    swap.sourcePlatform = entries[1];
-                    swap.sourceAddress = entries[2];
-                    swap.destinationHash = entries[3];
-                    swap.destinationPlatform = entries[4];
-                    swap.destinationAddress = entries[5];
-                    swap.symbol = entries[6];
-                    swap.amount = decimal.Parse(entries[7]);
-                    swap.status = Enum.Parse<ChainSwapStatus>(entries[8], true);
+                    for (int i = 1; i < lines.Length; i++)
+                    {
+                        var line = lines[i];
+                        var entries = line.Split(',');
+                        var swap = new ChainSwap();
+                        swap.sourceHash = entries[0];
+                        swap.sourcePlatform = entries[1];
+                        swap.sourceAddress = entries[2];
+                        swap.destinationHash = entries[3];
+                        swap.destinationPlatform = entries[4];
+                        swap.destinationAddress = entries[5];
+                        swap.symbol = entries[6];
+                        swap.amount = decimal.Parse(entries[7]);
+                        swap.status = Enum.Parse<ChainSwapStatus>(entries[8], true);
 
-                    swapMap[swap.sourceHash] = swap;
+                        swapMap[swap.sourceHash] = swap;
+                    }
+
+                    logger.Message($"Loaded {swapMap.Count} chain swaps.");
+                }
+                else
+                {
+                    logger.Warning("Old swap file, ignoring.");
                 }
             }
 
@@ -232,7 +245,8 @@ namespace Phantasma.Spook.Swaps
 
                     if (changeCount > 0)
                     {
-                        var lines = new List<string>(swapMap.Count);
+                        var lines = new List<string>(swapMap.Count+1);
+                        lines.Add(GetHeader());
                         foreach (var swap in swapMap.Values)
                         {
                             lines.Add($"{swap.sourceHash},{swap.sourcePlatform},{swap.sourceAddress},{swap.destinationHash},{swap.destinationPlatform},{swap.destinationAddress},{swap.symbol},{swap.amount},{swap.status}");
