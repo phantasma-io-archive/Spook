@@ -843,19 +843,18 @@ namespace Phantasma.Spook
         {
             if (gui != null)
             {
-                while (running)
-                {
-                    gui.Update();
-                    this.plugins.ForEach(x => x.Update());
-                }
+                new Thread(() => {
+                    while (running)
+                    {
+                        Thread.Sleep(1);
+                        gui.Update();
+                    }
+                }).Start();
             }
-            else
+            while (running)
             {
-                while (running)
-                {
-                    Thread.Sleep(1000);
-                    this.plugins.ForEach(x => x.Update());
-                }
+                Thread.Sleep(1000);
+                this.plugins.ForEach(x => x.Update());
             }
         }
 

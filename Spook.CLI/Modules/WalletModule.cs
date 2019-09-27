@@ -318,7 +318,8 @@ namespace Phantasma.Spook.Modules
                         return;
                     }
 
-                    string platformAddress = platformInfo.interop;
+                    var addr = Address.FromText(platformInfo.interop);
+                    string platformAddress = NeoWallet.DecodeAddress(addr);
 
                     Hash extHash;
                     switch (sourcePlatform)
