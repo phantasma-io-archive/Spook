@@ -1,4 +1,4 @@
-﻿using Phantasma.Blockchain.Contracts.Native;
+﻿using Phantasma.Contracts.Extra;
 
 namespace Phantasma.Spook.Nachomen
 {

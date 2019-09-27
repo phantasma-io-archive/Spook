@@ -1,5 +1,6 @@
 ﻿using Phantasma.Blockchain;
 using Phantasma.Cryptography;
+using Phantasma.Domain;
 using Phantasma.Pay.Chains;
 
 namespace Phantasma.Spook.Oracles
@@ -24,7 +25,7 @@ namespace Phantasma.Spook.Oracles
             throw new OracleException("No support for prices");
         }
 
-        protected override InteropBlock PullPlatformBlock(string platformName, Hash hash)
+        protected override InteropBlock PullPlatformBlock(string platformName, string chainName, Hash hash)
         {
             switch (platformName)
             {
@@ -36,7 +37,7 @@ namespace Phantasma.Spook.Oracles
             }
         }
 
-        protected override InteropTransaction PullPlatformTransaction(string platformName, Hash hash)
+        protected override InteropTransaction PullPlatformTransaction(string platformName, string chainName, Hash hash)
         {
             switch (platformName)
             {

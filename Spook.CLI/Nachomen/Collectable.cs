@@ -1,5 +1,5 @@
 ﻿using Phantasma.Numerics;
-using Phantasma.Blockchain.Contracts.Native;
+using Phantasma.Contracts.Extra;
 using Phantasma.Cryptography;
 
 namespace Phantasma.Spook.Nachomen

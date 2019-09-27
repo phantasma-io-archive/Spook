@@ -2,15 +2,12 @@
 using System.Collections.Generic;
 using LunarLabs.Parser.JSON;
 using Phantasma.Blockchain;
-using Phantasma.Blockchain.Contracts;
-using Phantasma.Blockchain.Contracts.Native;
 using Phantasma.Cryptography;
 using Phantasma.Storage;
 using Phantasma.Numerics;
 using Phantasma.Pay.Chains;
 using Phantasma.Core;
 using Phantasma.Core.Log;
-using System.Threading;
 using Phantasma.Domain;
 
 namespace Phantasma.Spook.Oracles

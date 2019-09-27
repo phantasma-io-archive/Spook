@@ -34,6 +34,7 @@ using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
 using System.Globalization;
 using Phantasma.Spook.Oracles;
 using Phantasma.Spook.Swaps;
+using Phantasma.Domain;
 
 namespace Phantasma.Spook
 {
@@ -134,7 +135,7 @@ namespace Phantasma.Spook
                 var chain = entry.GetString("chain");
                 var symbol = entry.GetString("symbol");
 
-                if (symbol == Nexus.FuelTokenSymbol)
+                if (symbol == DomainSettings.FuelTokenSymbol)
                 {
                     total += BigInteger.Parse(entry.GetString("amount"));
                 }
@@ -160,7 +161,7 @@ namespace Phantasma.Spook
             var response = rpc.SendRequest(logger, host, "sendRawTransaction", Base16.Encode(bytes));
             if (response == null)
             {
-                logger.Error($"Error sending {amount} {Nexus.FuelTokenSymbol} from {from.Address} to {to}...");
+                logger.Error($"Error sending {amount} {DomainSettings.FuelTokenSymbol} from {from.Address} to {to}...");
                 return Hash.Null;
             }
 
@@ -370,12 +371,12 @@ namespace Phantasma.Spook
                 return;
             }
 
-            logger.Message($"Initial balance: {UnitConversion.ToDecimal(initialAmount, Nexus.FuelTokenDecimals)} SOUL");
+            logger.Message($"Initial balance: {UnitConversion.ToDecimal(initialAmount, DomainSettings.FuelTokenDecimals)} SOUL");
 
             initialAmount /= 10; // 10%
             initialAmount /= threadCount;
 
-            logger.Message($"Estimated amount per thread: {UnitConversion.ToDecimal(initialAmount, Nexus.FuelTokenDecimals)} SOUL");
+            logger.Message($"Estimated amount per thread: {UnitConversion.ToDecimal(initialAmount, DomainSettings.FuelTokenDecimals)} SOUL");
 
             for (int i = 1; i <= threadCount; i++)
             {
@@ -784,7 +785,7 @@ namespace Phantasma.Spook
                     simulator.BeginBlock();
                     for (int i = 1; i < validatorWIFs.Length; i++)
                     {
-                        simulator.GenerateTransfer(node_keys, Address.FromWIF(validatorWIFs[i]), this.nexus.RootChain, Nexus.StakingTokenSymbol, UnitConversion.ToBigInteger(50000, Nexus.StakingTokenDecimals));
+                        simulator.GenerateTransfer(node_keys, Address.FromWIF(validatorWIFs[i]), this.nexus.RootChain, DomainSettings.StakingTokenSymbol, UnitConversion.ToBigInteger(50000, DomainSettings.StakingTokenDecimals));
                     }
                     simulator.EndBlock();
 
@@ -953,7 +954,7 @@ namespace Phantasma.Spook
             dispatcher.RegisterCommand("wallet.transfer", "Generates a new transfer transaction",
                 (args) => WalletModule.Transfer(api, logger, NeoAPI, args));
 
-            dispatcher.RegisterCommand("wallet.stake", $"Stakes {Nexus.StakingTokenSymbol}",
+            dispatcher.RegisterCommand("wallet.stake", $"Stakes {DomainSettings.StakingTokenSymbol}",
                 (args) => WalletModule.Stake(api, logger, args));
 
             dispatcher.RegisterCommand("file.upload", "Uploads a file into Phantasma",

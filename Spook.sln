@@ -41,6 +41,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phantasma.Ethereum", "..\Ph
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phantasma.Domain", "..\PhantasmaChain\Phantasma.Domain\Phantasma.Domain.csproj", "{462E855A-FE3F-477C-AFCE-2E645EBFC42F}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phantasma.Contracts", "..\PhantasmaChain\Phantasma.Contracts\Phantasma.Contracts.csproj", "{B5A5637B-5521-44C1-9713-BBCBDC0A5CCC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -115,6 +117,10 @@ Global
 		{462E855A-FE3F-477C-AFCE-2E645EBFC42F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{462E855A-FE3F-477C-AFCE-2E645EBFC42F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{462E855A-FE3F-477C-AFCE-2E645EBFC42F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B5A5637B-5521-44C1-9713-BBCBDC0A5CCC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B5A5637B-5521-44C1-9713-BBCBDC0A5CCC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B5A5637B-5521-44C1-9713-BBCBDC0A5CCC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B5A5637B-5521-44C1-9713-BBCBDC0A5CCC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

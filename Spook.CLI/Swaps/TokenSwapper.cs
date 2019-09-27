@@ -13,6 +13,7 @@ using Phantasma.Blockchain.Tokens;
 using Phantasma.Neo.Core;
 using System.Linq;
 using Phantasma.Blockchain;
+using Phantasma.Domain;
 
 namespace Phantasma.Spook.Swaps
 {
@@ -109,7 +110,7 @@ namespace Phantasma.Spook.Swaps
             bool interopsAvailable = false;
             foreach (var entry in interopMap)
             {
-                if (entry.Key != Nexus.PlatformName)
+                if (entry.Key != DomainSettings.PlatformName)
                 {
                     interopsAvailable = true;
                     break;

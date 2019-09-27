@@ -14,6 +14,7 @@ using Phantasma.Numerics;
 using Phantasma.Core.Types;
 using System.Threading;
 using Phantasma.Blockchain.Contracts;
+using Phantasma.Domain;
 
 namespace Phantasma.Spook.Modules
 {

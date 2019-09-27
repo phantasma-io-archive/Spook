@@ -1,10 +1,8 @@
-﻿using Phantasma.Numerics;
-
-using System;
+﻿using System;
 using System.Collections.Generic;
+using Phantasma.Numerics;
 using Phantasma.Cryptography;
-
-using Phantasma.Blockchain.Contracts.Native;
+using Phantasma.Contracts.Extra;
 
 namespace Phantasma.Spook.Nachomen
 {

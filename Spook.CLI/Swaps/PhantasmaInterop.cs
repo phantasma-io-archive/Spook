@@ -3,7 +3,7 @@ using Phantasma.Numerics;
 using System;
 using System.Collections.Generic;
 using Phantasma.Blockchain.Contracts;
-using Phantasma.Blockchain.Contracts.Native;
+using Phantasma.Contracts.Native;
 using Phantasma.API;
 using Phantasma.Blockchain;
 using Phantasma.VM.Utils;
@@ -12,7 +12,6 @@ using System.Threading;
 using Phantasma.Blockchain.Tokens;
 using Phantasma.Domain;
 using Phantasma.Pay;
-using Phantasma.Domain;
 
 namespace Phantasma.Spook.Swaps
 {
@@ -40,14 +39,15 @@ namespace Phantasma.Spook.Swaps
             var nexus = Swapper.nexusAPI.Nexus;
             var chain = nexus.RootChain;
 
-            while (currentHeight <= chain.BlockHeight)
+            while (currentHeight <= chain.Height)
             {
                 if (currentHeight < 1)
                 {
                     currentHeight = 1;
                 }
 
-                var block = chain.FindBlockByHeight(currentHeight);
+                var blockHash = chain.GetBlockHashAtHeight(currentHeight);
+                var block = chain.GetBlockByHash(blockHash);
 
                 foreach (var hash in block.TransactionHashes)
                 {
@@ -110,7 +110,7 @@ namespace Phantasma.Spook.Swaps
                 destinationPlatform = destinationPlatform,
                 sourceHash = hash.ToString(),
                 sourceAddress = from.Text,
-                sourcePlatform = Nexus.PlatformName,
+                sourcePlatform = DomainSettings.PlatformName,
             };
 
             swaps.Add(swap);
@@ -123,7 +123,7 @@ namespace Phantasma.Spook.Swaps
 
             hash = ChainSwap.DummyHash;
 
-            var brokerAddress = nexus.RootChain.InvokeContract("interop", "GetBroker", swap.destinationPlatform, sourceHash).AsAddress();
+            var brokerAddress = nexus.RootChain.InvokeContract(nexus.RootStorage, "interop", "GetBroker", swap.destinationPlatform, sourceHash).AsAddress();
             if (brokerAddress == Swapper.Keys.Address)
             {
                 return BrokerResult.Ready;

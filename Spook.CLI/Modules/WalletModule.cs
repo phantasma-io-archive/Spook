@@ -13,6 +13,7 @@ using Phantasma.Pay;
 using Phantasma.Neo.Core;
 using Phantasma.Spook.Oracles;
 using Phantasma.Blockchain.Contracts;
+using Phantasma.Domain;
 
 namespace Phantasma.Spook.Modules
 {
@@ -299,7 +300,7 @@ namespace Phantasma.Spook.Modules
             }
 
             var tempAmount = decimal.Parse(args[1]);
-            var tokenSymbol = Nexus.StakingTokenSymbol;
+            var tokenSymbol = DomainSettings.StakingTokenSymbol;
 
             TokenResult tokenInfo;
             try
