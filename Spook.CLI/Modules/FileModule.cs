@@ -21,7 +21,9 @@ namespace Phantasma.Spook.Modules
     [Module("file")]
     public static class FileModule
     {
-        public static void Upload(KeyPair source, NexusAPI api, Logger logger, string[] args)
+        public static Logger logger => ModuleLogger.Instance;
+
+        public static void Upload(KeyPair source, NexusAPI api, string[] args)
         {
             if (args.Length != 1)
             {

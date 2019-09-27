@@ -5,12 +5,15 @@ using Phantasma.CodeGen.Core;
 using Phantasma.VM.Utils;
 using Phantasma.VM;
 using Phantasma.CodeGen.Assembler;
+using Phantasma.Core.Log;
 
 namespace Phantasma.Spook.Modules
 {
     [Module("script")]
     public static class ScriptModule
     {
+        public static Logger logger => ModuleLogger.Instance;
+
         public static void DisassembleFile(string[] args)
         {
             string sourceFilePath = null;

@@ -841,19 +841,16 @@ namespace Phantasma.Spook
 
         private void Run()
         {
-            if (gui != null)
-            {
-                new Thread(() => {
-                    while (running)
-                    {
-                        Thread.Sleep(1);
-                        gui.Update();
-                    }
-                }).Start();
-            }
             while (running)
             {
-                Thread.Sleep(1000);
+                if (gui != null)
+                {
+                    gui.Update();
+                }
+                else
+                {
+                    Thread.Sleep(1000);
+                }
                 this.plugins.ForEach(x => x.Update());
             }
         }
@@ -920,6 +917,8 @@ namespace Phantasma.Spook
 
         private void SetupCommands(CommandDispatcher dispatcher)
         {
+            ModuleLogger.Init(logger, gui);
+
             dispatcher.RegisterCommand("quit", "Stops the node and exits", (args) => Terminate());
 
             if (gui != null)
@@ -945,22 +944,25 @@ namespace Phantasma.Spook
                 (args) => ScriptModule.CompileFile(args));
 
             dispatcher.RegisterCommand("wallet.open", "Opens a wallet from a WIF key",
-            (args) => WalletModule.Open(logger, args));
+            (args) => WalletModule.Open(args));
+
+            dispatcher.RegisterCommand("wallet.link", "Links thewallet NEO address to the Phantasma address",
+            (args) => WalletModule.Link(api, this.mempool != null ? mempool.MinimumFee : 1, args));
 
             dispatcher.RegisterCommand("wallet.create", "Creates new a wallet",
-            (args) => WalletModule.Create(logger, args));
+            (args) => WalletModule.Create(args));
 
             dispatcher.RegisterCommand("wallet.balance", "Shows the current wallet balance",
-                (args) => WalletModule.Balance(api, logger, restPort, NeoScanAPI, args));
+                (args) => WalletModule.Balance(api, restPort, NeoScanAPI, args));
 
             dispatcher.RegisterCommand("wallet.transfer", "Generates a new transfer transaction",
-                (args) => WalletModule.Transfer(api, this.mempool != null ? mempool.MinimumFee : 1, logger, NeoAPI, args));
+                (args) => WalletModule.Transfer(api, this.mempool != null ? mempool.MinimumFee : 1, NeoAPI, args));
 
             dispatcher.RegisterCommand("wallet.stake", $"Stakes {DomainSettings.StakingTokenSymbol}",
-                (args) => WalletModule.Stake(api, logger, args));
+                (args) => WalletModule.Stake(api, args));
 
             dispatcher.RegisterCommand("file.upload", "Uploads a file into Phantasma",
-                (args) => FileModule.Upload(WalletModule.Keys, api, logger, args));
+                (args) => FileModule.Upload(WalletModule.Keys, api, args));
 
             dispatcher.RegisterCommand("neo.deploy", "Deploys a contract into NEO",
             (args) =>
