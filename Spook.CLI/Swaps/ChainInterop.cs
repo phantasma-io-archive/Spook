@@ -9,8 +9,11 @@ namespace Phantasma.Spook.Swaps
     public enum ChainSwapStatus
     {
         Invalid,
+        Pending,
+        Sending,
         Link,
         Settle,
+        Resettle,
         Broker,
         Receive,
         Platform,

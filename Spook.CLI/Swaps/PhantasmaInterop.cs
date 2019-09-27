@@ -68,6 +68,8 @@ namespace Phantasma.Spook.Swaps
                                     if (evt.Contract == "interop")
                                     {
                                         var target = evt.GetContent<Address>();
+                                        var pendingSwaps = Swapper.GetPendingSwaps(target, ChainSwapStatus.Link);
+                                        swaps.AddRange(pendingSwaps);
                                     }
                                     break;
                                 }
@@ -123,6 +125,7 @@ namespace Phantasma.Spook.Swaps
                 sourceHash = hash.ToString(),
                 sourceAddress = from.Text,
                 sourcePlatform = DomainSettings.PlatformName,
+                status = ChainSwapStatus.Pending
             };
 
             swaps.Add(swap);

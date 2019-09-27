@@ -106,6 +106,7 @@ namespace Phantasma.Spook.Swaps
                 destinationAddress = destinationAddress,
                 destinationPlatform = destChain,
                 symbol = token.Symbol,
+                status = ChainSwapStatus.Pending,
             };
 
             result.Add(swap);
