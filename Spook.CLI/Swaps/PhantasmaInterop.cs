@@ -12,6 +12,7 @@ using System.Threading;
 using Phantasma.Blockchain.Tokens;
 using Phantasma.Domain;
 using Phantasma.Pay;
+using System.Linq;
 
 namespace Phantasma.Spook.Swaps
 {
@@ -152,6 +153,18 @@ namespace Phantasma.Spook.Swaps
             TokenInfo token;
             if (!Swapper.FindTokenBySymbol(swap.symbol, out token))
             {
+                return BrokerResult.Error;
+            }
+
+            var platforms = ((ArrayResult)Swapper.nexusAPI.GetPlatforms()).values.Select(x => (PlatformResult)x).ToArray();
+            var platform = platforms.First(x => x.platform == swap.destinationPlatform);
+
+            var brokerBalance = nexus.RootChain.GetTokenBalance(nexus.RootStorage, platform.fuel, Swapper.Keys.Address);
+            var fuelToken = nexus.GetTokenInfo(platform.fuel);
+            var minBalance = UnitConversion.GetUnitValue(fuelToken.Decimals);
+            if (brokerBalance < minBalance)
+            {
+                Swapper.logger.Warning($"Not enough {fuelToken.Symbol} balance to do broker operations");
                 return BrokerResult.Error;
             }
 

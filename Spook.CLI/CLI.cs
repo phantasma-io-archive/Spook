@@ -112,6 +112,8 @@ namespace Phantasma.Spook
 
         public string cryptoCompareAPIKey { get; private set; } = null;
 
+        private bool showWebLogs;
+
         private static BigInteger FetchBalance(JSONRPC_Client rpc, Logger logger, string host, Address address)
         {
             var response = rpc.SendRequest(logger, host, "getAccount", address.ToString());
@@ -398,6 +400,11 @@ namespace Phantasma.Spook
 
         private void WebLogMapper(string channel, LogLevel level, string text)
         {
+            if (!showWebLogs)
+            {
+                return;
+            }
+
             if (gui != null)
             {
                 switch (level)
@@ -469,6 +476,9 @@ namespace Phantasma.Spook
             }
 
             string mode = settings.GetString("node.mode", "validator");
+
+            showWebLogs = settings.GetBool("web.log", false);
+            bool apiLog = settings.GetBool("api.log", true);
 
             bool hasMempool = settings.GetBool("mempool.enabled", true);
             bool hasEvents = settings.GetBool("events.enabled", true);
@@ -681,7 +691,7 @@ namespace Phantasma.Spook
 
             var useAPICache = settings.GetBool("api.cache", true);
             logger.Message($"API cache is {(useAPICache ? "enabled" : "disabled")}.");
-            api = new NexusAPI(nexus, mempool, node, useAPICache);
+            api = new NexusAPI(nexus, mempool, node, useAPICache, apiLog ? logger : null);
 
             // RPC setup
             if (hasRPC)
@@ -963,6 +973,12 @@ namespace Phantasma.Spook
 
             dispatcher.RegisterCommand("file.upload", "Uploads a file into Phantasma",
                 (args) => FileModule.Upload(WalletModule.Keys, api, args));
+
+            if (mempool != null)
+            {
+                dispatcher.RegisterCommand("mempool.size", "Shows size of mempool",
+                    (args) => logger.Message("Size: "+mempool.Size));
+            }
 
             dispatcher.RegisterCommand("neo.deploy", "Deploys a contract into NEO",
             (args) =>

@@ -33,7 +33,7 @@ namespace Phantasma.Spook.Swaps
 
         private bool ready = false;
 
-        private string GetHeader() => nexusAPI.Nexus.Name+"."+nexusAPI.Nexus.GenesisAddress.Text;
+        private string GetHeader() => nexusAPI.Nexus.Name+"."+nexusAPI.Nexus.GenesisHash.ToString();
 
         public TokenSwapper(KeyPair swapKey, NexusAPI nexusAPI, NeoScanAPI neoscanAPI, NeoAPI neoAPI, BigInteger minFee, Logger logger, Arguments arguments)
         {
@@ -192,7 +192,7 @@ namespace Phantasma.Spook.Swaps
 
         public void Run()
         {
-            Thread.Sleep(5000);
+            Thread.Sleep(2000);
 
             if (!ready)
             {
@@ -471,7 +471,7 @@ namespace Phantasma.Spook.Swaps
                 case ChainSwapStatus.Settle:
                     {
                         logger.Message($"Waiting for {swap.destinationPlatform} transaction confirmation: " + swap.destinationHash);
-                        Thread.Sleep(60 * 1000);
+                        Thread.Sleep(30 * 1000);
                         var phantasma = (PhantasmaInterop)sourceInterop;
                         var settleHash = phantasma.SettleTransaction(swap.destinationHash, swap.destinationPlatform);
                         if (string.IsNullOrEmpty(settleHash))
