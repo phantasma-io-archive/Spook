@@ -25,58 +25,51 @@ namespace Phantasma.Spook.Swaps
         public override string Name => NeoWallet.NeoPlatform;
         public override string PrivateKey => Keys.ToWIF();
 
-        public override void Update(Action<IEnumerable<ChainSwap>> callback)
+        public override IEnumerable<ChainSwap>  Update()
         {
             var result = new List<ChainSwap>();
 
-            try
+            int maxPages = 1;
             {
-                int maxPages = 1;
+                var json = Swapper.neoscanAPI.ExecuteRequest($"get_address_abstracts/{LocalAddress}/1");
+                if (json == null)
                 {
-                    var json = Swapper.neoscanAPI.ExecuteRequest($"get_address_abstracts/{LocalAddress}/1");
-                    if (json == null)
-                    {
-                        throw new SwapException("failed to fetch address page");
-                    }
-
-                    var root = JSONReader.ReadFromString(json);
-                    maxPages = root.GetInt32("total_pages");
+                    throw new SwapException("failed to fetch address page");
                 }
 
-                for (int page = maxPages; page>=1; page--)
+                var root = JSONReader.ReadFromString(json);
+                maxPages = root.GetInt32("total_pages");
+            }
+
+            for (int page = maxPages; page>=1; page--)
+            {
+                var json = Swapper.neoscanAPI.ExecuteRequest($"get_address_abstracts/{LocalAddress}/{page}");
+                if (json == null)
                 {
-                    var json = Swapper.neoscanAPI.ExecuteRequest($"get_address_abstracts/{LocalAddress}/{page}");
-                    if (json == null)
-                    {
-                        throw new SwapException("failed to fetch address page");
-                    }
-
-                    var root = JSONReader.ReadFromString(json);
-
-                    var entries = root.GetNode("entries");
-
-                    for (int i = entries.ChildCount-1; i>=0; i--)
-                    {
-                        var entry = entries.GetNodeByIndex(i);
-
-                        var temp = entry.GetString("block_height");
-                        var height = BigInteger.Parse(temp);
-
-                        if (height > currentHeight)
-                        {
-                            currentHeight = height;
-
-                            ProcessTransaction(entry, result);
-                        }
-                    }
+                    throw new SwapException("failed to fetch address page");
                 }
 
-                callback(result);
+                var root = JSONReader.ReadFromString(json);
+
+                var entries = root.GetNode("entries");
+
+                for (int i = entries.ChildCount-1; i>=0; i--)
+                {
+                    var entry = entries.GetNodeByIndex(i);
+
+                    var temp = entry.GetString("block_height");
+                    var height = BigInteger.Parse(temp);
+
+                    if (height > currentHeight)
+                    {
+                        currentHeight = height;
+
+                        ProcessTransaction(entry, result);
+                    }
+                }
             }
-            catch (Exception e)
-            {
-                throw e;
-            }
+
+            return result;
         }
 
         private void ProcessTransaction(DataNode entry, List<ChainSwap> result)
@@ -102,8 +95,7 @@ namespace Phantasma.Spook.Swaps
             var destChain = "phantasma";
             var interop = Swapper.FindInterop(destChain);
 
-            var temp = Swapper.FromLocalToExternal(sourceAddress, this.Name);
-            destinationAddress = temp.Text;
+            destinationAddress = Swapper.FromLocalToExternal(sourceAddress, this.Name);            
 
             var swap = new ChainSwap()
             {
@@ -143,7 +135,7 @@ namespace Phantasma.Spook.Swaps
 
             if (tx == null)
             {
-                throw new InteropException(this.Name + " transfer failed");
+                throw new InteropException(this.Name + " transfer failed", ChainSwapStatus.Receive);
             }
 
             return tx.Hash.ToString();

@@ -32,7 +32,7 @@ namespace Phantasma.Spook.Swaps
         {
         }
 
-        public override void Update(Action<IEnumerable<ChainSwap>> callback)
+        public override IEnumerable<ChainSwap> Update()
         {
             var swaps = new List<ChainSwap>();
 
@@ -55,10 +55,22 @@ namespace Phantasma.Spook.Swaps
 
                     foreach (var evt in events)
                     {
-                        if (evt.Kind == EventKind.BrokerRequest)
-                        {
-                            var target = evt.GetContent<Address>();
-                            ProcessBrokerRequest(hash, evt.Address, target, events, swaps);
+                        switch(evt.Kind){
+                            case EventKind.BrokerRequest:
+                                {
+                                    var target = evt.GetContent<Address>();
+                                    ProcessBrokerRequest(hash, evt.Address, target, events, swaps);
+                                    break;
+                                }
+
+                            case EventKind.AddressLink:
+                                {
+                                    if (evt.Contract == "interop")
+                                    {
+                                        var target = evt.GetContent<Address>();
+                                    }
+                                    break;
+                                }
                         }
                     }
                 }
@@ -66,7 +78,7 @@ namespace Phantasma.Spook.Swaps
                 currentHeight++;
             }
 
-            callback(swaps);
+            return swaps;
         }
 
         private void ProcessBrokerRequest(Hash hash, Address from, Address target, IEnumerable<Event> events, List<ChainSwap> swaps)

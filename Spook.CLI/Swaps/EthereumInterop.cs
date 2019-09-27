@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Phantasma.Blockchain.Tokens;
 using Phantasma.Cryptography;
 using Phantasma.Ethereum;
@@ -21,9 +22,10 @@ namespace Phantasma.Spook.Swaps
         public override string Name => EthereumWallet.EthereumPlatform;
         public override string PrivateKey => Base16.Encode(this.Keys.PrivateKey);
 
-        public override void Update(Action<IEnumerable<ChainSwap>> callback)
+        public override IEnumerable<ChainSwap> Update()
         {
             // TODO
+            return Enumerable.Empty<ChainSwap>();
         }
 
         public override string ReceiveFunds(ChainSwap swap)

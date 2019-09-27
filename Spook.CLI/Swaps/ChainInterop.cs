@@ -3,10 +3,20 @@ using Phantasma.Cryptography;
 using System;
 using System.Collections.Generic;
 using Phantasma.Blockchain;
-using Phantasma.Blockchain.Tokens;
 
 namespace Phantasma.Spook.Swaps
 {
+    public enum ChainSwapStatus
+    {
+        Invalid,
+        Link,
+        Settle,
+        Broker,
+        Receive,
+        Platform,
+        Finished
+    }
+
     public struct ChainSwap
     {
         public const string DummyHash = "none";
@@ -19,12 +29,21 @@ namespace Phantasma.Spook.Swaps
         public string destinationAddress;
         public string symbol;
         public decimal amount;
+        public ChainSwapStatus status;
+
+        public override string ToString()
+        {
+            return $"{sourceHash}: {sourcePlatform} => {destinationPlatform}: {amount} {symbol}";
+        }
     }
 
     public class InteropException : Exception
     {
-        public InteropException(string msg) : base(msg)
+        public readonly ChainSwapStatus SwapStatus;
+
+        public InteropException(string msg, ChainSwapStatus status) : base(msg)
         {
+            this.SwapStatus = status;
         }
     }
 
@@ -50,7 +69,7 @@ namespace Phantasma.Spook.Swaps
             this.currentHeight = currentBlock;
         }
 
-        public abstract void Update(Action<IEnumerable<ChainSwap>> callback);
+        public abstract IEnumerable<ChainSwap> Update();
 
         // adds/mints funds in destination chain
         public abstract string ReceiveFunds(ChainSwap swap);
