@@ -948,6 +948,9 @@ namespace Phantasma.Spook
             dispatcher.RegisterCommand("wallet.open", "Opens a wallet from a WIF key",
             (args) => WalletModule.Open(logger, args));
 
+            dispatcher.RegisterCommand("wallet.create", "Creates new a wallet",
+            (args) => WalletModule.Create(logger, args));
+
             dispatcher.RegisterCommand("wallet.balance", "Shows the current wallet balance",
                 (args) => WalletModule.Balance(api, logger, restPort, NeoScanAPI, args));
 

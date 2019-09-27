@@ -43,6 +43,27 @@ namespace Phantasma.Spook.Modules
 
         }
 
+        public static void Create(Logger logger, string[] args)
+        {
+            if (args.Length != 0)
+            {
+                throw new CommandException("Unexpected args");
+            }
+
+            try
+            {
+                Keys = KeyPair.Generate();
+                logger.Success($"Generate wallet with address: {Keys.Address}");
+                logger.Success($"WIF: {Keys.ToWIF()}");
+                logger.Warning($"Save this wallet WIF, it won't be displayed again and it is necessary to access the wallet!");
+            }
+            catch (Exception e)
+            {
+                logger.Error($"Failed to create a new wallet.");
+            }
+
+        }
+
         public static void Balance(NexusAPI api, Logger logger, int phantasmaRestPort, NeoScanAPI neoScanAPI, string[] args)
         {
             if (phantasmaRestPort <= 0)
