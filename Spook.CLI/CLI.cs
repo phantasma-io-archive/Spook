@@ -561,7 +561,7 @@ namespace Phantasma.Spook
             if (storageBackend == "file")
             {
                 nexus = new Nexus(logger, 
-                        (name) => new BasicDiskStore(storagePath + name + ".txt"),
+                        (name) => new BasicDiskStore(storagePath + name + ".csv"),
                         (n) => new SpookOracle(this, n)
                         );
             }
