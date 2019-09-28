@@ -103,6 +103,8 @@ namespace Phantasma.Spook
         private Nexus nexus;
         private NexusAPI api;
 
+        private bool autoRestart;
+
         private ConsoleGUI gui;
 
         private NexusSimulator simulator;
@@ -476,6 +478,8 @@ namespace Phantasma.Spook
             }
 
             string mode = settings.GetString("node.mode", "validator");
+
+            autoRestart = settings.GetBool("node.reboot", false);
 
             showWebLogs = settings.GetBool("web.log", false);
             bool apiLog = settings.GetBool("api.log", true);
@@ -853,6 +857,8 @@ namespace Phantasma.Spook
 
         private void Run()
         {
+            var startTime = DateTime.UtcNow;
+
             while (running)
             {
                 if (gui != null)
@@ -864,6 +870,15 @@ namespace Phantasma.Spook
                     Thread.Sleep(1000);
                 }
                 this.plugins.ForEach(x => x.Update());
+
+                if (autoRestart)
+                {
+                    var diff = DateTime.UtcNow - startTime;
+                    if (diff.TotalMinutes >= 5)
+                    {
+                        this.Terminate();
+                    }
+                }
             }
         }
 
