@@ -175,10 +175,10 @@ namespace Phantasma.Spook.Oracles
                         var info = nexus.GetTokenInfo(symbol);
                         var amount = UnitConversion.ToBigInteger(inputAmount, info.Decimals);
 
-                        var sendEvt = new Event(EventKind.TokenSend, NeoWallet.EncodeAddress(sourceAddress), "swap", PackEvent(new TokenEventData() { chainAddress = platformAddress, value = amount, symbol = symbol }));
+                        var sendEvt = new Event(EventKind.TokenSend, NeoWallet.EncodeAddress(sourceAddress), "swap", PackEvent(new TokenEventData(symbol, amount, platformAddress)));
                         eventList.Add(sendEvt);
 
-                        var receiveEvt = new Event(EventKind.TokenReceive, NeoWallet.EncodeAddress(destAddress), "swap", PackEvent(new TokenEventData() { chainAddress = platformAddress, value = amount, symbol = symbol }));
+                        var receiveEvt = new Event(EventKind.TokenReceive, NeoWallet.EncodeAddress(destAddress), "swap", PackEvent(new TokenEventData(symbol, amount, platformAddress)));
                         eventList.Add(receiveEvt);
 
                         return;
