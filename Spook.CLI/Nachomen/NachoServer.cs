@@ -32,10 +32,10 @@ namespace Phantasma.Spook.Nachomen
 
         private static BigInteger _nextItemID;
 
-        public static void InitNachoServer(Nexus nexus, NexusSimulator simulator, KeyPair ownerKeys, bool fillMarket, Logger logger)
+        public static void InitNachoServer(Nexus nexus, NexusSimulator simulator, PhantasmaKeys ownerKeys, bool fillMarket, Logger logger)
         {
             // TODO this should be a feature from Spook, enabled from args
-            var lenderKey = KeyPair.Generate();
+            var lenderKey = PhantasmaKeys.Generate();
             simulator.BeginBlock();
             simulator.GenerateTransfer(ownerKeys, lenderKey.Address, simulator.Nexus.RootChain, DomainSettings.FuelTokenSymbol, UnitConversion.ToBigInteger(1000, DomainSettings.FuelTokenDecimals));
             simulator.GenerateCustomTransaction(lenderKey, ProofOfWork.None, () =>
@@ -64,7 +64,7 @@ namespace Phantasma.Spook.Nachomen
             }
         }
 
-        public static void GenerateTokens(Nexus nexus, NexusSimulator simulator, KeyPair ownerKeys, Logger logger)
+        public static void GenerateTokens(Nexus nexus, NexusSimulator simulator, PhantasmaKeys ownerKeys, Logger logger)
         {
             simulator.BeginBlock();
             simulator.GenerateChain(ownerKeys, nexus.RootChain, "nacho", "nacho", "market");
@@ -271,7 +271,7 @@ namespace Phantasma.Spook.Nachomen
             //}
         }
 
-        private static void FillNachoMarket(Nexus nexus, NexusSimulator simulator, KeyPair ownerKeys, Logger logger)
+        private static void FillNachoMarket(Nexus nexus, NexusSimulator simulator, PhantasmaKeys ownerKeys, Logger logger)
         {
             logger.Message("Filling initial nacho market");
 
@@ -290,7 +290,7 @@ namespace Phantasma.Spook.Nachomen
             };
 
             //var testUser = KeyPair.FromWIF("L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25"); // => PKtRvkhUhAiHsg4YnaxSM9dyyLBogTpHwtUEYvMYDKuV8
-            var testUser = KeyPair.FromWIF("Kwgg5tbcgDmZ5UFgpwbv96CvduBA2T5kSVSmEYiqmW8QdvGHKH25"); // => PXZiNZJarPaErRjJZZuAvAHSCN8oyJUy5Gec1jv4k6eEJ
+            var testUser = PhantasmaKeys.FromWIF("Kwgg5tbcgDmZ5UFgpwbv96CvduBA2T5kSVSmEYiqmW8QdvGHKH25"); // => PXZiNZJarPaErRjJZZuAvAHSCN8oyJUy5Gec1jv4k6eEJ
 
             // Transfer Fuel Tokens to the test user address
             simulator.BeginBlock();
@@ -717,7 +717,7 @@ namespace Phantasma.Spook.Nachomen
             return _itemQueue[rarity].Dequeue();
         }
 
-        private static void MineRandomLuchadores(KeyPair ownerKey, int amount)
+        private static void MineRandomLuchadores(PhantasmaKeys ownerKey, int amount)
         {
             while (amount > 0)
             {
@@ -784,7 +784,7 @@ namespace Phantasma.Spook.Nachomen
             queue.Enqueue(wrestler);
         }
 
-        private static NachoWrestler DequeueNachoWrestler(KeyPair ownerKeys, Rarity rarity)
+        private static NachoWrestler DequeueNachoWrestler(PhantasmaKeys ownerKeys, Rarity rarity)
         {
             while (!_wrestlerQueue.ContainsKey(rarity) || _wrestlerQueue[rarity].Count == 0)
             {
@@ -806,7 +806,7 @@ namespace Phantasma.Spook.Nachomen
         }
 
         // TODO error handling when item not exist
-        private static NachoItem GetItem(Nexus nexus, KeyPair ownerKeys, BigInteger ID)
+        private static NachoItem GetItem(Nexus nexus, PhantasmaKeys ownerKeys, BigInteger ID)
         {
             var nft = nexus.GetNFT(Constants.ITEM_SYMBOL, ID);
 
@@ -828,7 +828,7 @@ namespace Phantasma.Spook.Nachomen
         }
 
 
-        private static NachoWrestler GetWrestler(Nexus nexus, KeyPair ownerKeys, BigInteger wrestlerID)
+        private static NachoWrestler GetWrestler(Nexus nexus, PhantasmaKeys ownerKeys, BigInteger wrestlerID)
         {
             Throw.If(wrestlerID <= 0, "null or negative id");
 
@@ -941,7 +941,7 @@ namespace Phantasma.Spook.Nachomen
             return checksum == wrestler.maskOverrideCheck;
         }
 
-        private static NachoWrestler GetBot(KeyPair ownerKeys, int botID)
+        private static NachoWrestler GetBot(PhantasmaKeys ownerKeys, int botID)
         {
             byte[] genes;
             int level;

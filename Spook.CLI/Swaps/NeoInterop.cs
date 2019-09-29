@@ -16,11 +16,11 @@ namespace Phantasma.Spook.Swaps
     {
         private NeoAPI neoAPI;
         private NeoScanAPI neoscanAPI;
-        private NeoKey neoKeys;
+        private NeoKeys neoKeys;
 
-        public NeoInterop(TokenSwapper swapper, KeyPair keys, BigInteger blockHeight, NeoAPI neoAPI, NeoScanAPI neoscanAPI) : base(swapper, keys, blockHeight)
+        public NeoInterop(TokenSwapper swapper, PhantasmaKeys keys, BigInteger blockHeight, NeoAPI neoAPI, NeoScanAPI neoscanAPI) : base(swapper, keys, blockHeight)
         {
-            this.neoKeys = new NeoKey(this.Keys.PrivateKey);
+            this.neoKeys = new NeoKeys(this.Keys.PrivateKey);
             this.neoscanAPI = neoscanAPI;
             this.neoAPI = neoAPI;
         }

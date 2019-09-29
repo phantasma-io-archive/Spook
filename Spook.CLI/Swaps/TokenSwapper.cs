@@ -13,7 +13,7 @@ namespace Phantasma.Spook.Swaps
 {
     public class TokenSwapper: TokenSwapService
     {
-        public TokenSwapper(KeyPair swapKey, NexusAPI nexusAPI, NeoScanAPI neoscanAPI, NeoAPI neoAPI, BigInteger minFee, Logger logger, Arguments arguments) : base(swapKey, nexusAPI.Nexus, minFee, logger)
+        public TokenSwapper(PhantasmaKeys swapKey, NexusAPI nexusAPI, NeoScanAPI neoscanAPI, NeoAPI neoAPI, BigInteger minFee, Logger logger, Arguments arguments) : base(swapKey, nexusAPI.Nexus, minFee, logger)
         {
             var interopBlocks = new Dictionary<string, BigInteger>();
 

@@ -22,7 +22,7 @@ namespace Phantasma.Spook.Modules
     [Module("wallet")]
     public static class WalletModule
     {
-        public static KeyPair Keys;
+        public static PhantasmaKeys Keys;
 
         private static Logger logger => ModuleLogger.Instance;
         private static ConsoleGUI gui;
@@ -38,7 +38,7 @@ namespace Phantasma.Spook.Modules
 
             try
             {
-                Keys = KeyPair.FromWIF(wif);
+                Keys = PhantasmaKeys.FromWIF(wif);
                 logger.Success($"Opened wallet with address: {Keys.Address}");
             }
             catch (Exception e)
@@ -57,7 +57,7 @@ namespace Phantasma.Spook.Modules
 
             try
             {
-                Keys = KeyPair.Generate();
+                Keys = PhantasmaKeys.Generate();
                 logger.Success($"Generate wallet with address: {Keys.Address}");
                 logger.Success($"WIF: {Keys.ToWIF()}");
                 logger.Warning($"Save this wallet WIF, it won't be displayed again and it is necessary to access the wallet!");
@@ -119,7 +119,7 @@ namespace Phantasma.Spook.Modules
             }
         }
 
-        private static Hash NeoTransfer(NeoKey neoKeys, string toAddress, string tokenSymbol, decimal tempAmount, NeoAPI neoAPI)
+        private static Hash NeoTransfer(NeoKeys neoKeys, string toAddress, string tokenSymbol, decimal tempAmount, NeoAPI neoAPI)
         {
             Neo.Core.Transaction neoTx;
 
@@ -314,7 +314,7 @@ namespace Phantasma.Spook.Modules
                         {
                             case NeoWallet.NeoPlatform:
                                 {
-                                    var neoKeys = new NeoKey(Keys.PrivateKey);
+                                    var neoKeys = new NeoKeys(Keys.PrivateKey);
                                     var neoHash = NeoTransfer(neoKeys, toAddress, tokenSymbol, tempAmount, neoAPI);
                                 }
                                 break;
@@ -359,7 +359,7 @@ namespace Phantasma.Spook.Modules
                             {
                                 try
                                 {
-                                    var neoKeys = new NeoKey(Keys.PrivateKey);
+                                    var neoKeys = new NeoKeys(Keys.PrivateKey);
                                     extHash = NeoTransfer(neoKeys, platformAddress, tokenSymbol, tempAmount, neoAPI);
                                 }
                                 catch (Exception e)
@@ -490,7 +490,7 @@ namespace Phantasma.Spook.Modules
 
         public static void Link(NexusAPI api, BigInteger minimumFee, string[] args)
         {
-            var neoKeys = new NeoKey(Keys.PrivateKey);
+            var neoKeys = new NeoKeys(Keys.PrivateKey);
             logger.Message($"Linking {neoKeys.address} to {Keys.Address}");
 
             var interopAddress = NeoWallet.EncodeAddress(neoKeys.address);

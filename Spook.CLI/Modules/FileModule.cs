@@ -23,7 +23,7 @@ namespace Phantasma.Spook.Modules
     {
         public static Logger logger => ModuleLogger.Instance;
 
-        public static void Upload(KeyPair source, NexusAPI api, string[] args)
+        public static void Upload(PhantasmaKeys source, NexusAPI api, string[] args)
         {
             if (args.Length != 1)
             {

@@ -23,7 +23,7 @@ namespace Phantasma.Spook.Swaps
 
         private NexusAPI api;
 
-        public PhantasmaInterop(TokenSwapper swapper, KeyPair keys, BigInteger blockHeight, NexusAPI api) : base(swapper, keys, blockHeight)
+        public PhantasmaInterop(TokenSwapper swapper, PhantasmaKeys keys, BigInteger blockHeight, NexusAPI api) : base(swapper, keys, blockHeight)
         {
             this.api = api;
         }

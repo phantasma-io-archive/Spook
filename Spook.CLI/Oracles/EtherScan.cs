@@ -21,7 +21,7 @@ namespace Phantasma.Spook.Oracles
 
         private readonly Nexus nexus;
 
-        public EtherScanAPI(string url, Nexus nexus, KeyPair keys, string apiToken)
+        public EtherScanAPI(string url, Nexus nexus, PhantasmaKeys keys, string apiToken)
         {
             if (url.StartsWith("https://"))
             {

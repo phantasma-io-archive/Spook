@@ -22,7 +22,7 @@ namespace Phantasma.Spook.Oracles
 
         private readonly Nexus nexus;
 
-        public NeoScanAPI(string url, Logger logger, Nexus nexus, KeyPair keys)
+        public NeoScanAPI(string url, Logger logger, Nexus nexus, PhantasmaKeys keys)
         {
             if (!url.Contains("://"))
             {

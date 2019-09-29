@@ -150,7 +150,7 @@ namespace Phantasma.Spook
             return total;
         }
 
-        private static Hash SendTransfer(JSONRPC_Client rpc, Logger logger, string host, KeyPair from, Address to, BigInteger amount)
+        private static Hash SendTransfer(JSONRPC_Client rpc, Logger logger, string host, PhantasmaKeys from, Address to, BigInteger amount)
         {
             Throw.IfNull(rpc, nameof(rpc));
             Throw.IfNull(logger, nameof(logger));
@@ -216,7 +216,7 @@ namespace Phantasma.Spook
             } while (true);
         }
 
-        private void SenderSpawn(int ID, KeyPair masterKeys, string host, BigInteger initialAmount, int addressesListSize)
+        private void SenderSpawn(int ID, PhantasmaKeys masterKeys, string host, BigInteger initialAmount, int addressesListSize)
         {
             Throw.IfNull(logger, nameof(logger));
 
@@ -229,7 +229,7 @@ namespace Phantasma.Spook
             var tcp = new TcpClient("localhost", 7073);
             var peer = new TCPPeer(tcp.Client);
 
-            var peerKey = KeyPair.Generate();
+            var peerKey = PhantasmaKeys.Generate();
             logger.Message($"#{ID}: Connecting to peer: {host} with address {peerKey.Address.Text}");
             var request = new RequestMessage(RequestKind.None, "simnet", peerKey.Address);
             request.Sign(peerKey);
@@ -258,7 +258,7 @@ namespace Phantasma.Spook
             bool returnPhase = false;
             var txs = new List<Transaction>();
 
-            var addressList = new List<KeyPair>();
+            var addressList = new List<PhantasmaKeys>();
             int waveCount = 0;
             while (true)
             {
@@ -294,7 +294,7 @@ namespace Phantasma.Spook
 
                         for (int j = 0; j < addressesListSize; j++)
                         {
-                            var target = KeyPair.Generate();
+                            var target = PhantasmaKeys.Generate();
                             addressList.Add(target);
 
                             var script = ScriptUtils.BeginScript().AllowGas(peerKey.Address, Address.Null, 1, 9999).TransferTokens("SOUL", peerKey.Address, target.Address, 1 + fee).SpendGas(peerKey.Address).EndScript();
@@ -366,7 +366,7 @@ namespace Phantasma.Spook
                 logger.Message("Stopping sender...");
             };
 
-            var masterKeys = KeyPair.FromWIF(wif);
+            var masterKeys = PhantasmaKeys.FromWIF(wif);
 
             var rpc = new JSONRPC_Client();
             logger.Message($"Fetch initial balance from {masterKeys.Address}...");
@@ -561,8 +561,8 @@ namespace Phantasma.Spook
 
             logger.Message("Storage path: " + storagePath);
 
-            var node_keys = KeyPair.FromWIF(wif);
-            WalletModule.Keys = KeyPair.FromWIF(wif);
+            var node_keys = PhantasmaKeys.FromWIF(wif);
+            WalletModule.Keys = PhantasmaKeys.FromWIF(wif);
 
             if (storageBackend == "file")
             {
@@ -1017,7 +1017,7 @@ namespace Phantasma.Spook
                     throw new CommandException("path for avm not found");
                 }
 
-                var keys = Neo.Core.NeoKey.FromWIF(args[0]);
+                var keys = Neo.Core.NeoKeys.FromWIF(args[0]);
                 var script = File.ReadAllBytes(avmPath);
                 var scriptHash = Neo.Utils.CryptoUtils.ToScriptHash(script);
                 logger.Message("Deploying contract " + scriptHash);

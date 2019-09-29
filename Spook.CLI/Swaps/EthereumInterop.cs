@@ -13,7 +13,7 @@ namespace Phantasma.Spook.Swaps
     {
         private EthereumKey ethKeys;
 
-        public EthereumInterop(TokenSwapper swapper, KeyPair keys, BigInteger currentBlock) : base(swapper, keys, currentBlock)
+        public EthereumInterop(TokenSwapper swapper, PhantasmaKeys keys, BigInteger currentBlock) : base(swapper, keys, currentBlock)
         {
             this.ethKeys = new EthereumKey(this.Keys.PrivateKey);
         }
