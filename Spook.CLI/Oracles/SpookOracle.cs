@@ -14,11 +14,17 @@ namespace Phantasma.Spook.Oracles
             this.CLI = cli;
         }
 
-        protected override decimal PullPrice(string baseSymbol, string quoteSymbol)
+        protected override decimal PullPrice(string symbol)
         {
             if (CLI.cryptoCompareAPIKey != null)
             {
-                var price = CryptoCompareUtils.GetCoinRate(baseSymbol, quoteSymbol, CLI.cryptoCompareAPIKey);
+                if (symbol == DomainSettings.FuelTokenSymbol)
+                {
+                    var result = PullPrice(DomainSettings.StakingTokenSymbol);
+                    return result / 5;
+                }
+             
+                var price = CryptoCompareUtils.GetCoinRate(symbol, DomainSettings.FiatTokenSymbol, CLI.cryptoCompareAPIKey);
                 return price;
             }
 

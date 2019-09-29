@@ -881,7 +881,7 @@ namespace Phantasma.Spook
                 if (autoRestart)
                 {
                     var diff = DateTime.UtcNow - startTime;
-                    if (diff.TotalMinutes >= 5)
+                    if (diff.TotalMinutes >= 10)
                     {
                         this.Terminate();
                     }
