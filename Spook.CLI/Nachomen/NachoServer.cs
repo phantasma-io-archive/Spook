@@ -34,19 +34,6 @@ namespace Phantasma.Spook.Nachomen
 
         public static void InitNachoServer(Nexus nexus, NexusSimulator simulator, PhantasmaKeys ownerKeys, bool fillMarket, Logger logger)
         {
-            // TODO this should be a feature from Spook, enabled from args
-            var lenderKey = PhantasmaKeys.Generate();
-            simulator.BeginBlock();
-            simulator.GenerateTransfer(ownerKeys, lenderKey.Address, simulator.Nexus.RootChain, DomainSettings.FuelTokenSymbol, UnitConversion.ToBigInteger(1000, DomainSettings.FuelTokenDecimals));
-            simulator.GenerateCustomTransaction(lenderKey, ProofOfWork.None, () =>
-            {
-                return new ScriptBuilder()
-                .AllowGas(lenderKey.Address, Address.Null, simulator.MinimumFee, 9999)
-                .CallContract("gas", "StartLend", lenderKey.Address, lenderKey.Address)
-                .SpendGas(lenderKey.Address).EndScript();
-            });
-            simulator.EndBlock();
-
             /*
             var keys = KeyPair.FromWIF("L2sbKk7TJTkbwbwJ2EX7qM23ycShESGhQhLNyAaKxVHEqqBhFMk3");
             simulator.BeginBlock();
