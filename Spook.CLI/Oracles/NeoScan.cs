@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using LunarLabs.Parser.JSON;
 using Phantasma.Blockchain;
 using Phantasma.Cryptography;
-using Phantasma.Storage;
 using Phantasma.Numerics;
 using Phantasma.Pay.Chains;
 using Phantasma.Core;
 using Phantasma.Core.Log;
 using Phantasma.Domain;
+using Phantasma.Neo.Core;
 
 namespace Phantasma.Spook.Oracles
 {
@@ -21,8 +21,9 @@ namespace Phantasma.Spook.Oracles
         private static readonly string platformName = NeoWallet.NeoPlatform;
 
         private readonly Nexus nexus;
+        private NeoAPI neoAPI;
 
-        public NeoScanAPI(string url, Logger logger, Nexus nexus, PhantasmaKeys keys)
+        public NeoScanAPI(string url, Logger logger, Nexus nexus, NeoAPI neoAPI, PhantasmaKeys keys)
         {
             if (!url.Contains("://"))
             {
@@ -32,15 +33,10 @@ namespace Phantasma.Spook.Oracles
             this.URL = url;
             this.logger = logger;
             this.nexus = nexus;
+            this.neoAPI = neoAPI;
 
             var key = InteropUtils.GenerateInteropKeys(keys, platformName);
             this.platformAddress = key.Address;
-        }
-
-        private static byte[] PackEvent(object content)
-        {
-            var bytes = content == null ? new byte[0] : Serialization.Serialize(content);
-            return bytes;
         }
 
         public string ExecuteRequest(string request)
@@ -76,10 +72,6 @@ namespace Phantasma.Spook.Oracles
 
             try
             {
-                var tx = new InteropTransaction();
-                tx.Platform = platformName;
-                tx.Hash = Hash.Parse(hashText);
-
                 var root = JSONReader.ReadFromString(json);
 
                 var vins = root.GetNode("vin");
@@ -102,16 +94,7 @@ namespace Phantasma.Spook.Oracles
                     }
                 }
 
-                var eventList = new List<Event>();
-                FillEventList(hashText, inputSource, eventList);
-
-                if (eventList.Count <= 0)
-                {
-                    throw new OracleException("transaction with invalid inputs, something failed");
-                }
-
-                tx.Events = eventList.ToArray();
-                return tx;
+                return FillTransaction(hashText, inputSource);
             }
             catch (Exception e)
             {
@@ -119,7 +102,7 @@ namespace Phantasma.Spook.Oracles
             }
         }
 
-        private void FillEventList(string hashText, string inputAddress, List<Event> eventList)
+        private InteropTransaction FillTransaction(string hashText, string inputAddress)
         {
             int page = 1;
             int maxPages = 9999;
@@ -154,21 +137,26 @@ namespace Phantasma.Spook.Oracles
                         var sourceAddress = entry.GetString("address_from");
                         var destAddress = entry.GetString("address_to");
 
+                        var neoTx = neoAPI.GetTransaction(hashText);
+
+                        var witness = neoTx.witnesses[0];
+                        var interopAddress = witness.ExtractAddress();
+
                         var info = nexus.GetTokenInfo(symbol);
                         var amount = UnitConversion.ToBigInteger(inputAmount, info.Decimals);
 
-                        var sendEvt = new Event(EventKind.TokenSend, NeoWallet.EncodeAddress(sourceAddress), "swap", PackEvent(new TokenEventData(symbol, amount, platformAddress)));
-                        eventList.Add(sendEvt);
-
-                        var receiveEvt = new Event(EventKind.TokenReceive, NeoWallet.EncodeAddress(destAddress), "swap", PackEvent(new TokenEventData(symbol, amount, platformAddress)));
-                        eventList.Add(receiveEvt);
-
-                        return;
+                        var txHash = Hash.Parse(hashText);
+                        var tx = new InteropTransaction(txHash, new InteropTransfer[]{
+                            new InteropTransfer(NeoWallet.EncodeAddress(sourceAddress), NeoWallet.EncodeAddress(destAddress), interopAddress, symbol, amount)
+                        });
+                        return tx;
                     }
                 }
 
                 page++;
             }
+
+            throw new Exception("could not fill oracle transaction: " + hashText);
         }
 
         private string FindSymbolFromAsset(string assetID)
@@ -199,10 +187,6 @@ namespace Phantasma.Spook.Oracles
 
             try
             {
-                var block = new InteropBlock();
-                block.Platform = platformName;
-                block.Hash = Hash.Parse(blockText);
-
                 var root = JSONReader.ReadFromString(json);
 
                 var transactions = root.GetNode("transactions");
@@ -214,7 +198,7 @@ namespace Phantasma.Spook.Oracles
                     hashes.Add(txHash);
                 }
 
-                block.Transactions = hashes.ToArray();
+                var block = new InteropBlock(platformName, "main", Hash.Parse(blockText), hashes.ToArray());
                 return block;
             }
             catch (Exception e)

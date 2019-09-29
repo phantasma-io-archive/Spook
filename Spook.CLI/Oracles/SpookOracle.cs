@@ -36,7 +36,7 @@ namespace Phantasma.Spook.Oracles
             switch (platformName)
             {
                 case NeoWallet.NeoPlatform:
-                    return CLI.NeoScanAPI.ReadBlock(hash);
+                    return CLI.neoScanAPI.ReadBlock(hash);
 
                 default:
                     throw new OracleException("Uknown oracle platform: " + platformName);
@@ -48,7 +48,7 @@ namespace Phantasma.Spook.Oracles
             switch (platformName)
             {
                 case NeoWallet.NeoPlatform:
-                    return CLI.NeoScanAPI.ReadTransaction(hash);
+                    return CLI.neoScanAPI.ReadTransaction(hash);
 
                 default:
                     throw new OracleException("Uknown oracle platform: " + platformName);

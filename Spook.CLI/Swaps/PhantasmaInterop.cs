@@ -12,6 +12,7 @@ using Phantasma.Blockchain.Tokens;
 using Phantasma.Domain;
 using Phantasma.Pay;
 using Phantasma.Blockchain.Swaps;
+using Phantasma.Contracts.Native;
 
 namespace Phantasma.Spook.Swaps
 {
@@ -229,7 +230,10 @@ namespace Phantasma.Spook.Swaps
 
         public override Hash ReceiveFunds(ChainSwap swap)
         {
-            return SettleTransaction(swap.sourceHash, swap.sourcePlatform);
+            var nexus = this.api.Nexus;
+            var settleHash = (Hash)nexus.RootChain.InvokeContract(nexus.RootStorage, "interop", nameof(InteropContract.GetSettlement), swap.sourcePlatform, swap.sourceHash).ToObject();
+
+            return settleHash; // SettleTransaction(swap.sourceHash, swap.sourcePlatform);
         }
     }
 }

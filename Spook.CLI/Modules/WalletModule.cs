@@ -305,7 +305,7 @@ namespace Phantasma.Spook.Modules
                                 {
                                     var neoKeys = new NeoKeys(Keys.PrivateKey);
 
-                                    if (sourceName != neoKeys.address)
+                                    if (sourceName != neoKeys.Address)
                                     {
                                         throw new CommandException("The current open wallet does not have keys that match address " + sourceName);
                                     }
@@ -336,7 +336,7 @@ namespace Phantasma.Spook.Modules
                                 {
                                     var neoKeys = new NeoKeys(Keys.PrivateKey);
 
-                                    if (sourceName != neoKeys.address)
+                                    if (sourceName != neoKeys.Address)
                                     {
                                         throw new CommandException("The current open wallet does not have keys that match address " + sourceName);
                                     }

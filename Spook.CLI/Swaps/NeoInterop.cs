@@ -26,7 +26,7 @@ namespace Phantasma.Spook.Swaps
             this.neoAPI = neoAPI;
         }
 
-        public override string LocalAddress => neoKeys.address.ToString();
+        public override string LocalAddress => neoKeys.Address.ToString();
         public override string Name => NeoWallet.NeoPlatform;
         public override string PrivateKey => Keys.ToWIF();
 

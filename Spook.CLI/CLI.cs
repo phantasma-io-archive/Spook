@@ -96,8 +96,8 @@ namespace Phantasma.Spook
         private bool running = false;
         private bool nodeReady = false;
         
-        public NeoScanAPI NeoScanAPI { get; private set; }
-        public Neo.Core.NeoAPI NeoAPI { get; private set; }
+        public NeoScanAPI neoScanAPI { get; private set; }
+        public Neo.Core.NeoAPI neoAPI { get; private set; }
 
         public int rpcPort { get; private set; }
         public int restPort { get; private set; }
@@ -716,11 +716,13 @@ namespace Phantasma.Spook
             }
 
             var neoScanURL = settings.GetString("neoscan.url", "https://api.neoscan.io");
-            this.NeoScanAPI = new NeoScanAPI(neoScanURL, logger, nexus, node_keys);
+
             var rpcList = settings.GetString("neo.rpc", "http://seed6.ngd.network:10332,http://seed.neoeconomy.io:10332");
             var neoRpcURLs = rpcList.Split(',');
-            this.NeoAPI = new Neo.Core.RemoteRPCNode(neoScanURL, neoRpcURLs);
-            this.NeoAPI.SetLogger((s) => logger.Message(s));
+            this.neoAPI = new Neo.Core.RemoteRPCNode(neoScanURL, neoRpcURLs);
+            this.neoAPI.SetLogger((s) => logger.Message(s));
+
+            this.neoScanAPI = new NeoScanAPI(neoScanURL, logger, nexus, neoAPI, node_keys);
 
             cryptoCompareAPIKey = settings.GetString("cryptocompare.apikey", "");
             if (!string.IsNullOrEmpty(cryptoCompareAPIKey))
@@ -762,7 +764,7 @@ namespace Phantasma.Spook
 
             if (wif == validatorWIFs[0] && settings.GetBool("swaps.enabled"))
             {
-                tokenSwapper = new TokenSwapper(node_keys, api, NeoScanAPI, NeoAPI, minimumFee, logger, settings);
+                tokenSwapper = new TokenSwapper(node_keys, api, neoScanAPI, neoAPI, minimumFee, logger, settings);
                 api.SwapService = tokenSwapper;
 
                 logger.Message("Starting token swapping service...");
@@ -970,10 +972,10 @@ namespace Phantasma.Spook
             (args) => WalletModule.Create(args));
 
             dispatcher.RegisterCommand("wallet.balance", "Shows the current wallet balance",
-                (args) => WalletModule.Balance(api, restPort, NeoScanAPI, args));
+                (args) => WalletModule.Balance(api, restPort, neoScanAPI, args));
 
             dispatcher.RegisterCommand("wallet.transfer", "Generates a new transfer transaction",
-                (args) => WalletModule.Transfer(api, this.mempool != null ? mempool.MinimumFee : 1, NeoAPI, args));
+                (args) => WalletModule.Transfer(api, this.mempool != null ? mempool.MinimumFee : 1, neoAPI, args));
 
             dispatcher.RegisterCommand("wallet.stake", $"Stakes {DomainSettings.StakingTokenSymbol}",
                 (args) => WalletModule.Stake(api, args));
@@ -1007,7 +1009,7 @@ namespace Phantasma.Spook
 
                 try
                 {
-                    var tx = NeoAPI.DeployContract(keys, script, Base16.Decode("0710"), 0x05, Neo.Core.ContractProperties.HasStorage | Neo.Core.ContractProperties.Payable, "Contract", "1.0", "Author", "email@gmail.com", "Description");
+                    var tx = neoAPI.DeployContract(keys, script, Base16.Decode("0710"), 0x05, Neo.Core.ContractProperties.HasStorage | Neo.Core.ContractProperties.Payable, "Contract", "1.0", "Author", "email@gmail.com", "Description");
                     logger.Success("Deployed contract via transaction: " + tx.Hash);
                 }
                 catch (Exception e)

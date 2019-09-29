@@ -207,44 +207,46 @@ namespace Phantasma.Spook.Oracles
 
         public byte[] ReadBlock(string blockText)
         {
-            if (blockText.StartsWith("0x"))
-            {
-                blockText = blockText.Substring(2);
-            }
+            /*            if (blockText.StartsWith("0x"))
+                        {
+                            blockText = blockText.Substring(2);
+                        }
 
-            var url = GetRequestURL($"get_block/{blockText}");
+                        var url = GetRequestURL($"get_block/{blockText}");
 
-            string json;
+                        string json;
 
-            try
-            {
-                using (var wc = new System.Net.WebClient())
-                {
-                    json = wc.DownloadString(url);
-                }
+                        try
+                        {
+                            using (var wc = new System.Net.WebClient())
+                            {
+                                json = wc.DownloadString(url);
+                            }
 
-                var block = new InteropBlock();
-                block.Platform = platformName;
-                block.Hash = Hash.Parse(blockText);
+                            var block = new InteropBlock();
+                            block.Platform = platformName;
+                            block.Hash = Hash.Parse(blockText);
 
-                var root = JSONReader.ReadFromString(json);
+                            var root = JSONReader.ReadFromString(json);
 
-                var transactions = root.GetNode("transactions");
-                var hashes = new List<Hash>();
+                            var transactions = root.GetNode("transactions");
+                            var hashes = new List<Hash>();
 
-                foreach (var entry in transactions.Children)
-                {
-                    var hash = Hash.Parse(entry.Value);
-                    hashes.Add(hash);
-                }
+                            foreach (var entry in transactions.Children)
+                            {
+                                var hash = Hash.Parse(entry.Value);
+                                hashes.Add(hash);
+                            }
 
-                block.Transactions = hashes.ToArray();
-                return Serialization.Serialize(block);
-            }
-            catch (Exception e)
-            {
-                throw new OracleException(e.Message);
-            }
+                            block.Transactions = hashes.ToArray();
+                            return Serialization.Serialize(block);
+                        }
+                        catch (Exception e)
+                        {
+                            throw new OracleException(e.Message);
+                        }*/
+
+            throw new NotImplementedException();
         }
     }
 }
