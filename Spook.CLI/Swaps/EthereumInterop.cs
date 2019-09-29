@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Phantasma.Blockchain.Tokens;
+using Phantasma.Blockchain.Swaps;
 using Phantasma.Cryptography;
 using Phantasma.Ethereum;
 using Phantasma.Numerics;
@@ -28,7 +28,17 @@ namespace Phantasma.Spook.Swaps
             return Enumerable.Empty<ChainSwap>();
         }
 
-        public override string ReceiveFunds(ChainSwap swap)
+        public override Hash ReceiveFunds(ChainSwap swap)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override BrokerResult PrepareBroker(ChainSwap swap, out Hash brokerHash)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override Hash SettleTransaction(Hash destinationHash, string destinationPlatform)
         {
             throw new NotImplementedException();
         }

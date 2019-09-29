@@ -1,43 +1,38 @@
-﻿using Phantasma.Cryptography;
-using Phantasma.Numerics;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Threading;
+using Phantasma.Cryptography;
+using Phantasma.Numerics;
 using Phantasma.Blockchain.Contracts;
-using Phantasma.Contracts.Native;
 using Phantasma.API;
 using Phantasma.Blockchain;
 using Phantasma.VM.Utils;
 using Phantasma.Core.Types;
-using System.Threading;
 using Phantasma.Blockchain.Tokens;
 using Phantasma.Domain;
 using Phantasma.Pay;
-using System.Linq;
+using Phantasma.Blockchain.Swaps;
 
 namespace Phantasma.Spook.Swaps
 {
-    public enum BrokerResult
-    {
-        Ready,
-        Skip,
-        Error
-    }
-
     public class PhantasmaInterop : ChainInterop
     {
         public override string LocalAddress => Keys.Address.Text;
-        public override string Name => "Phantasma";
+        public override string Name => DomainSettings.PlatformName;
         public override string PrivateKey => Keys.ToWIF();
 
-        public PhantasmaInterop(TokenSwapper swapper, KeyPair keys, BigInteger blockHeight) : base(swapper, keys, blockHeight)
+        private NexusAPI api;
+
+        public PhantasmaInterop(TokenSwapper swapper, KeyPair keys, BigInteger blockHeight, NexusAPI api) : base(swapper, keys, blockHeight)
         {
+            this.api = api;
         }
 
         public override IEnumerable<ChainSwap> Update()
         {
             var swaps = new List<ChainSwap>();
 
-            var nexus = Swapper.nexusAPI.Nexus;
+            var nexus = Swapper.Nexus;
             var chain = nexus.RootChain;
 
             while (currentHeight <= chain.Height)
@@ -120,11 +115,11 @@ namespace Phantasma.Spook.Swaps
             var swap = new ChainSwap()
             {
                 symbol = symbol,
-                amount = UnitConversion.ToDecimal(amount, tokenInfo.Decimals),
-                destinationAddress = destinationAddress,
+                amount = amount,
+                destinationAddress = target,
                 destinationPlatform = destinationPlatform,
-                sourceHash = hash.ToString(),
-                sourceAddress = from.Text,
+                sourceHash = hash,
+                sourceAddress = from,
                 sourcePlatform = DomainSettings.PlatformName,
                 status = ChainSwapStatus.Pending
             };
@@ -132,14 +127,13 @@ namespace Phantasma.Spook.Swaps
             swaps.Add(swap);
         }
 
-        public BrokerResult PrepareBroker(ChainSwap swap, out string hash)
+        public override BrokerResult PrepareBroker(ChainSwap swap, out Hash hash)
         {
-            var sourceHash = Hash.Parse(swap.sourceHash);
-            var nexus = Swapper.nexusAPI.Nexus;
+            var nexus = Swapper.Nexus;
 
-            hash = ChainSwap.DummyHash;
+            hash = Hash.Null;
 
-            var brokerAddress = nexus.RootChain.InvokeContract(nexus.RootStorage, "interop", "GetBroker", swap.destinationPlatform, sourceHash).AsAddress();
+            var brokerAddress = nexus.RootChain.InvokeContract(nexus.RootStorage, "interop", "GetBroker", swap.destinationPlatform, swap.sourceHash).AsAddress();
             if (brokerAddress == Swapper.Keys.Address)
             {
                 return BrokerResult.Ready;
@@ -156,40 +150,40 @@ namespace Phantasma.Spook.Swaps
                 return BrokerResult.Error;
             }
 
-            var platforms = ((ArrayResult)Swapper.nexusAPI.GetPlatforms()).values.Select(x => (PlatformResult)x).ToArray();
-            var platform = platforms.First(x => x.platform == swap.destinationPlatform);
+            var platform = nexus.GetPlatformInfo(swap.destinationPlatform);
 
             var brokerBalance = nexus.RootChain.GetTokenBalance(nexus.RootStorage, DomainSettings.FuelTokenSymbol, Swapper.Keys.Address);
 
             var minBalance = UnitConversion.GetUnitValue(DomainSettings.FuelTokenDecimals);
             if (brokerBalance < minBalance)
             {
-                Swapper.logger.Warning($"Not enough {DomainSettings.FuelTokenSymbol} balance to do broker operations");
+                Swapper.Logger.Warning($"Not enough {DomainSettings.FuelTokenSymbol} balance to do broker operations");
                 return BrokerResult.Error;
             }
 
-            var script = new ScriptBuilder().AllowGas(Swapper.Keys.Address, Address.Null, Swapper.MinFee, 9999).CallContract("interop", "SetBroker", Swapper.Keys.Address, sourceHash).SpendGas(Swapper.Keys.Address).EndScript();
+            var script = new ScriptBuilder().AllowGas(Swapper.Keys.Address, Address.Null, Swapper.MinimumFee, 9999).CallContract("interop", "SetBroker", Swapper.Keys.Address, swap.sourceHash).SpendGas(Swapper.Keys.Address).EndScript();
 
-            var tx = new Transaction(Swapper.nexusAPI.Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5));
+            var tx = new Transaction(api.Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5));
             tx.Sign(Swapper.Keys);
 
             var bytes = tx.ToByteArray(true);
 
             var txData = Base16.Encode(bytes);
-            var result = this.Swapper.nexusAPI.SendRawTransaction(txData);
+            var result = api.SendRawTransaction(txData);
             if (result is SingleResult)
             {
-                hash = (string)((SingleResult)result).value;
+                var hashText = (string)((SingleResult)result).value;
 
-                Swapper.logger.Message("Waiting for transaction confirmation: " + hash);
+                Swapper.Logger.Message("Waiting for transaction confirmation: " + hash);
                 do
                 {
                     Thread.Sleep(2000);
 
-                    result = this.Swapper.nexusAPI.GetTransaction(hash);
+                    result = api.GetTransaction(hashText);
 
                     if (result is TransactionResult)
                     {
+                        hash = Hash.Parse(hashText);
                         break;
                     }
 
@@ -201,29 +195,27 @@ namespace Phantasma.Spook.Swaps
             return BrokerResult.Error;
         }
 
-        public string SettleTransaction(string sourceHashText, string sourcePlatform)
+        public override Hash SettleTransaction(Hash sourceHash, string sourcePlatform)
         {
-            var sourceHash = Hash.Parse(sourceHashText);
+            var script = new ScriptBuilder().AllowGas(Swapper.Keys.Address, Address.Null, Swapper.MinimumFee, 9999).CallContract("interop", "SettleTransaction", Swapper.Keys.Address, sourcePlatform, sourceHash).SpendGas(Swapper.Keys.Address).EndScript();
 
-            var script = new ScriptBuilder().AllowGas(Swapper.Keys.Address, Address.Null, Swapper.MinFee, 9999).CallContract("interop", "SettleTransaction", Swapper.Keys.Address, sourcePlatform, sourceHash).SpendGas(Swapper.Keys.Address).EndScript();
-
-            var tx = new Transaction(Swapper.nexusAPI.Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5));
+            var tx = new Transaction(Swapper.Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5));
             tx.Sign(Swapper.Keys);
 
             var bytes = tx.ToByteArray(true);
 
             var txData = Base16.Encode(bytes);
-            var result = this.Swapper.nexusAPI.SendRawTransaction(txData);
+            var result = this.api.SendRawTransaction(txData);
             if (result is SingleResult)
             {
                 var hash = (string)((SingleResult)result).value;
 
-                Swapper.logger.Message("Waiting for transaction confirmation: " + hash);
+                Swapper.Logger.Message("Waiting for transaction confirmation: " + hash);
                 do
                 {
                     Thread.Sleep(2000);
 
-                    result = this.Swapper.nexusAPI.GetTransaction(hash);
+                    result = this.api.GetTransaction(hash);
 
                     if (result is TransactionResult)
                     {
@@ -232,15 +224,15 @@ namespace Phantasma.Spook.Swaps
 
                 } while (true);
 
-                return hash;
+                return Hash.Parse(hash);
             }
 
-            return null;
+            return Hash.Null;
         }
 
-        public override string ReceiveFunds(ChainSwap swap)
+        public override Hash ReceiveFunds(ChainSwap swap)
         {
-            return ChainSwap.DummyHash; // SettleTransaction(swap.sourceHash, swap.sourcePlatform);
+            return SettleTransaction(swap.sourceHash, swap.sourcePlatform);
         }
     }
 }

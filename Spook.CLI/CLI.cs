@@ -35,6 +35,7 @@ using System.Globalization;
 using Phantasma.Spook.Oracles;
 using Phantasma.Spook.Swaps;
 using Phantasma.Domain;
+using Phantasma.Blockchain.Swaps;
 
 namespace Phantasma.Spook
 {
@@ -91,6 +92,7 @@ namespace Phantasma.Spook
         private readonly Node node;
         private readonly Logger logger;
         private readonly Mempool mempool;
+        private readonly TokenSwapService tokenSwapper;
         private bool running = false;
         private bool nodeReady = false;
         
@@ -697,7 +699,9 @@ namespace Phantasma.Spook
 
             var useAPICache = settings.GetBool("api.cache", true);
             logger.Message($"API cache is {(useAPICache ? "enabled" : "disabled")}.");
-            api = new NexusAPI(nexus, mempool, node, useAPICache, apiLog ? logger : null);
+            api = new NexusAPI(nexus, useAPICache, apiLog ? logger : null);
+            api.Mempool = mempool;
+            api.Node = node;
 
             // RPC setup
             if (hasRPC)
@@ -769,17 +773,20 @@ namespace Phantasma.Spook
             var dispatcher = new CommandDispatcher();
             SetupCommands(dispatcher);
 
+
             if (wif == validatorWIFs[0] && settings.GetBool("swaps.enabled"))
             {
+                tokenSwapper = new TokenSwapper(node_keys, api, NeoScanAPI, NeoAPI, minimumFee, logger, settings);
+                api.SwapService = tokenSwapper;
+
                 logger.Message("Starting token swapping service...");
-                var swapper = new TokenSwapper(node_keys, api, NeoScanAPI, NeoAPI, minimumFee, logger, settings);
                 new Thread(() =>
                 {
                     while (node.IsRunning)
                     {
                         if (nodeReady)
                         {
-                            swapper.Run();
+                            tokenSwapper.Run();
                         }
                         else
                         {
