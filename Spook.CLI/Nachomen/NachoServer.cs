@@ -343,7 +343,7 @@ namespace Phantasma.Spook.Nachomen
 
                             var eventData = evt.GetContent<TokenEventData>();
 
-                            tokenID = eventData.value;
+                            tokenID = eventData.Value;
                         }
                     }
 
@@ -460,7 +460,7 @@ namespace Phantasma.Spook.Nachomen
 
                             var eventData = evt.GetContent<TokenEventData>();
 
-                            tokenID = eventData.value;
+                            tokenID = eventData.Value;
                         }
                     }
 

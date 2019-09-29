@@ -60,16 +60,27 @@ namespace Phantasma.Spook.Swaps
                                     break;
                                 }
 
-                            /*case EventKind.AddressLink:
+                            case EventKind.TransactionSettle:
                                 {
-                                    if (evt.Contract == "interop")
+                                    var settle = evt.GetContent<TransactionSettleEventData>();
+                                    if (Swapper.HasSwapWithSourceHash(settle.Hash))
                                     {
-                                        var target = evt.GetContent<Address>();
-                                        var pendingSwaps = Swapper.GetPendingSwaps(target, ChainSwapStatus.Link);
-                                        swaps.AddRange(pendingSwaps);
+                                        var swap = Swapper.GetSwapForSourceHash(settle.Hash);
+                                        swaps.Add(swap);
                                     }
                                     break;
-                                }*/
+                                }
+
+                                /*case EventKind.AddressLink:
+                                    {
+                                        if (evt.Contract == "interop")
+                                        {
+                                            var target = evt.GetContent<Address>();
+                                            var pendingSwaps = Swapper.GetPendingSwaps(target, ChainSwapStatus.Link);
+                                            swaps.AddRange(pendingSwaps);
+                                        }
+                                        break;
+                                    }*/
                         }
                     }
                 }
@@ -90,8 +101,8 @@ namespace Phantasma.Spook.Swaps
                 if (evt.Kind == EventKind.TokenBurn)
                 {
                     var data = evt.GetContent<TokenEventData>();
-                    symbol = data.symbol;
-                    amount = data.value;
+                    symbol = data.Symbol;
+                    amount = data.Value;
                     break;
                 }
             }
