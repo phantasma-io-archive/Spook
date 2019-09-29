@@ -9,6 +9,7 @@ using Phantasma.Domain;
 using Phantasma.Blockchain.Swaps;
 using Phantasma.Cryptography;
 using Phantasma.Spook.Oracles;
+using System.Linq;
 
 namespace Phantasma.Spook.Swaps
 {
@@ -84,7 +85,7 @@ namespace Phantasma.Spook.Swaps
                 return;
             }
 
-            var sourceAddress = entry.GetString("address_from");
+            var neoSourceAddress = entry.GetString("address_from");
             var asset = entry.GetString("asset");
             var hash = entry.GetString("txid");
             var amount = entry.GetDecimal("amount");
@@ -99,14 +100,17 @@ namespace Phantasma.Spook.Swaps
             var destChain = "phantasma";
             var interop = Swapper.FindInterop(destChain);
 
-            var encodedAddress = NeoWallet.EncodeAddress(sourceAddress);
-            var destAddress = Swapper.LookUpAddress(encodedAddress, DomainSettings.PlatformName);            
+            var transaction = neoAPI.GetTransaction(hash);
+            var witness = transaction.witnesses[0];
+
+            var destAddress = witness.ExtractAddress();
+            var sourceAddress = Address.FromInterop(1, destAddress.ToByteArray().Skip(1).ToArray());
 
             var swap = new ChainSwap()
             {
                 sourceHash = Hash.Parse(hash),
                 sourcePlatform = this.Name,
-                sourceAddress = NeoWallet.EncodeAddress(sourceAddress),
+                sourceAddress = sourceAddress,
                 amount = UnitConversion.ToBigInteger(amount, token.Decimals),
                 destinationAddress = destAddress,
                 destinationPlatform = destChain,
@@ -127,7 +131,12 @@ namespace Phantasma.Spook.Swaps
                 return Hash.Null;
             }
 
-            var destAddress = NeoWallet.DecodeAddress(swap.destinationAddress);
+            byte platID;
+            byte[] publicKey;
+
+            swap.destinationAddress.DecodeInterop(out platID, out publicKey);
+
+            var destAddress = NeoKeys.PublicKeyToAddress(publicKey);
             var amount = UnitConversion.ToDecimal(swap.amount, token.Decimals);
 
             if (swap.symbol == "NEO" || swap.symbol == "GAS")

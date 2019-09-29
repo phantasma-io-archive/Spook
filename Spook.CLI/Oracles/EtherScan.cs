@@ -76,6 +76,8 @@ namespace Phantasma.Spook.Oracles
 
         public byte[] ReadTransaction(string hashText)
         {
+            throw new NotImplementedException();
+            /*
             if (hashText.StartsWith("0x"))
             {
                 hashText = hashText.Substring(2);
@@ -133,10 +135,13 @@ namespace Phantasma.Spook.Oracles
             {
                 throw new OracleException(e.Message);
             }
+            */
         }
 
         private void FillEventList(string hashText, string inputAddress, List<Event> eventList)
         {
+            throw new NotImplementedException();
+            /*
             int page = 1;
             int maxPages = 9999;
 
@@ -186,7 +191,7 @@ namespace Phantasma.Spook.Oracles
                 }
 
                 page++;
-            }
+            }*/
         }
 
         private string FindSymbolFromAsset(string assetID)

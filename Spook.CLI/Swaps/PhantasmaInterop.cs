@@ -59,7 +59,7 @@ namespace Phantasma.Spook.Swaps
                                     break;
                                 }
 
-                            case EventKind.AddressLink:
+                            /*case EventKind.AddressLink:
                                 {
                                     if (evt.Contract == "interop")
                                     {
@@ -68,7 +68,7 @@ namespace Phantasma.Spook.Swaps
                                         swaps.AddRange(pendingSwaps);
                                     }
                                     break;
-                                }
+                                }*/
                         }
                     }
                 }
@@ -107,10 +107,7 @@ namespace Phantasma.Spook.Swaps
                 return;
             }
 
-            string destinationAddress;
-            string destinationPlatform;
-
-            WalletUtils.DecodePlatformAndAddress(target, out destinationPlatform, out destinationAddress);
+            string destinationPlatform = "NEO"; // TODO fix this
 
             var swap = new ChainSwap()
             {

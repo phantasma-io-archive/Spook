@@ -149,7 +149,7 @@ namespace Phantasma.Spook.Modules
             return hash;
         }
 
-        private static Hash ExecuteTransaction(NexusAPI api, byte[] script, ProofOfWork proofOfWork)
+        private static Hash ExecuteTransaction(NexusAPI api, byte[] script, ProofOfWork proofOfWork, IKeyPair keys)
         {
             var tx = new Blockchain.Transaction(api.Nexus.Name, DomainSettings.RootChainName, script, Timestamp.Now + TimeSpan.FromMinutes(5));
 
@@ -160,7 +160,7 @@ namespace Phantasma.Spook.Modules
             }
 
             logger.Message("Signing message...");
-            tx.Sign(Keys);
+            tx.Sign(keys);
             var rawTx = tx.ToByteArray(true);
 
             try
@@ -206,16 +206,19 @@ namespace Phantasma.Spook.Modules
             return Hash.Parse(hash);
         }
 
-        private static void SettleSwap(NexusAPI api, BigInteger minimumFee, string platform, string swapSymbol, Hash extHash)
+        private static void SettleSwap(NexusAPI api, BigInteger minimumFee, string platform, string swapSymbol, Hash extHash, IKeyPair externalKeys, Address targetAddress)
         {
+            var outputAddress = Address.FromKey(externalKeys);
+
             var script = new ScriptBuilder()
-                .CallContract("interop", "SettleTransaction", Keys.Address, platform, extHash)
-                .CallContract("swap", "SwapFee", Keys.Address, swapSymbol, UnitConversion.ToBigInteger(0.1m, DomainSettings.FuelTokenDecimals))
-                .AllowGas(Keys.Address, Address.Null, minimumFee, 500)
-                .SpendGas(Keys.Address).EndScript();
+                .CallContract("interop", "SettleTransaction", outputAddress, platform, extHash)
+                .CallContract("swap", "SwapFee", outputAddress, swapSymbol, UnitConversion.ToBigInteger(0.1m, DomainSettings.FuelTokenDecimals))
+                .TransferBalance(swapSymbol, outputAddress, targetAddress)
+                .AllowGas(outputAddress, Address.Null, minimumFee, 500)
+                .SpendGas(outputAddress).EndScript();
 
             logger.Message("Settling swap on Phantasma");
-            ExecuteTransaction(api, script, ProofOfWork.None);
+            ExecuteTransaction(api, script, ProofOfWork.None, externalKeys);
             logger.Success($"Swap of {swapSymbol} is complete!");
         }
 
@@ -248,20 +251,16 @@ namespace Phantasma.Spook.Modules
             var amount = UnitConversion.ToBigInteger(tempAmount, tokenInfo.decimals);
 
             var sourceName = args[0];
-            Address sourceAddress;
+            string sourcePlatform;
 
             if (Address.IsValidAddress(sourceName))
             {
-                sourceAddress = Address.FromText(sourceName);
-                if (sourceName != Keys.Address.Text)
-                {
-                    throw new CommandException("The current open wallet does not have keys that match address " + sourceName);
-                }
+                sourcePlatform = PhantasmaWallet.PhantasmaPlatform;
             }
             else
             if (NeoWallet.IsValidAddress(sourceName))
             {
-                sourceAddress = NeoWallet.EncodeAddress(sourceName);
+                sourcePlatform = NeoWallet.NeoPlatform;
             }
             else
             {
@@ -269,41 +268,31 @@ namespace Phantasma.Spook.Modules
             }
 
             var destName = args[1];
-            Address destAddress;
+            string destPlatform;
 
             if (Address.IsValidAddress(destName))
             {
-                destAddress = Address.FromText(destName);
+                destPlatform = PhantasmaWallet.PhantasmaPlatform;
             }
             else
             if (NeoWallet.IsValidAddress(destName))
             {
-                destAddress = NeoWallet.EncodeAddress(destName);
+                destPlatform = NeoWallet.NeoPlatform;
             }
             else
             {
                 throw new CommandException("Invalid destination address " + destName);
             }
 
-            if (destAddress.Text == sourceAddress.Text)
+            if (destName == sourceName)
             {
                 throw new CommandException("Cannot transfer to same address");
             }
 
-            if (sourceAddress.IsInterop)
+            if (sourcePlatform != PhantasmaWallet.PhantasmaPlatform)
             {
-                string sourcePlatform;
-                string fromAddress;
-
-                WalletUtils.DecodePlatformAndAddress(sourceAddress, out sourcePlatform, out fromAddress);
-
-                if (destAddress.IsInterop)
+                if (destPlatform != PhantasmaWallet.PhantasmaPlatform)
                 {
-                    string destPlatform;
-                    string toAddress;
-
-                    WalletUtils.DecodePlatformAndAddress(destAddress, out destPlatform, out toAddress);
-
                     if (sourcePlatform != destPlatform)
                     {
                         throw new CommandException($"Cannot transfer directly from {sourcePlatform} to {destPlatform}");
@@ -315,7 +304,13 @@ namespace Phantasma.Spook.Modules
                             case NeoWallet.NeoPlatform:
                                 {
                                     var neoKeys = new NeoKeys(Keys.PrivateKey);
-                                    var neoHash = NeoTransfer(neoKeys, toAddress, tokenSymbol, tempAmount, neoAPI);
+
+                                    if (sourceName != neoKeys.address)
+                                    {
+                                        throw new CommandException("The current open wallet does not have keys that match address " + sourceName);
+                                    }
+
+                                    var neoHash = NeoTransfer(neoKeys, destName, tokenSymbol, tempAmount, neoAPI);
                                 }
                                 break;
 
@@ -325,34 +320,14 @@ namespace Phantasma.Spook.Modules
                     }
                 }
                 else
-                if (destAddress.IsUser)
                 {
                     logger.Warning($"Source is {sourcePlatform} address, a swap will be performed using an interop address.");
 
-                    PlatformResult platformInfo;
-                    
-                    try
-                    {
-                        platformInfo = ((ArrayResult)api.GetPlatforms()).values.Cast<PlatformResult>().Where(x => x.platform == sourcePlatform).First();
-                    }
-                    catch (Exception e)
-                    {
-                        logger.Error($"Platform {sourcePlatform} is not deployed in the nexus yet");
-                        return;
-                    }
-
-                    var tempResult = api.GetSwapAddress(sourceAddress.Text, DomainSettings.PlatformName);
-                    
-                    if (tempResult is ErrorResult)
-                    {
-                        logger.Error($"Address {sourceName} is not linked with any {sourcePlatform} address yet");
-                        return;
-                    }
-
-                    var addr = Address.FromText(platformInfo.interop);
-                    string platformAddress = NeoWallet.DecodeAddress(addr);
+                    IPlatform platformInfo = api.Nexus.GetPlatformInfo(sourcePlatform);
 
                     Hash extHash;
+                    IKeyPair extKeys;
+
                     switch (sourcePlatform)
                     {
                         case NeoWallet.NeoPlatform:
@@ -360,11 +335,18 @@ namespace Phantasma.Spook.Modules
                                 try
                                 {
                                     var neoKeys = new NeoKeys(Keys.PrivateKey);
-                                    extHash = NeoTransfer(neoKeys, platformAddress, tokenSymbol, tempAmount, neoAPI);
+
+                                    if (sourceName != neoKeys.address)
+                                    {
+                                        throw new CommandException("The current open wallet does not have keys that match address " + sourceName);
+                                    }
+
+                                    extHash = NeoTransfer(neoKeys, platformInfo.ExternalAddress, tokenSymbol, tempAmount, neoAPI);
+                                    extKeys = neoKeys;
                                 }
                                 catch (Exception e)
                                 {
-                                    logger.Error($"{sourcePlatform} error: "+e.Message);
+                                    logger.Error($"{sourcePlatform} error: " + e.Message);
                                     return;
                                 }
 
@@ -376,34 +358,46 @@ namespace Phantasma.Spook.Modules
                             return;
                     }
 
-                    SettleSwap(api, minimumFee, sourcePlatform, tokenSymbol, extHash);
+                    var destAddress = Address.FromText(destName);
+                    SettleSwap(api, minimumFee, sourcePlatform, tokenSymbol, extHash, extKeys, destAddress);
                 }
-                else
-                {
-                    logger.Error("Invalid destination address: " + destAddress);
-                }
-
                 return;
             }
             else
-            if (destAddress.IsInterop)
             {
-                string platformName;
-                string outAddress;
+                Address destAddress;
 
-                WalletUtils.DecodePlatformAndAddress(destAddress, out platformName, out outAddress);
-                logger.Warning($"Target is {platformName} address, a swap will be performed through interop address {destAddress}.");
+                if (destPlatform != PhantasmaWallet.PhantasmaPlatform)
+                {
+
+                    switch (destPlatform)
+                    {
+                        case NeoWallet.NeoPlatform:
+                            destAddress = NeoWallet.EncodeAddress(destName);
+                            break;
+
+                        default:
+                            logger.Error($"Transactions to platform {destPlatform} are not supported yet");
+                            return;
+                    }
+
+                    logger.Warning($"Target is {destPlatform} address, a swap will be performed through interop address {destAddress}.");
+                }
+                else
+                {
+                    destAddress = Address.FromText(destName);
+                }
+
+                var script = ScriptUtils.BeginScript().
+                    CallContract("swap", "SwapFee", Keys.Address, tokenSymbol, UnitConversion.ToBigInteger(0.01m, DomainSettings.FuelTokenDecimals)).
+                    AllowGas(Keys.Address, Address.Null, minimumFee, 300).
+                    TransferTokens(tokenSymbol, Keys.Address, destAddress, amount).
+                    SpendGas(Keys.Address).
+                    EndScript();
+
+                logger.Message($"Sending {tempAmount} {tokenSymbol} to {destAddress.Text}...");
+                ExecuteTransaction(api, script, ProofOfWork.None, Keys);
             }
-
-            var script = ScriptUtils.BeginScript().
-                CallContract("swap", "SwapFee", Keys.Address, tokenSymbol, UnitConversion.ToBigInteger(0.01m, DomainSettings.FuelTokenDecimals)).
-                AllowGas(Keys.Address, Address.Null, minimumFee, 300).
-                TransferTokens(tokenSymbol, Keys.Address, destAddress,amount).
-                SpendGas(Keys.Address).
-                EndScript();
-
-            logger.Message($"Sending {tempAmount} {tokenSymbol} to {destAddress.Text}...");
-            ExecuteTransaction(api, script, ProofOfWork.None);
         }
 
         public static void Stake(NexusAPI api, string[] args)
@@ -486,21 +480,6 @@ namespace Phantasma.Spook.Modules
                 }
             } while (true);
             logger.Success($"Sent transaction with hash {hash}!");
-        }
-
-        public static void Link(NexusAPI api, BigInteger minimumFee, string[] args)
-        {
-            var neoKeys = new NeoKeys(Keys.PrivateKey);
-            logger.Message($"Linking {neoKeys.address} to {Keys.Address}");
-
-            var interopAddress = NeoWallet.EncodeAddress(neoKeys.address);
-            var script = new ScriptBuilder()
-                .LoanGas(Keys.Address, minimumFee, 400)
-                .AllowGas(Keys.Address, Address.Null, minimumFee, 400)
-                .CallContract("interop", "RegisterLink", Keys.Address, interopAddress)
-                .SpendGas(Keys.Address).EndScript();
-
-            ExecuteTransaction(api, script, ProofOfWork.Moderate);
         }
     }
 }

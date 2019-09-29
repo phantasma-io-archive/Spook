@@ -445,28 +445,14 @@ namespace Phantasma.Spook
             InteropUtils.Seed = settings.GetString("swaps.seed", InteropUtils.Seed);
 
             /*
-            var rnd = new Random();
-            var publicKey = new byte[32];
-            rnd.NextBytes(publicKey);
-            for (byte opcode=0; opcode<255; opcode++)
-            {
-                var bytes = ByteArrayUtils.ConcatBytes(new byte[] { opcode }, publicKey);
-                var text = Base58.Encode(bytes);
-
-                Console.WriteLine(opcode + " => "+text);
-            }
-
-            Console.ReadLine();
-
-
             for (int i = 0; i < 200; i++)
             {
                 var k = KeyPair.Generate();
                 Console.WriteLine(k.ToWIF() + " => " + k.Address.Text);
             }
-            Console.ReadLine();*/ 
+            Console.ReadLine();*/
 
-             var useGUI = settings.GetBool("gui.enabled", true);
+            var useGUI = settings.GetBool("gui.enabled", true);
 
             if (useGUI)
             {
@@ -979,9 +965,6 @@ namespace Phantasma.Spook
 
             dispatcher.RegisterCommand("wallet.open", "Opens a wallet from a WIF key",
             (args) => WalletModule.Open(args));
-
-            dispatcher.RegisterCommand("wallet.link", "Links thewallet NEO address to the Phantasma address",
-            (args) => WalletModule.Link(api, this.mempool != null ? mempool.MinimumFee : 1, args));
 
             dispatcher.RegisterCommand("wallet.create", "Creates new a wallet",
             (args) => WalletModule.Create(args));
