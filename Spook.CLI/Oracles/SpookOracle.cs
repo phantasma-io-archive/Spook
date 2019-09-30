@@ -28,7 +28,7 @@ namespace Phantasma.Spook.Oracles
                 return price;
             }
 
-            throw new OracleException("No support for prices");
+            throw new OracleException("No support for oracle prices in this node");
         }
 
         protected override InteropBlock PullPlatformBlock(string platformName, string chainName, Hash hash)
