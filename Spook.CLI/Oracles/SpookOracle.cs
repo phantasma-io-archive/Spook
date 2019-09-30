@@ -16,7 +16,7 @@ namespace Phantasma.Spook.Oracles
 
         protected override decimal PullPrice(string symbol)
         {
-            if (CLI.cryptoCompareAPIKey != null)
+            if (!string.IsNullOrEmpty(CLI.cryptoCompareAPIKey))
             {
                 if (symbol == DomainSettings.FuelTokenSymbol)
                 {
