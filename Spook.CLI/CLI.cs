@@ -595,7 +595,6 @@ namespace Phantasma.Spook
             // TODO this should be later optional to enable
             nexus.AddPlugin(new ChainAddressesPlugin());
             nexus.AddPlugin(new TokenTransactionsPlugin());
-            nexus.AddPlugin(new AddressTransactionsPlugin());
             nexus.AddPlugin(new UnclaimedTransactionsPlugin());
 
             running = true;
