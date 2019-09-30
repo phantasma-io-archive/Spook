@@ -34,11 +34,11 @@ namespace Phantasma.Spook.Nachomen
 
         public static void InitNachoServer(Nexus nexus, NexusSimulator simulator, PhantasmaKeys ownerKeys, bool fillMarket, Logger logger)
         {
-            
+            /*
             var keys = PhantasmaKeys.FromWIF("L2sbKk7TJTkbwbwJ2EX7qM23ycShESGhQhLNyAaKxVHEqqBhFMk3");
             simulator.BeginBlock();
             simulator.GenerateCustomTransaction(new [] { keys, ownerKeys }, ProofOfWork.None, () => new ScriptBuilder().AllowGas(ownerKeys.Address, Address.Null, simulator.MinimumFee, 999).CallContract("interop", "RegisterLink", keys.Address, NeoWallet.EncodeAddress("AbZJjZ5F1x82VybfsqM7zi4nkWoX8uwepy")).SpendGas(ownerKeys.Address).EndScript());
-            simulator.EndBlock();
+            simulator.EndBlock();*/
 
             //GenerateBotGenes(ownerKeys.Address, logger);
 
