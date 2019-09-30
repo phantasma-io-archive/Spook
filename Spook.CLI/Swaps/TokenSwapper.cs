@@ -19,7 +19,7 @@ namespace Phantasma.Spook.Swaps
 
             interopBlocks["phantasma"] = BigInteger.Parse(arguments.GetString("interop.phantasma.height", "0"));
             interopBlocks["neo"] = BigInteger.Parse(arguments.GetString("interop.neo.height", "4261049"));
-            interopBlocks["ethereum"] = BigInteger.Parse(arguments.GetString("interop.ethereum.height", "4261049"));
+            //interopBlocks["ethereum"] = BigInteger.Parse(arguments.GetString("interop.ethereum.height", "4261049"));
 
             var platforms = ((ArrayResult)nexusAPI.GetPlatforms()).values.Select(x => (PlatformResult)x).ToArray();
 

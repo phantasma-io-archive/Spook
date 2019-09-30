@@ -1,20 +1,18 @@
 ﻿using System;
+using System.Threading;
 using System.Collections.Generic;
 using Phantasma.VM.Utils;
 using Phantasma.Cryptography;
-using Phantasma.Blockchain;
 using Phantasma.API;
 using Phantasma.Core.Log;
 using Phantasma.Numerics;
 using Phantasma.Core.Types;
-using System.Threading;
 using Phantasma.Pay.Chains;
 using Phantasma.Pay;
 using Phantasma.Neo.Core;
 using Phantasma.Spook.Oracles;
 using Phantasma.Blockchain.Contracts;
 using Phantasma.Domain;
-using System.Linq;
 using Phantasma.Spook.GUI;
 
 namespace Phantasma.Spook.Modules
@@ -127,26 +125,34 @@ namespace Phantasma.Spook.Modules
 
             Thread.Sleep(500);
 
-            if (tokenSymbol == "NEO" || tokenSymbol == "GAS")
-            {
-                neoTx = neoAPI.SendAsset(neoKeys, toAddress, tokenSymbol, tempAmount);
-            }
-            else
-            {
-                var nep5 = neoAPI.GetToken(tokenSymbol);
-                if (nep5 == null)
+            try {
+                if (tokenSymbol == "NEO" || tokenSymbol == "GAS")
                 {
-                    throw new CommandException($"Could not find interface for NEP5: {tokenSymbol}");
+                    neoTx = neoAPI.SendAsset(neoKeys, toAddress, tokenSymbol, tempAmount);
                 }
-                neoTx = nep5.Transfer(neoKeys, toAddress, tempAmount);
+                else
+                {
+                    var nep5 = neoAPI.GetToken(tokenSymbol);
+                    if (nep5 == null)
+                    {
+                        throw new CommandException($"Could not find interface for NEP5: {tokenSymbol}");
+                    }
+                    neoTx = nep5.Transfer(neoKeys, toAddress, tempAmount);
+                }
+
+                logger.Success($"Waiting for confirmations, could take up to a minute...");
+                Thread.Sleep(45000);
+                logger.Success($"Sent transaction with hash {neoTx.Hash}!");
+
+                var hash = Hash.Parse(neoTx.Hash.ToString());
+                return hash;
+            }
+            catch (Exception e)
+            {
+                logger.Error("Error sending NEO transaction: " + e);
+                return Hash.Null;
             }
 
-            logger.Success($"Waiting for confirmations, could take up to a minute...");
-            Thread.Sleep(45000);
-            logger.Success($"Sent transaction with hash {neoTx.Hash}!");
-
-            var hash = Hash.Parse(neoTx.Hash.ToString());
-            return hash;
         }
 
         private static Hash ExecuteTransaction(NexusAPI api, byte[] script, ProofOfWork proofOfWork, IKeyPair keys)
@@ -311,8 +317,8 @@ namespace Phantasma.Spook.Modules
                                     }
 
                                     var neoHash = NeoTransfer(neoKeys, destName, tokenSymbol, tempAmount, neoAPI);
+                                    return;
                                 }
-                                break;
 
                             default:
                                 throw new CommandException($"Not implemented yet :(");
@@ -342,6 +348,12 @@ namespace Phantasma.Spook.Modules
                                     }
 
                                     extHash = NeoTransfer(neoKeys, platformInfo.ExternalAddress, tokenSymbol, tempAmount, neoAPI);
+
+                                    if (extHash == Hash.Null)
+                                    {
+                                        return;
+                                    }
+
                                     extKeys = neoKeys;
                                 }
                                 catch (Exception e)
