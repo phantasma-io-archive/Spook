@@ -57,7 +57,7 @@ namespace Phantasma.Spook.Nachomen
             simulator.GenerateChain(ownerKeys, nexus.RootChain.Name, "nacho", "nacho", "market");
             simulator.EndBlock();
 
-            var nachoAddress = Address.FromText("PWx9mn1hEtQCNxBEhKPj32L3yjJZFiEcLEGVJtY7xg8Ss");
+            var nachoAddress = Address.FromText("P2KJ83TQ5eS67hwff3AgfJaBEcbbXHU99kBosFsXeMfa3nE");
             
             var nachoFuel = UnitConversion.ToBigInteger(5, DomainSettings.FuelTokenDecimals);
             var nachoChain = nexus.GetChainByName("nacho");
