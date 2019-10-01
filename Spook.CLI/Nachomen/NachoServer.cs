@@ -347,7 +347,7 @@ namespace Phantasma.Spook.Nachomen
 
                     // transfer wrestler nft from main chain to nacho chain
                     simulator.BeginBlock();
-                    var txB = simulator.GenerateSideChainSend(ownerKeys, wrestlerToken.Symbol, nexus.RootChain, ownerKeys.Address, nachoChain, tokenID, 0);
+                    var txB = simulator.GenerateSideChainSend(ownerKeys, wrestlerToken.Symbol, nexus.RootChain, ownerKeys.Address, nachoChain, tokenID, 999);
                     simulator.EndBlock();
 
                     simulator.BeginBlock();
