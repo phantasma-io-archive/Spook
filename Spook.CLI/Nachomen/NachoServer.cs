@@ -449,7 +449,7 @@ namespace Phantasma.Spook.Nachomen
                     var isWrapped   = rand.Next(0, 100) < 50; // TODO update logic for the lootboxes (1 item lootbox = 1 wrapped item)
 
                     // Mint a new Item Token directly on the user
-                    var tokenROM = new byte[0]; //itemBytes;
+                    var tokenROM = BitConverter.GetBytes(rand.Next(0, 10000)); // new byte[0]; //itemBytes;
                     var tokenRAM = itemBytes;   //new byte[0];
 
                     simulator.BeginBlock();
