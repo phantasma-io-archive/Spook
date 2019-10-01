@@ -364,11 +364,11 @@ namespace Phantasma.Spook.Nachomen
 
                     // transfer wrestler nft from main chain to nacho chain
                     simulator.BeginBlock();
-                    var txB = simulator.GenerateSideChainSend(ownerKeys, wrestlerToken.Symbol, nexus.RootChain, ownerKeys.Address, nachoChain, tokenID, 999);
+                    var txA = simulator.GenerateSideChainSend(ownerKeys, wrestlerToken.Symbol, nexus.RootChain, ownerKeys.Address, nachoChain, tokenID, 999);
                     simulator.EndBlock();
 
                     simulator.BeginBlock();
-                    simulator.GenerateSideChainSettlement(ownerKeys, nexus.RootChain, nachoChain, txB);
+                    simulator.GenerateSideChainSettlement(ownerKeys, nexus.RootChain, nachoChain, txA);
                     simulator.EndBlock();
 
                     // Create auction
@@ -417,6 +417,8 @@ namespace Phantasma.Spook.Nachomen
 
             MineItems(logger);
 
+            var itemCounter = 1;
+
             //foreach (var rarity in itemCounts.Keys)
             foreach (var rarity in _itemQueue.Keys)
             {
@@ -449,7 +451,7 @@ namespace Phantasma.Spook.Nachomen
                     var isWrapped   = rand.Next(0, 100) < 50; // TODO update logic for the lootboxes (1 item lootbox = 1 wrapped item)
 
                     // Mint a new Item Token directly on the user
-                    var tokenROM = BitConverter.GetBytes(rand.Next(0, 10000)); // new byte[0]; //itemBytes;
+                    var tokenROM = BitConverter.GetBytes(itemCounter); // new byte[0]; //itemBytes;
                     var tokenRAM = itemBytes;   //new byte[0];
 
                     simulator.BeginBlock();
@@ -478,15 +480,15 @@ namespace Phantasma.Spook.Nachomen
                     var fuelAmount = UnitConversion.ToBigInteger(1, DomainSettings.FuelTokenDecimals);
                     var extraFee = UnitConversion.ToBigInteger(0.0001m, DomainSettings.FuelTokenDecimals);
 
-                    // transfer wrestler nft from main chain to nacho chain
+                    // transfer item nft from main chain to nacho chain
                     simulator.BeginBlock();
-                    var txA = simulator.GenerateSideChainSend(ownerKeys, DomainSettings.FuelTokenSymbol, nexus.RootChain, ownerKeys.Address, nachoChain, fuelAmount, 0);
-                    var txB = simulator.GenerateSideChainSend(ownerKeys, itemToken.Symbol, nexus.RootChain, ownerKeys.Address, nachoChain, tokenID, 0);
+                    var txA = simulator.GenerateSideChainSend(ownerKeys, itemToken.Symbol, nexus.RootChain, ownerKeys.Address, nachoChain, tokenID, 999);
+                    //var txB = simulator.GenerateSideChainSend(ownerKeys, DomainSettings.FuelTokenSymbol, nexus.RootChain, ownerKeys.Address, nachoChain, fuelAmount, 0);
                     simulator.EndBlock();
 
                     simulator.BeginBlock();
                     simulator.GenerateSideChainSettlement(ownerKeys, nexus.RootChain, nachoChain, txA);
-                    simulator.GenerateSideChainSettlement(ownerKeys, nexus.RootChain, nachoChain, txB);
+                    //simulator.GenerateSideChainSettlement(ownerKeys, nexus.RootChain, nachoChain, txB);
                     simulator.EndBlock();
 
                     // Create auction
@@ -514,6 +516,8 @@ namespace Phantasma.Spook.Nachomen
                             EndScript()
                     );
                     simulator.EndBlock();
+
+                    itemCounter++;
                 }
             }
 
