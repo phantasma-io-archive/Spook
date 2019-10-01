@@ -352,7 +352,7 @@ namespace Phantasma.Spook.Nachomen
                     // transfer wrestler nft from main chain to nacho chain
                     simulator.BeginBlock();
                     var txA = simulator.GenerateSideChainSend(ownerKeys, DomainSettings.FuelTokenSymbol, nexus.RootChain, ownerKeys.Address, nachoChain, fuelAmount, 0);
-                    var txB = simulator.GenerateNftSidechainTransfer(ownerKeys, ownerKeys.Address, nexus.RootChain, nachoChain, wrestlerToken.Symbol, tokenID);
+                    var txB = simulator.GenerateSideChainSend(ownerKeys, wrestlerToken.Symbol, nexus.RootChain, ownerKeys.Address, nachoChain, tokenID, 0);
                     simulator.EndBlock();
 
                     simulator.BeginBlock();
@@ -470,7 +470,7 @@ namespace Phantasma.Spook.Nachomen
                     // transfer wrestler nft from main chain to nacho chain
                     simulator.BeginBlock();
                     var txA = simulator.GenerateSideChainSend(ownerKeys, DomainSettings.FuelTokenSymbol, nexus.RootChain, ownerKeys.Address, nachoChain, fuelAmount, 0);
-                    var txB = simulator.GenerateNftSidechainTransfer(ownerKeys, ownerKeys.Address, nexus.RootChain, nachoChain, itemToken.Symbol, tokenID);
+                    var txB = simulator.GenerateSideChainSend(ownerKeys, itemToken.Symbol, nexus.RootChain, ownerKeys.Address, nachoChain, tokenID, 0);
                     simulator.EndBlock();
 
                     simulator.BeginBlock();
