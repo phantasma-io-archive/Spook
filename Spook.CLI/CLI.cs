@@ -775,13 +775,14 @@ namespace Phantasma.Spook
                     simulator = new NexusSimulator(this.nexus, node_keys, 1234);
                     simulator.MinimumFee = minimumFee;
 
+                    /*
                     logger.Message("Bootstrapping validators");
                     simulator.BeginBlock();
                     for (int i = 1; i < validatorWIFs.Length; i++)
                     {
                         simulator.GenerateTransfer(node_keys, Address.FromWIF(validatorWIFs[i]), this.nexus.RootChain, DomainSettings.StakingTokenSymbol, UnitConversion.ToBigInteger(50000, DomainSettings.StakingTokenDecimals));
                     }
-                    simulator.EndBlock();
+                    simulator.EndBlock();*/
 
                     bool fillMarket = settings.GetBool("nacho.market", false);
 
