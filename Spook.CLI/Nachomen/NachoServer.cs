@@ -54,7 +54,7 @@ namespace Phantasma.Spook.Nachomen
         public static void GenerateTokens(Nexus nexus, NexusSimulator simulator, PhantasmaKeys ownerKeys, Logger logger)
         {
             simulator.BeginBlock();
-            simulator.GenerateChain(ownerKeys, nexus.RootChain, "nacho", "nacho", "market");
+            simulator.GenerateChain(ownerKeys, nexus.RootChain.Name, "nacho", "nacho", "market");
             simulator.EndBlock();
 
             var nachoAddress = Address.FromText("PWx9mn1hEtQCNxBEhKPj32L3yjJZFiEcLEGVJtY7xg8Ss");
@@ -63,14 +63,13 @@ namespace Phantasma.Spook.Nachomen
             var nachoChain = nexus.GetChainByName("nacho");
 
             simulator.BeginBlock();
-            simulator.GenerateSideChainSend(ownerKeys, DomainSettings.FuelTokenSymbol, nexus.RootChain, ownerKeys.Address, nachoChain, nachoFuel, 0);
-            simulator.GenerateSideChainSend(ownerKeys, DomainSettings.FuelTokenSymbol, nexus.RootChain, nachoAddress, nachoChain, nachoFuel, 9999);
-
-            //_chainSimulator.GenerateSideChainSend(_ownerKeys, Nexus.FuelTokenSymbol, _nexus.RootChain, nachoAddress2, nachoChain, nachoFuel, 9999);
-            var blockA = simulator.EndBlock().First();
+            var txA = simulator.GenerateSideChainSend(ownerKeys, DomainSettings.FuelTokenSymbol, nexus.RootChain, ownerKeys.Address, nachoChain, nachoFuel, 0);
+            var txB = simulator.GenerateSideChainSend(ownerKeys, DomainSettings.FuelTokenSymbol, nexus.RootChain, nachoAddress, nachoChain, nachoFuel, 9999);
+            simulator.EndBlock();
 
             simulator.BeginBlock();
-            simulator.GenerateSideChainSettlement(ownerKeys, nexus.RootChain, nachoChain, blockA.Hash);
+            simulator.GenerateSideChainSettlement(ownerKeys, nexus.RootChain, nachoChain, txA);
+            simulator.GenerateSideChainSettlement(ownerKeys, nexus.RootChain, nachoChain, txB);
             simulator.EndBlock();
 
             simulator.BeginBlock();
@@ -135,13 +134,13 @@ namespace Phantasma.Spook.Nachomen
             simulator.EndBlock();
 
             simulator.BeginBlock();
-            simulator.GenerateSideChainSend(ownerKeys, Constants.NACHO_SYMBOL, nexus.RootChain, nachoAddress, nachoChain, UnitConversion.ToBigInteger(1000, Constants.NACHO_TOKEN_DECIMALS), 1);
-            simulator.GenerateSideChainSend(ownerKeys, Constants.NACHO_SYMBOL, nexus.RootChain, ownerKeys.Address, nachoChain, UnitConversion.ToBigInteger(1000, Constants.NACHO_TOKEN_DECIMALS), 1);
-            //_chainSimulator.GenerateSideChainSend(_ownerKeys, Constants.NACHO_SYMBOL, _nexus.RootChain, nachoAddress2, nachoChain, UnitConversion.ToBigInteger(1000, 10), 1);
-            var blockB = simulator.EndBlock().First();
+            txA = simulator.GenerateSideChainSend(ownerKeys, Constants.NACHO_SYMBOL, nexus.RootChain, nachoAddress, nachoChain, UnitConversion.ToBigInteger(1000, Constants.NACHO_TOKEN_DECIMALS), 1);
+            txB = simulator.GenerateSideChainSend(ownerKeys, Constants.NACHO_SYMBOL, nexus.RootChain, ownerKeys.Address, nachoChain, UnitConversion.ToBigInteger(1000, Constants.NACHO_TOKEN_DECIMALS), 1);
+            simulator.EndBlock();
 
             simulator.BeginBlock();
-            simulator.GenerateSideChainSettlement(ownerKeys, nexus.RootChain, nachoChain, blockB.Hash);
+            simulator.GenerateSideChainSettlement(ownerKeys, nexus.RootChain, nachoChain, txA);
+            simulator.GenerateSideChainSettlement(ownerKeys, nexus.RootChain, nachoChain, txB);
             simulator.EndBlock();
 
             simulator.BeginBlock();
@@ -352,12 +351,13 @@ namespace Phantasma.Spook.Nachomen
 
                     // transfer wrestler nft from main chain to nacho chain
                     simulator.BeginBlock();
-                    simulator.GenerateSideChainSend(ownerKeys, DomainSettings.FuelTokenSymbol, nexus.RootChain, ownerKeys.Address, nachoChain, fuelAmount, 0);
-                    simulator.GenerateNftSidechainTransfer(ownerKeys, ownerKeys.Address, nexus.RootChain, nachoChain, wrestlerToken.Symbol, tokenID);
-                    var blockB = simulator.EndBlock().First();
+                    var txA = simulator.GenerateSideChainSend(ownerKeys, DomainSettings.FuelTokenSymbol, nexus.RootChain, ownerKeys.Address, nachoChain, fuelAmount, 0);
+                    var txB = simulator.GenerateNftSidechainTransfer(ownerKeys, ownerKeys.Address, nexus.RootChain, nachoChain, wrestlerToken.Symbol, tokenID);
+                    simulator.EndBlock();
 
                     simulator.BeginBlock();
-                    simulator.GenerateSideChainSettlement(ownerKeys, nexus.RootChain, nachoChain, blockB.Hash);
+                    simulator.GenerateSideChainSettlement(ownerKeys, nexus.RootChain, nachoChain, txA);
+                    simulator.GenerateSideChainSettlement(ownerKeys, nexus.RootChain, nachoChain, txB);
                     simulator.EndBlock();
 
                     // Create auction
@@ -469,12 +469,13 @@ namespace Phantasma.Spook.Nachomen
 
                     // transfer wrestler nft from main chain to nacho chain
                     simulator.BeginBlock();
-                    simulator.GenerateSideChainSend(ownerKeys, DomainSettings.FuelTokenSymbol, nexus.RootChain, ownerKeys.Address, nachoChain, fuelAmount, 0);
-                    simulator.GenerateNftSidechainTransfer(ownerKeys, ownerKeys.Address, nexus.RootChain, nachoChain, itemToken.Symbol, tokenID);
-                    var blockB = simulator.EndBlock().First();
+                    var txA = simulator.GenerateSideChainSend(ownerKeys, DomainSettings.FuelTokenSymbol, nexus.RootChain, ownerKeys.Address, nachoChain, fuelAmount, 0);
+                    var txB = simulator.GenerateNftSidechainTransfer(ownerKeys, ownerKeys.Address, nexus.RootChain, nachoChain, itemToken.Symbol, tokenID);
+                    simulator.EndBlock();
 
                     simulator.BeginBlock();
-                    simulator.GenerateSideChainSettlement(ownerKeys, nexus.RootChain, nachoChain, blockB.Hash);
+                    simulator.GenerateSideChainSettlement(ownerKeys, nexus.RootChain, nachoChain, txA);
+                    simulator.GenerateSideChainSettlement(ownerKeys, nexus.RootChain, nachoChain, txB);
                     simulator.EndBlock();
 
                     // Create auction

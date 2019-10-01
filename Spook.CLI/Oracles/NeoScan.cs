@@ -147,7 +147,7 @@ namespace Phantasma.Spook.Oracles
 
                         var txHash = Hash.Parse(hashText);
                         var tx = new InteropTransaction(txHash, new InteropTransfer[]{
-                            new InteropTransfer(NeoWallet.EncodeAddress(sourceAddress), NeoWallet.EncodeAddress(destAddress), interopAddress, symbol, amount)
+                            new InteropTransfer("neo", NeoWallet.EncodeAddress(sourceAddress), "neo", NeoWallet.EncodeAddress(destAddress), interopAddress, symbol, amount)
                         });
                         return tx;
                     }
