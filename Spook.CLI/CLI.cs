@@ -29,13 +29,12 @@ using Phantasma.Network.P2P.Messages;
 using Phantasma.RocksDB;
 using Phantasma.Spook.Nachomen;
 using Phantasma.Storage;
-using Logger = Phantasma.Core.Log.Logger;
-using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
-using System.Globalization;
 using Phantasma.Spook.Oracles;
 using Phantasma.Spook.Swaps;
 using Phantasma.Domain;
-using Phantasma.Blockchain.Swaps;
+using Logger = Phantasma.Core.Log.Logger;
+using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
+using System.Globalization;
 
 namespace Phantasma.Spook
 {
@@ -94,7 +93,6 @@ namespace Phantasma.Spook
         private readonly Node node;
         private readonly Logger logger;
         private readonly Mempool mempool;
-        private readonly TokenSwapService tokenSwapper;
         private bool running = false;
         private bool nodeReady = false;
         
@@ -762,8 +760,7 @@ namespace Phantasma.Spook
             var dispatcher = new CommandDispatcher();
             SetupCommands(dispatcher);
 
-
-            if (wif == validatorWIFs[0] && settings.GetBool("swaps.enabled"))
+            /*if (wif == validatorWIFs[0] && settings.GetBool("swaps.enabled"))
             {
                 tokenSwapper = new TokenSwapper(node_keys, api, neoScanAPI, neoAPI, minimumFee, logger, settings);
                 api.SwapService = tokenSwapper;
@@ -783,7 +780,7 @@ namespace Phantasma.Spook
                         }
                     }
                 }).Start();
-            }
+            }*/
 
             if (useSimulator && bootstrap)
             {

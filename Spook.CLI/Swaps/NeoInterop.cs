@@ -1,15 +1,15 @@
-﻿using Phantasma.Numerics;
+﻿using System.Linq;
 using System.Collections.Generic;
 using LunarLabs.Parser.JSON;
 using LunarLabs.Parser;
+using Phantasma.Numerics;
 using Phantasma.Neo.Core;
 using Phantasma.Pay.Chains;
 using Phantasma.Blockchain.Tokens;
 using Phantasma.Domain;
-using Phantasma.Blockchain.Swaps;
 using Phantasma.Cryptography;
 using Phantasma.Spook.Oracles;
-using System.Linq;
+using Phantasma.Blockchain;
 
 namespace Phantasma.Spook.Swaps
 {
@@ -19,7 +19,7 @@ namespace Phantasma.Spook.Swaps
         private NeoScanAPI neoscanAPI;
         private NeoKeys neoKeys;
 
-        public NeoInterop(TokenSwapper swapper, PhantasmaKeys keys, BigInteger blockHeight, NeoAPI neoAPI, NeoScanAPI neoscanAPI) : base(swapper, keys, blockHeight)
+        public NeoInterop(Nexus nexus, PhantasmaKeys keys, BigInteger blockHeight, NeoAPI neoAPI, NeoScanAPI neoscanAPI) : base(nexus, keys, blockHeight)
         {
             this.neoKeys = new NeoKeys(this.Keys.PrivateKey);
             this.neoscanAPI = neoscanAPI;
@@ -92,6 +92,7 @@ namespace Phantasma.Spook.Swaps
 
             TokenInfo token;
 
+            /*
             if (!Swapper.FindTokenByHash(asset, out token))
             {
                 return;
@@ -118,11 +119,13 @@ namespace Phantasma.Spook.Swaps
                 status = ChainSwapStatus.Pending,
             };
 
-            result.Add(swap);
+            result.Add(swap);*/
         }
 
         public override Hash ReceiveFunds(ChainSwap swap)
         {
+            throw new System.NotImplementedException();
+            /*
             Transaction tx;
 
             TokenInfo token;
@@ -157,7 +160,7 @@ namespace Phantasma.Spook.Swaps
             }
 
             var hashText = tx.Hash.ToString();
-            return Hash.Parse(hashText);
+            return Hash.Parse(hashText);*/
         }
 
         public override BrokerResult PrepareBroker(ChainSwap swap, out Hash brokerHash)

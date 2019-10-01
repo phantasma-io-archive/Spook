@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Phantasma.Blockchain.Swaps;
+using Phantasma.Blockchain;
 using Phantasma.Cryptography;
 using Phantasma.Ethereum;
 using Phantasma.Numerics;
@@ -13,7 +13,7 @@ namespace Phantasma.Spook.Swaps
     {
         private EthereumKey ethKeys;
 
-        public EthereumInterop(TokenSwapper swapper, PhantasmaKeys keys, BigInteger currentBlock) : base(swapper, keys, currentBlock)
+        public EthereumInterop(Nexus nexus, PhantasmaKeys keys, BigInteger currentBlock) : base(nexus, keys, currentBlock)
         {
             this.ethKeys = new EthereumKey(this.Keys.PrivateKey);
         }

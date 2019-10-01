@@ -1,17 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading;
+using Phantasma.API;
 using Phantasma.Cryptography;
 using Phantasma.Numerics;
 using Phantasma.Blockchain.Contracts;
-using Phantasma.API;
 using Phantasma.Blockchain;
 using Phantasma.VM.Utils;
 using Phantasma.Core.Types;
 using Phantasma.Blockchain.Tokens;
 using Phantasma.Domain;
-using Phantasma.Pay;
-using Phantasma.Blockchain.Swaps;
 using Phantasma.Contracts.Native;
 
 namespace Phantasma.Spook.Swaps
@@ -24,7 +22,7 @@ namespace Phantasma.Spook.Swaps
 
         private NexusAPI api;
 
-        public PhantasmaInterop(TokenSwapper swapper, PhantasmaKeys keys, BigInteger blockHeight, NexusAPI api) : base(swapper, keys, blockHeight)
+        public PhantasmaInterop(Nexus nexus, PhantasmaKeys keys, BigInteger blockHeight, NexusAPI api) : base(nexus, keys, blockHeight)
         {
             this.api = api;
         }
@@ -33,8 +31,7 @@ namespace Phantasma.Spook.Swaps
         {
             var swaps = new List<ChainSwap>();
 
-            var nexus = Swapper.Nexus;
-            var chain = nexus.RootChain;
+            var chain = Nexus.RootChain;
 
             while (currentHeight <= chain.Height)
             {
@@ -60,6 +57,7 @@ namespace Phantasma.Spook.Swaps
                                     break;
                                 }
 
+                                /*
                             case EventKind.TransactionSettle:
                                 {
                                     var settle = evt.GetContent<TransactionSettleEventData>();
@@ -70,6 +68,7 @@ namespace Phantasma.Spook.Swaps
                                     }
                                     break;
                                 }
+                                */
 
                                 /*case EventKind.AddressLink:
                                     {
@@ -93,6 +92,7 @@ namespace Phantasma.Spook.Swaps
 
         private void ProcessBrokerRequest(Hash hash, Address from, Address target, IEnumerable<Event> events, List<ChainSwap> swaps)
         {
+            /*
             string symbol = null;
             BigInteger amount = 0;
 
@@ -133,12 +133,12 @@ namespace Phantasma.Spook.Swaps
                 status = ChainSwapStatus.Pending
             };
 
-            swaps.Add(swap);
+            swaps.Add(swap);*/
         }
 
         public override BrokerResult PrepareBroker(ChainSwap swap, out Hash hash)
         {
-            var nexus = Swapper.Nexus;
+            /*var nexus = Swapper.Nexus;
 
             hash = Hash.Null;
 
@@ -201,11 +201,14 @@ namespace Phantasma.Spook.Swaps
                 return BrokerResult.Ready;
             }
 
-            return BrokerResult.Error;
+            return BrokerResult.Error;*/
+            throw new NotImplementedException();
         }
 
         public override Hash SettleTransaction(Hash sourceHash, string sourcePlatform)
         {
+            throw new NotImplementedException();
+            /*
             var script = new ScriptBuilder().AllowGas(Swapper.Keys.Address, Address.Null, Swapper.MinimumFee, 9999).CallContract("interop", "SettleTransaction", Swapper.Keys.Address, sourcePlatform, sourceHash).SpendGas(Swapper.Keys.Address).EndScript();
 
             var tx = new Transaction(Swapper.Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5));
@@ -236,15 +239,17 @@ namespace Phantasma.Spook.Swaps
                 return Hash.Parse(hash);
             }
 
-            return Hash.Null;
+            return Hash.Null;*/
         }
 
         public override Hash ReceiveFunds(ChainSwap swap)
         {
-            var nexus = this.api.Nexus;
+            throw new NotImplementedException();
+            /*var nexus = this.api.Nexus;
             var settleHash = (Hash)nexus.RootChain.InvokeContract(nexus.RootStorage, "interop", nameof(InteropContract.GetSettlement), swap.sourcePlatform, swap.sourceHash).ToObject();
 
             return settleHash; // SettleTransaction(swap.sourceHash, swap.sourcePlatform);
+            */
         }
     }
 }

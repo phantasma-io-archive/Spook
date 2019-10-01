@@ -7,10 +7,10 @@ using Phantasma.Spook.Oracles;
 using Phantasma.Core.Log;
 using Phantasma.Core.Utils;
 using Phantasma.Neo.Core;
-using Phantasma.Blockchain.Swaps;
 
 namespace Phantasma.Spook.Swaps
 {
+    /*
     public class TokenSwapper: TokenSwapService
     {
         public TokenSwapper(PhantasmaKeys swapKey, NexusAPI nexusAPI, NeoScanAPI neoscanAPI, NeoAPI neoAPI, BigInteger minFee, Logger logger, Arguments arguments) : base(swapKey, nexusAPI.Nexus, minFee, logger)
@@ -79,42 +79,5 @@ namespace Phantasma.Spook.Swaps
                 }
             }
         }
-
-        /*
-        internal string FromExternalToLocal(Address sourceAddress, string chainName)
-        {
-            var temp = api.GetSwapAddress(sourceAddress.Text, chainName);
-            if (temp is SingleResult)
-            {
-                var addrText = (string)((SingleResult)temp).value;
-                var address = Address.FromText(addrText);
-                string resultChainName;
-                string resultAddress;
-                WalletUtils.DecodePlatformAndAddress(address, out resultChainName, out resultAddress);
-
-                if (resultChainName != chainName)
-                {
-                    throw new InteropException($"Something went wrong, chain names dont match, {chainName} vs {resultChainName}", ChainSwapStatus.Invalid);
-                }
-
-                return resultAddress;
-            }
-
-            throw new InteropException($"Could not map address {sourceAddress} to a {chainName} address", ChainSwapStatus.Link);
-        }
-
-        internal string FromLocalToExternal(string sourceAddress, string chainName)
-        {
-            var tempAddress = WalletUtils.EncodeAddress(sourceAddress, chainName);
-            var temp = nexusAPI.GetSwapAddress(tempAddress.Text, "phantasma");
-            if (temp is SingleResult)
-            {
-                var addrText = (string)((SingleResult)temp).value;
-                var address = Address.FromText(addrText);
-                return address.Text;
-            }
-
-            return string.Empty;
-        }*/
-    }
+    }*/
 }
