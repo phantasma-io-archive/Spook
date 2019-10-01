@@ -13,24 +13,24 @@ using Phantasma.Blockchain;
 
 namespace Phantasma.Spook.Swaps
 {
-    public class NeoInterop : ChainInterop
+    public class NeoInterop : SwapFinder
     {
         private NeoAPI neoAPI;
         private NeoScanAPI neoscanAPI;
-        private NeoKeys neoKeys;
+        private BigInteger _blockHeight;
 
-        public NeoInterop(Nexus nexus, PhantasmaKeys keys, BigInteger blockHeight, NeoAPI neoAPI, NeoScanAPI neoscanAPI) : base(nexus, keys, blockHeight)
+        public string LocalAddress;
+
+        public NeoInterop(string localAddress, BigInteger blockHeight, NeoAPI neoAPI, NeoScanAPI neoscanAPI)
         {
-            this.neoKeys = new NeoKeys(this.Keys.PrivateKey);
+            this._blockHeight = blockHeight;
+            this.LocalAddress = localAddress;
+
             this.neoscanAPI = neoscanAPI;
             this.neoAPI = neoAPI;
         }
 
-        public override string LocalAddress => neoKeys.Address.ToString();
-        public override string Name => NeoWallet.NeoPlatform;
-        public override string PrivateKey => Keys.ToWIF();
-
-        public override IEnumerable<ChainSwap>  Update()
+        public override IEnumerable<ChainSwap> Update()
         {
             var result = new List<ChainSwap>();
 
@@ -46,7 +46,7 @@ namespace Phantasma.Spook.Swaps
                 maxPages = root.GetInt32("total_pages");
             }
 
-            for (int page = maxPages; page>=1; page--)
+            for (int page = maxPages; page >= 1; page--)
             {
                 var json = neoscanAPI.ExecuteRequest($"get_address_abstracts/{LocalAddress}/{page}");
                 if (json == null)
@@ -58,16 +58,16 @@ namespace Phantasma.Spook.Swaps
 
                 var entries = root.GetNode("entries");
 
-                for (int i = entries.ChildCount-1; i>=0; i--)
+                for (int i = entries.ChildCount - 1; i >= 0; i--)
                 {
                     var entry = entries.GetNodeByIndex(i);
 
                     var temp = entry.GetString("block_height");
                     var height = BigInteger.Parse(temp);
 
-                    if (height > currentHeight)
+                    if (height > _blockHeight)
                     {
-                        currentHeight = height;
+                        _blockHeight = height;
 
                         ProcessTransaction(entry, result);
                     }
@@ -122,55 +122,45 @@ namespace Phantasma.Spook.Swaps
             result.Add(swap);*/
         }
 
-        public override Hash ReceiveFunds(ChainSwap swap)
-        {
-            throw new System.NotImplementedException();
-            /*
-            Transaction tx;
+        /*
+                      public override Hash ReceiveFunds(ChainSwap swap)
+             {
+                 throw new System.NotImplementedException();
+                 Transaction tx;
 
-            TokenInfo token;
-            if (!Swapper.FindTokenBySymbol(swap.symbol, out token))
-            {
-                return Hash.Null;
-            }
+                 TokenInfo token;
+                 if (!Swapper.FindTokenBySymbol(swap.symbol, out token))
+                 {
+                     return Hash.Null;
+                 }
 
-            byte platID;
-            byte[] publicKey;
+                 byte platID;
+                 byte[] publicKey;
 
-            swap.destinationAddress.DecodeInterop(out platID, out publicKey);
+                 swap.destinationAddress.DecodeInterop(out platID, out publicKey);
 
-            var destAddress = NeoKeys.PublicKeyToAddress(publicKey);
-            var amount = UnitConversion.ToDecimal(swap.amount, token.Decimals);
+                 var destAddress = NeoKeys.PublicKeyToAddress(publicKey);
+                 var amount = UnitConversion.ToDecimal(swap.amount, token.Decimals);
 
-            if (swap.symbol == "NEO" || swap.symbol == "GAS")
-            {
-                tx = neoAPI.SendAsset(neoKeys, destAddress, swap.symbol, amount);
-            }
-            else
-            {
-                var scriptHash = token.Hash.ToString().Substring(0, 40);
+                 if (swap.symbol == "NEO" || swap.symbol == "GAS")
+                 {
+                     tx = neoAPI.SendAsset(neoKeys, destAddress, swap.symbol, amount);
+                 }
+                 else
+                 {
+                     var scriptHash = token.Hash.ToString().Substring(0, 40);
 
-                var nep5 = new NEP5(neoAPI, scriptHash);
-                tx = nep5.Transfer(neoKeys, destAddress, amount);
-            }
+                     var nep5 = new NEP5(neoAPI, scriptHash);
+                     tx = nep5.Transfer(neoKeys, destAddress, amount);
+                 }
 
-            if (tx == null)
-            {
-                throw new InteropException(this.Name + " transfer failed", ChainSwapStatus.Receive);
-            }
+                 if (tx == null)
+                 {
+                     throw new InteropException(this.Name + " transfer failed", ChainSwapStatus.Receive);
+                 }
 
-            var hashText = tx.Hash.ToString();
-            return Hash.Parse(hashText);*/
-        }
-
-        public override BrokerResult PrepareBroker(ChainSwap swap, out Hash brokerHash)
-        {
-            throw new System.NotImplementedException();
-        }
-
-        public override Hash SettleTransaction(Hash destinationHash, string destinationPlatform)
-        {
-            throw new System.NotImplementedException();
-        }
+                 var hashText = tx.Hash.ToString();
+                 return Hash.Parse(hashText);
+    }*/
     }
 }

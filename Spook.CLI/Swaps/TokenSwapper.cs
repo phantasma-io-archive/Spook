@@ -18,6 +18,11 @@ using Phantasma.API;
 
 namespace Phantasma.Spook.Swaps
 {
+    public abstract class SwapFinder
+    {
+        public abstract IEnumerable<ChainSwap> Update();
+    }
+
     public class TokenSwapper : ITokenSwapper
     {
         public readonly NexusAPI NexusAPI;
@@ -26,19 +31,27 @@ namespace Phantasma.Spook.Swaps
         private readonly PhantasmaKeys SwapKeys;
         private readonly BigInteger MinimumFee;
 
+        private Dictionary<Hash, Neo.Core.Transaction> _neoTxs = new Dictionary<Hash, Neo.Core.Transaction>();
+        private PlatformInfo[] platforms;
+        private Dictionary<string, SwapFinder> _finders = new Dictionary<string, SwapFinder>();
+
         public TokenSwapper(PhantasmaKeys swapKey, NexusAPI nexusAPI, NeoScanAPI neoscanAPI, NeoAPI neoAPI, BigInteger minFee, Logger logger, Arguments arguments)
         {
             this.SwapKeys = swapKey;
             this.NexusAPI = nexusAPI;
             this.MinimumFee = minFee;
 
-            var interopBlocks = new Dictionary<string, BigInteger>();
+            this.platforms = Nexus.Platforms.Select(x => Nexus.GetPlatformInfo(x)).ToArray();
+            _finders["neo"] = new NeoInterop(
+                platforms.Where(x => x.Name=="neo").Select(x => x.InteropAddresses[0].ExternalAddress).FirstOrDefault(),
+                BigInteger.Parse(arguments.GetString("interop.neo.height", "4261049")), neoAPI, neoscanAPI);
+
+            /*var interopBlocks = new Dictionary<string, BigInteger>();
 
             interopBlocks["phantasma"] = BigInteger.Parse(arguments.GetString("interop.phantasma.height", "0"));
-            interopBlocks["neo"] = BigInteger.Parse(arguments.GetString("interop.neo.height", "4261049"));
+            interopBlocks["neo"] = );
             //interopBlocks["ethereum"] = BigInteger.Parse(arguments.GetString("interop.ethereum.height", "4261049"));
-
-            var platforms = Nexus.Platforms.Select(x => Nexus.GetPlatformInfo(x)).ToArray();
+            */
 
             /*
             foreach (var entry in interopBlocks)
@@ -98,6 +111,13 @@ namespace Phantasma.Spook.Swaps
             }*/
         }
 
+        public void Run()
+        {
+            foreach (var platform in platforms)
+            {
+            }
+        }
+
         public Hash SettleSwap(string sourcePlatform, string destPlatform, Hash sourceHash)
         {
             if (destPlatform == PhantasmaWallet.PhantasmaPlatform)
@@ -141,5 +161,14 @@ namespace Phantasma.Spook.Swaps
             return Hash.Null;
         }
 
+        public ChainSwap[] GetPendingSwaps(Address address)
+        {
+            foreach (var plat in platforms)
+            {
+
+            }
+
+            throw new NotImplementedException();
+        }
     }
 }

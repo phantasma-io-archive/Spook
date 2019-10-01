@@ -139,8 +139,7 @@ namespace Phantasma.Spook.Oracles
 
                         var neoTx = neoAPI.GetTransaction(hashText);
 
-                        var witness = neoTx.witnesses[0];
-                        var interopAddress = witness.ExtractAddress();
+                        var interopAddress = neoTx.ExtractInteropAddress();
 
                         var info = nexus.GetTokenInfo(symbol);
                         var amount = UnitConversion.ToBigInteger(inputAmount, info.Decimals);

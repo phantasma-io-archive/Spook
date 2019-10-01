@@ -347,7 +347,7 @@ namespace Phantasma.Spook.Modules
                                         throw new CommandException("The current open wallet does not have keys that match address " + sourceName);
                                     }
 
-                                    extHash = NeoTransfer(neoKeys, platformInfo.ExternalAddress, tokenSymbol, tempAmount, neoAPI);
+                                    extHash = NeoTransfer(neoKeys, platformInfo.InteropAddresses[0].ExternalAddress, tokenSymbol, tempAmount, neoAPI);
 
                                     if (extHash == Hash.Null)
                                     {

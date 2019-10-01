@@ -14,6 +14,7 @@ using Phantasma.Contracts.Native;
 
 namespace Phantasma.Spook.Swaps
 {
+    /*
     public class PhantasmaInterop : ChainInterop
     {
         public override string LocalAddress => Keys.Address.Text;
@@ -57,7 +58,6 @@ namespace Phantasma.Spook.Swaps
                                     break;
                                 }
 
-                                /*
                             case EventKind.TransactionSettle:
                                 {
                                     var settle = evt.GetContent<TransactionSettleEventData>();
@@ -68,9 +68,8 @@ namespace Phantasma.Spook.Swaps
                                     }
                                     break;
                                 }
-                                */
-
-                                /*case EventKind.AddressLink:
+                                
+                             case EventKind.AddressLink:
                                     {
                                         if (evt.Contract == "interop")
                                         {
@@ -79,7 +78,7 @@ namespace Phantasma.Spook.Swaps
                                             swaps.AddRange(pendingSwaps);
                                         }
                                         break;
-                                    }*/
+                                    }
                         }
                     }
                 }
@@ -92,7 +91,6 @@ namespace Phantasma.Spook.Swaps
 
         private void ProcessBrokerRequest(Hash hash, Address from, Address target, IEnumerable<Event> events, List<ChainSwap> swaps)
         {
-            /*
             string symbol = null;
             BigInteger amount = 0;
 
@@ -133,12 +131,12 @@ namespace Phantasma.Spook.Swaps
                 status = ChainSwapStatus.Pending
             };
 
-            swaps.Add(swap);*/
+            swaps.Add(swap);
         }
 
         public override BrokerResult PrepareBroker(ChainSwap swap, out Hash hash)
         {
-            /*var nexus = Swapper.Nexus;
+            var nexus = Swapper.Nexus;
 
             hash = Hash.Null;
 
@@ -201,14 +199,13 @@ namespace Phantasma.Spook.Swaps
                 return BrokerResult.Ready;
             }
 
-            return BrokerResult.Error;*/
+            return BrokerResult.Error;
             throw new NotImplementedException();
         }
 
         public override Hash SettleTransaction(Hash sourceHash, string sourcePlatform)
         {
             throw new NotImplementedException();
-            /*
             var script = new ScriptBuilder().AllowGas(Swapper.Keys.Address, Address.Null, Swapper.MinimumFee, 9999).CallContract("interop", "SettleTransaction", Swapper.Keys.Address, sourcePlatform, sourceHash).SpendGas(Swapper.Keys.Address).EndScript();
 
             var tx = new Transaction(Swapper.Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5));
@@ -239,17 +236,17 @@ namespace Phantasma.Spook.Swaps
                 return Hash.Parse(hash);
             }
 
-            return Hash.Null;*/
+            return Hash.Null;
         }
 
         public override Hash ReceiveFunds(ChainSwap swap)
         {
             throw new NotImplementedException();
-            /*var nexus = this.api.Nexus;
+            var nexus = this.api.Nexus;
             var settleHash = (Hash)nexus.RootChain.InvokeContract(nexus.RootStorage, "interop", nameof(InteropContract.GetSettlement), swap.sourcePlatform, swap.sourceHash).ToObject();
 
             return settleHash; // SettleTransaction(swap.sourceHash, swap.sourcePlatform);
-            */
+            
         }
-    }
+    }*/
 }
