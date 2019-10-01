@@ -796,7 +796,7 @@ namespace Phantasma.Spook.Nachomen
         // TODO error handling when item not exist
         private static NachoItem GetItem(Nexus nexus, PhantasmaKeys ownerKeys, BigInteger ID)
         {
-            var nft = nexus.GetNFT(Constants.ITEM_SYMBOL, ID);
+            var nft = nexus.RootChain.ReadToken(nexus.RootStorage, Constants.ITEM_SYMBOL, ID);
 
             var item = Serialization.Unserialize<NachoItem>(nft.RAM);
 
@@ -825,7 +825,7 @@ namespace Phantasma.Spook.Nachomen
                 return GetBot(ownerKeys, (int)wrestlerID);
             }
 
-            var nft = nexus.GetNFT(Constants.WRESTLER_SYMBOL, wrestlerID);
+            var nft = nexus.RootChain.ReadToken(nexus.RootStorage, Constants.WRESTLER_SYMBOL, wrestlerID);
 
             var wrestler = Serialization.Unserialize<NachoWrestler>(nft.RAM);
             if (wrestler.moveOverrides == null || wrestler.moveOverrides.Length < Constants.MOVE_OVERRIDE_COUNT)
