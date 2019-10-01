@@ -800,7 +800,7 @@ namespace Phantasma.Spook
 
                     bool fillMarket = settings.GetBool("nacho.market", false);
 
-                    NachoServer.InitNachoServer(nexus, simulator, node_keys, fillMarket, logger);
+                    NachoServer.InitNachoServer(nexus, simulator, node_keys, fillMarket, minimumFee, logger);
                     MakeReady(dispatcher);
 
                     bool genBlocks = settings.GetBool("simulator.blocks", false);
