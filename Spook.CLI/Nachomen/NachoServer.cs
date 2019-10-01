@@ -139,10 +139,10 @@ namespace Phantasma.Spook.Nachomen
             simulator.GenerateSideChainSettlement(nachoKeys, nexus.RootChain, nachoChain, txA);
             simulator.EndBlock();
 
-            simulator.BeginBlock();
-            simulator.GenerateSetTokenMetadata(ownerKeys, Constants.WRESTLER_SYMBOL, "details", "https://nacho.men/luchador/*");
-            simulator.GenerateSetTokenMetadata(ownerKeys, Constants.WRESTLER_SYMBOL, "viewer", "https://nacho.men/luchador/body/*");
-            simulator.EndBlock();
+            //simulator.BeginBlock();
+            //simulator.GenerateSetTokenMetadata(ownerKeys, Constants.WRESTLER_SYMBOL, "details", "https://nacho.men/luchador/*");
+            //simulator.GenerateSetTokenMetadata(ownerKeys, Constants.WRESTLER_SYMBOL, "viewer", "https://nacho.men/luchador/body/*");
+            //simulator.EndBlock();
         }
 
         private static void InitialNachoFill()
@@ -316,7 +316,7 @@ namespace Phantasma.Spook.Nachomen
                     var isWrapped   = rand.Next(0, 100) < 50; // TODO update logic for the lootboxes (1 wrestler lootbox = 1 wrapped wrestler)
 
                     // Mint a new Wrestler Token directly on the user
-                    var tokenROM = new byte[0];     //wrestlerBytes;
+                    var tokenROM = wrestler.genes;  // new byte[0];     //wrestlerBytes;
                     var tokenRAM = wrestlerBytes;   //new byte[0];
 
                     simulator.BeginBlock();
