@@ -58,6 +58,8 @@ namespace Phantasma.Spook
 
     public class CLI
     {
+        public const string SpookVersion = "0.1.10";
+
         static void Main(string[] args)
         {
             new CLI(args);
@@ -674,7 +676,7 @@ namespace Phantasma.Spook
 
             try
             {
-                this.node = new Node(nexus, mempool, node_keys, port, caps, seeds, logger);
+                this.node = new Node("Spook v"+ SpookVersion, nexus, mempool, node_keys, port, caps, seeds, logger);
             }
             catch (Exception e)
             {
