@@ -307,6 +307,8 @@ namespace Phantasma.Spook.Nachomen
 
             foreach (var rarity in luchadorCounts.Keys)
             {
+                if (createdAuctions == 10) break; // REMOVE
+
                 if (rarity == Rarity.Legendary)
                 {
                     if (_legendaryWrestlerDelay > 0)
@@ -326,6 +328,8 @@ namespace Phantasma.Spook.Nachomen
 
                 for (var i = 1; i <= count; i++)
                 {
+                    if (createdAuctions == 10) break; // REMOVE
+
                     var wrestler        = DequeueNachoWrestler(ownerKeys, rarity);
                     var wrestlerBytes   = wrestler.Serialize();
 
@@ -422,6 +426,8 @@ namespace Phantasma.Spook.Nachomen
             //foreach (var rarity in itemCounts.Keys)
             foreach (var rarity in _itemQueue.Keys)
             {
+                if (itemCounter == 18) break; // REMOVE
+
                 if (rarity == Rarity.Legendary)
                 {
                     if (_legendaryItemDelay > 0)
@@ -444,6 +450,8 @@ namespace Phantasma.Spook.Nachomen
 
                 for (var i = 1; i <= count; i++)
                 {
+                    if (itemCounter == 18) break; // REMOVE
+
                     var item        = DequeueItem(rarity, logger);
                     var itemBytes   = item.Serialize();
 
