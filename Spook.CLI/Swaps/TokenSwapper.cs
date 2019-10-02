@@ -252,7 +252,7 @@ namespace Phantasma.Spook.Swaps
 
             var script = new ScriptBuilder().
                 AllowGas(SwapKeys.Address, Address.Null, MinimumFee, 9999).
-                CallContract("interop", nameof(InteropContract.SettleTransaction), SwapKeys.Address, sourcePlatform, sourceHash).
+                CallContract("interop", nameof(InteropContract.SettleTransaction), SwapKeys.Address, sourcePlatform, sourcePlatform, sourceHash).
                 SpendGas(SwapKeys.Address).
                 EndScript();
 
@@ -290,10 +290,14 @@ namespace Phantasma.Spook.Swaps
                 foreach (var hash in keys)
                 {
                     var entry = dict[hash];
-                    if (entry.destinationHash == Hash.Null && _settlements.ContainsKey(entry.sourceHash))
+                    if (entry.destinationHash == Hash.Null)
                     {
-                        entry.destinationHash = _settlements[entry.sourceHash];
-                        dict[hash] = entry;
+                        var settleHash = GetSettleHash(entry.sourcePlatform, hash);
+                        if (settleHash != Hash.Null)
+                        {
+                            entry.destinationHash = _settlements[entry.sourceHash];
+                            dict[hash] = entry;
+                        }
                     }
                 }
 
