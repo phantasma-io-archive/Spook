@@ -10,29 +10,30 @@ using Phantasma.Domain;
 using Phantasma.Cryptography;
 using Phantasma.Spook.Oracles;
 using Phantasma.Blockchain;
+using Phantasma.Core.Log;
 
 namespace Phantasma.Spook.Swaps
 {
-    public class NeoInterop : SwapFinder
+    public class NeoInterop : ChainWatcher
     {
         private NeoAPI neoAPI;
+        private Logger logger;
         private NeoScanAPI neoscanAPI;
         private BigInteger _blockHeight;
 
-        public string LocalAddress;
-
-        public NeoInterop(string localAddress, BigInteger blockHeight, NeoAPI neoAPI, NeoScanAPI neoscanAPI)
+        public NeoInterop(TokenSwapper swapper, BigInteger blockHeight, NeoAPI neoAPI, NeoScanAPI neoscanAPI, Logger logger) : base(swapper, "neo")
         {
             this._blockHeight = blockHeight;
-            this.LocalAddress = localAddress;
 
             this.neoscanAPI = neoscanAPI;
             this.neoAPI = neoAPI;
+
+            this.logger = logger;
         }
 
-        public override IEnumerable<ChainSwap> Update()
+        public override IEnumerable<PendingSwap> Update()
         {
-            var result = new List<ChainSwap>();
+            var result = new List<PendingSwap>();
 
             int maxPages = 1;
             {
@@ -77,7 +78,7 @@ namespace Phantasma.Spook.Swaps
             return result;
         }
 
-        private void ProcessTransaction(DataNode entry, List<ChainSwap> result)
+        private void ProcessTransaction(DataNode entry, List<PendingSwap> result)
         {
             var destinationAddress = entry.GetString("address_to");
             if (destinationAddress != this.LocalAddress)
@@ -85,41 +86,25 @@ namespace Phantasma.Spook.Swaps
                 return;
             }
 
-            var neoSourceAddress = entry.GetString("address_from");
             var asset = entry.GetString("asset");
             var hash = entry.GetString("txid");
-            var amount = entry.GetDecimal("amount");
 
-            TokenInfo token;
-
-            /*
-            if (!Swapper.FindTokenByHash(asset, out token))
+            var token = Swapper.FindTokenByHash(asset);
+            if (token == null)
             {
                 return;
             }
 
-            var destChain = "phantasma";
-            var interop = Swapper.FindInterop(destChain);
+            var neoSourceAddress = entry.GetString("address_from");
+            var amount = entry.GetDecimal("amount");
 
             var transaction = neoAPI.GetTransaction(hash);
-            var witness = transaction.witnesses[0];
 
-            var destAddress = witness.ExtractAddress();
-            var sourceAddress = Address.FromInterop(1, destAddress.ToByteArray().Skip(1).ToArray());
+            var destAddress = transaction.ExtractInteropAddress();
+            var sourceAddress = NeoWallet.EncodeAddress(neoSourceAddress);
 
-            var swap = new ChainSwap()
-            {
-                sourceHash = Hash.Parse(hash),
-                sourcePlatform = this.Name,
-                sourceAddress = sourceAddress,
-                amount = UnitConversion.ToBigInteger(amount, token.Decimals),
-                destinationAddress = destAddress,
-                destinationPlatform = destChain,
-                symbol = token.Symbol,
-                status = ChainSwapStatus.Pending,
-            };
-
-            result.Add(swap);*/
+            var swap = new PendingSwap(this.PlatformName, Hash.Parse(hash), sourceAddress, destAddress);
+            result.Add(swap);
         }
 
         /*

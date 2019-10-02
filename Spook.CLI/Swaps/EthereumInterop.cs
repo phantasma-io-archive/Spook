@@ -9,16 +9,16 @@ using Phantasma.Pay.Chains;
 
 namespace Phantasma.Spook.Swaps
 {
-    public class EthereumInterop : SwapFinder
+    public class EthereumInterop : ChainWatcher
     {
-        public EthereumInterop(BigInteger currentBlock) 
+        public EthereumInterop(TokenSwapper swapper, BigInteger currentBlock) : base(swapper, "ethereum")
         {
         }
 
-        public override IEnumerable<ChainSwap> Update()
+        public override IEnumerable<PendingSwap> Update()
         {
             // TODO
-            return Enumerable.Empty<ChainSwap>();
+            return Enumerable.Empty<PendingSwap>();
         }
     }
 }

@@ -764,7 +764,20 @@ namespace Phantasma.Spook
             {
                 var tokenSwapper = new TokenSwapper(node_keys, api, neoScanAPI, neoAPI, minimumFee, logger, settings);
                 api.TokenSwapper = tokenSwapper;
-                logger.Message("Token swaps are enabled on this node.");
+
+                new Thread(() =>
+                {
+                    logger.Message("Running token swapping service...");
+                    while (running)
+                    {
+                        Thread.Sleep(5000);
+
+                        if (nodeReady)
+                        {
+                            tokenSwapper.Update();
+                        }
+                    }
+                }).Start();
             }
 
             if (useSimulator && bootstrap)
