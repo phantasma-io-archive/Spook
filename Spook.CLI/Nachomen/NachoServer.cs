@@ -25,8 +25,8 @@ namespace Phantasma.Spook.Nachomen
         private static int _legendaryWrestlerDelay = 0;
         private static int _legendaryItemDelay = 0;
 
-        private static Dictionary<Rarity, Queue<NachoItem>>     _itemQueue      = new Dictionary<Rarity, Queue<NachoItem>>();
-        private static Dictionary<Rarity, Queue<NachoWrestler>> _wrestlerQueue  = new Dictionary<Rarity, Queue<NachoWrestler>>();
+        private static Dictionary<Rarity, Queue<NachoItem>> _itemQueue = new Dictionary<Rarity, Queue<NachoItem>>();
+        private static Dictionary<Rarity, Queue<KeyValuePair<NachoWrestler, byte[]>>> _wrestlerQueue = new Dictionary<Rarity, Queue<KeyValuePair<NachoWrestler, byte[]>>>();
 
         private static Random _rnd = new Random();
 
@@ -330,14 +330,14 @@ namespace Phantasma.Spook.Nachomen
                 {
                     if (createdAuctions == 10) break; // REMOVE
 
-                    var wrestler        = DequeueNachoWrestler(ownerKeys, rarity);
-                    var wrestlerBytes   = wrestler.Serialize();
+                    var wrestler        = DequeueWrestler(ownerKeys, rarity);
+                    var wrestlerBytes   = wrestler.Key.Serialize();
 
                     var rand        = new Random();
                     var isWrapped   = rand.Next(0, 100) < 50; // TODO update logic for the lootboxes (1 wrestler lootbox = 1 wrapped wrestler)
 
                     // Mint a new Wrestler Token directly on the user
-                    var tokenROM = wrestler.genes;  // new byte[0];     //wrestlerBytes;
+                    var tokenROM = wrestler.Value;  // new byte[0];     //wrestlerBytes;
                     var tokenRAM = wrestlerBytes;   //new byte[0];
 
                     simulator.BeginBlock();
@@ -728,18 +728,17 @@ namespace Phantasma.Spook.Nachomen
             return _itemQueue[rarity].Dequeue();
         }
 
-        private static void MineRandomLuchadores(PhantasmaKeys ownerKey, int amount)
+        private static void MineRandomWrestlers(PhantasmaKeys ownerKey, int amount)
         {
             while (amount > 0)
             {
-                var wrestler = new NachoWrestler()
+                var nachoWrestler = new NachoWrestler()
                 {
                     battleCount = 0,
                     comments = new string[0],
                     currentMojo = 10,
                     experience = 10000,
                     flags = WrestlerFlags.None,
-                    genes = Luchador.MineGenes(_rnd, null),
                     gymBoostAtk = byte.MaxValue,
                     gymBoostDef = byte.MaxValue,
                     gymBoostStamina = byte.MaxValue,
@@ -761,12 +760,16 @@ namespace Phantasma.Spook.Nachomen
                     trainingStat = StatKind.None
                 };
 
-                var luchador = Luchador.FromData(1, ownerKey.Address, wrestler);
+                var luchador = Luchador.FromData(1, ownerKey.Address, nachoWrestler);
 
                 if (WrestlerValidation.IsValidWrestler(luchador))
                 {
                     amount--;
-                    EnqueueNachoWrestler(wrestler);
+
+                    var genes       = Luchador.MineGenes(_rnd, null);
+                    var wrestler    = new KeyValuePair<NachoWrestler, byte[]>(nachoWrestler, genes);
+
+                    EnqueueWrestler(wrestler);
                 }
             }
         }
@@ -777,42 +780,39 @@ namespace Phantasma.Spook.Nachomen
             WrestlingMove.Hyper_Slam,
         });
 
-        private static void EnqueueNachoWrestler(NachoWrestler wrestler)
+        private static void EnqueueWrestler(KeyValuePair<NachoWrestler, byte[]> wrestler)
         {
-            Queue<NachoWrestler> queue;
+            Queue<KeyValuePair<NachoWrestler, byte[]>> queue;
 
-            var rarity = GetWrestlerRarity(wrestler);
+            var rarity = GetWrestlerRarity(wrestler.Value);
             if (_wrestlerQueue.ContainsKey(rarity))
             {
                 queue = _wrestlerQueue[rarity];
             }
             else
             {
-                queue = new Queue<NachoWrestler>();
+                queue = new Queue<KeyValuePair<NachoWrestler, byte[]>>();
                 _wrestlerQueue[rarity] = queue;
             }
 
             queue.Enqueue(wrestler);
         }
 
-        private static NachoWrestler DequeueNachoWrestler(PhantasmaKeys ownerKeys, Rarity rarity)
+        private static KeyValuePair<NachoWrestler, byte[]> DequeueWrestler(PhantasmaKeys ownerKeys, Rarity rarity)
         {
             while (!_wrestlerQueue.ContainsKey(rarity) || _wrestlerQueue[rarity].Count == 0)
             {
-                MineRandomLuchadores(ownerKeys, 10);
+                MineRandomWrestlers(ownerKeys, 10);
             }
 
             return _wrestlerQueue[rarity].Dequeue();
         }
 
-        public static Rarity GetWrestlerRarity(NachoWrestler wrestler)
+        public static Rarity GetWrestlerRarity(byte[] wrestlerGenes)
         {
-            if (wrestler.genes == null)
-            {
-                return Rarity.Common;
-            }
+            if (wrestlerGenes == null) return Rarity.Common;
 
-            var n = (wrestler.genes[Constants.GENE_RARITY] % 6);
+            var n = (wrestlerGenes[Constants.GENE_RARITY] % 6);
             return (Rarity)n;
         }
 
@@ -828,7 +828,7 @@ namespace Phantasma.Spook.Nachomen
                 if (item.wrestlerID != 0)
                 {
                     var wrestler = GetWrestler(nexus, ownerKeys, item.wrestlerID);
-                    if (wrestler.itemID != ID)
+                    if (wrestler.Key.itemID != ID)
                     {
                         item.location = ItemLocation.None;
                     }
@@ -839,7 +839,7 @@ namespace Phantasma.Spook.Nachomen
         }
 
 
-        private static NachoWrestler GetWrestler(Nexus nexus, PhantasmaKeys ownerKeys, BigInteger wrestlerID)
+        private static KeyValuePair<NachoWrestler, byte[]> GetWrestler(Nexus nexus, PhantasmaKeys ownerKeys, BigInteger wrestlerID)
         {
             Throw.If(wrestlerID <= 0, "null or negative id");
 
@@ -848,9 +848,10 @@ namespace Phantasma.Spook.Nachomen
                 return GetBot(ownerKeys, (int)wrestlerID);
             }
 
-            var nft = nexus.RootChain.ReadToken(nexus.RootStorage, Constants.WRESTLER_SYMBOL, wrestlerID);
+            var nft         = nexus.RootChain.ReadToken(nexus.RootStorage, Constants.WRESTLER_SYMBOL, wrestlerID);
+            var genes       = nft.ROM;
+            var wrestler    = Serialization.Unserialize<NachoWrestler>(nft.RAM);
 
-            var wrestler = Serialization.Unserialize<NachoWrestler>(nft.RAM);
             if (wrestler.moveOverrides == null || wrestler.moveOverrides.Length < Constants.MOVE_OVERRIDE_COUNT)
             {
                 var temp = wrestler.moveOverrides;
@@ -870,9 +871,9 @@ namespace Phantasma.Spook.Nachomen
                 wrestler.location = WrestlerLocation.Market;
             }
 
-            if (wrestler.genes == null || wrestler.genes.Length == 0)
+            if (genes == null || genes.Length == 0)
             {
-                wrestler.genes = new byte[10];
+                genes = new byte[10];
             }
 
             if (wrestler.stakeAmount == null)
@@ -900,7 +901,7 @@ namespace Phantasma.Spook.Nachomen
                 wrestler.maskOverrideCheck = 0;
             }
 
-            return wrestler;
+            return new KeyValuePair<NachoWrestler, byte[]>(wrestler, genes);
         }
 
         private static void IncreaseWrestlerEV(ref NachoWrestler wrestler, StatKind statKind, int obtainedEV)
@@ -952,7 +953,7 @@ namespace Phantasma.Spook.Nachomen
             return checksum == wrestler.maskOverrideCheck;
         }
 
-        private static NachoWrestler GetBot(PhantasmaKeys ownerKeys, int botID)
+        private static KeyValuePair<NachoWrestler, byte[]> GetBot(PhantasmaKeys ownerKeys, int botID)
         {
             byte[] genes;
             int level;
@@ -1076,7 +1077,7 @@ namespace Phantasma.Spook.Nachomen
 
             var bot = new NachoWrestler()
             {
-                genes           = genes,
+                //genes           = genes,
                 experience      = Constants.EXPERIENCE_MAP[level],
                 nickname        = "",
                 score           = Constants.DEFAULT_SCORE,
@@ -1088,7 +1089,7 @@ namespace Phantasma.Spook.Nachomen
 
             bot.comments[Constants.LUCHADOR_COMMENT_INTRO] = introText;
 
-            return bot;
+            return new KeyValuePair<NachoWrestler, byte[]>(bot, genes);
         }
     }
 }
