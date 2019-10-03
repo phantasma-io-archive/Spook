@@ -36,38 +36,41 @@ namespace Phantasma.Spook.Nachomen
         public BigInteger ID { get; private set; }
         public Address Owner { get; set; }
 
-        public bool IsTransferable => !data.flags.HasFlag(WrestlerFlags.Locked);
+        public bool IsTransferable => !Data.flags.HasFlag(WrestlerFlags.Locked);
 
-        private NachoWrestler _data;
-        public NachoWrestler data
+        private byte[] _genes;
+        public byte[] Genes
         {
             get
             {
-                return _data;
+                return _genes;
             }
 
             set
             {
-                _data = value;
+                _genes = value;
                 _elements.Clear();
             }
         }
+
+        public NachoWrestler Data { get; set; }
 
         public void Copy(IIndexable other)
         {
             var otherLuchador = (Luchador)other;
             this.ID = otherLuchador.ID;
             this.Owner = otherLuchador.Owner;
-            this.data = otherLuchador.data;
+            this.Genes = otherLuchador.Genes;
+            this.Data = otherLuchador.Data;
         }
 
-        public bool HasItem => data.itemID > 0;
+        public bool HasItem => Data.itemID > 0;
 
-        public WrestlingMove PrimaryMove => Rules.GetPrimaryMoveFromGenes(data.genes);
-        public WrestlingMove SecondaryMove => Rules.GetSecondaryMoveFromGenes(data.genes);
-        public WrestlingMove TertiaryMove => Rules.GetTertiaryMoveFromGenes(data.genes);
-        public WrestlingMove StanceMove => Rules.GetStanceMoveFromGenes(data.genes);
-        public WrestlingMove TagMove => Rules.GetTagMoveFromGenes(data.genes);
+        public WrestlingMove PrimaryMove => Rules.GetPrimaryMoveFromGenes(Genes);
+        public WrestlingMove SecondaryMove => Rules.GetSecondaryMoveFromGenes(Genes);
+        public WrestlingMove TertiaryMove => Rules.GetTertiaryMoveFromGenes(Genes);
+        public WrestlingMove StanceMove => Rules.GetStanceMoveFromGenes(Genes);
+        public WrestlingMove TagMove => Rules.GetTagMoveFromGenes(Genes);
 
         private readonly Dictionary<BodyPart, LuchadorPiece> _elements = new Dictionary<BodyPart, LuchadorPiece>();
 
@@ -141,7 +144,7 @@ namespace Phantasma.Spook.Nachomen
         {
             if (_hash == null)
             {
-                _hash = data.genes.Sha256();
+                _hash = Genes.Sha256();
             }
 
             int index = (int)part;
@@ -205,23 +208,23 @@ namespace Phantasma.Spook.Nachomen
             {
                 if (ID <= 8)
                 {
-                    return ((PracticeLevel)((int)ID)).ToString() + " dummy";
+                    return (PracticeLevel)((int)ID) + " dummy";
                 }
 
-                if (!string.IsNullOrEmpty(data.nickname))
+                if (!string.IsNullOrEmpty(Data.nickname))
                 {
-                    return data.nickname;
+                    return Data.nickname;
                 }
 
                 switch (this.Rarity)
                 {
                     case Rarity.Legendary:
-                        return NameGenerator.GenerateLegendaryName(this.data.genes, GetBodyPart(BodyPart.Head).Variation);
+                        return NameGenerator.GenerateLegendaryName(Genes, GetBodyPart(BodyPart.Head).Variation);
 
                     default:
                         {
                             var body = GetBodyPart(BodyPart.Body).Variation;
-                            return NameGenerator.GenerateCommonName(this.data.genes, body > 20);
+                            return NameGenerator.GenerateCommonName(Genes, body > 20);
                         }
                 }
 
@@ -282,30 +285,30 @@ namespace Phantasma.Spook.Nachomen
             return false;
         }
 
-        public int Level => Formulas.CalculateWrestlerLevel((int)data.experience);
+        public int Level => Formulas.CalculateWrestlerLevel((int)Data.experience);
         public Rarity Rarity
         {
             get
             {
-                if (data.genes == null)
+                if (Genes == null)
                 {
                     return Rarity.Common;
                 }
 
-                var n = (data.genes[Constants.GENE_RARITY] % 6);
+                var n = (Genes[Constants.GENE_RARITY] % 6);
                 return (Rarity)n;
             }
         }
 
-        public LuchadorHoroscope HoroscopeSign => Formulas.GetHoroscopeSign(data.genes);
+        public LuchadorHoroscope HoroscopeSign => Formulas.GetHoroscopeSign(Genes);
 
-        public int BaseStamina => Formulas.CalculateBaseStat(data.genes, StatKind.Stamina);
-        public int BaseAttack => Formulas.CalculateBaseStat(data.genes, StatKind.Attack);
-        public int BaseDefense => Formulas.CalculateBaseStat(data.genes, StatKind.Defense);
+        public int BaseStamina => Formulas.CalculateBaseStat(Genes, StatKind.Stamina);
+        public int BaseAttack => Formulas.CalculateBaseStat(Genes, StatKind.Attack);
+        public int BaseDefense => Formulas.CalculateBaseStat(Genes, StatKind.Defense);
 
-        public int Stamina => (int)Formulas.CalculateWrestlerStat(this.Level, BaseStamina, data.gymBoostStamina);
-        public int Attack => (int)Formulas.CalculateWrestlerStat(this.Level, BaseAttack, data.gymBoostAtk);
-        public int Defense => (int)Formulas.CalculateWrestlerStat(this.Level, BaseDefense, data.gymBoostDef);
+        public int Stamina => (int)Formulas.CalculateWrestlerStat(this.Level, BaseStamina, Data.gymBoostStamina);
+        public int Attack => (int)Formulas.CalculateWrestlerStat(this.Level, BaseAttack, Data.gymBoostAtk);
+        public int Defense => (int)Formulas.CalculateWrestlerStat(this.Level, BaseDefense, Data.gymBoostDef);
 
         public static byte[] MineGenes(Random rnd, Func<Luchador, bool> filter, Action<byte[]> geneSplicer = null, int limit = 0)
         {
@@ -313,19 +316,16 @@ namespace Phantasma.Spook.Nachomen
             var luchador = new Luchador(Constants.BASE_LUCHADOR_ID);
             do
             {
-                var temp = luchador.data;
                 var genes = GenerateGenes(rnd);
 
                 geneSplicer?.Invoke(genes);
 
-                temp.genes = genes;
-
                 luchador._hash = null;
-                luchador.data = temp;
+                luchador.Genes = genes;
 
                 if (luchador.HasValidMoveset() && (filter == null || filter(luchador)))
                 {
-                    return temp.genes;
+                    return genes;
                 }
 
                 amount++;
@@ -366,17 +366,16 @@ namespace Phantasma.Spook.Nachomen
             return true;
         }
 
-        public static Luchador FromGenes(BigInteger n, byte[] genes)
+        public static Luchador FromGenes(BigInteger n, Address owner, byte[] genes)
         {
-            var luchador = new Luchador(n);
-            var data = new NachoWrestler {genes = genes};
-            luchador.data = data;
+            var luchador = new Luchador(n) {Owner = owner, Genes = genes, Data = new NachoWrestler()};
+
             return luchador;
         }
 
-        public static Luchador FromData(BigInteger n, Address owner, NachoWrestler data)
+        public static Luchador FromData(BigInteger id, Address owner, NachoWrestler data)
         {
-            var luchador = new Luchador(n) {data = data};
+            var luchador = new Luchador(id) { Data = data, Owner = owner };
 
             return luchador;
         }
@@ -431,7 +430,7 @@ namespace Phantasma.Spook.Nachomen
             return Constants.EXPERIENCE_MAP[level];
         }
 
-        public PracticeLevel practiceLevel => data.practiceLevel;
+        public PracticeLevel practiceLevel => Data.practiceLevel;
 
         public Hue SkinHue
         {
@@ -439,16 +438,15 @@ namespace Phantasma.Spook.Nachomen
             {
                 if (Rarity == Rarity.Bot)
                 {
-                    return (Hue)((data.genes[Constants.GENE_SKIN] + data.genes[Constants.GENE_RARITY]) % 10);
+                    return (Hue)((Genes[Constants.GENE_SKIN] + Genes[Constants.GENE_RARITY]) % 10);
                 }
 
                 var pal = GetSkinPalette(this.Country);
-                return pal[(data.genes[Constants.GENE_SKIN] + data.genes[Constants.GENE_RARITY]) % pal.Length];
+                return pal[(Genes[Constants.GENE_SKIN] + Genes[Constants.GENE_RARITY]) % pal.Length];
             }
         }
 
-
-        public sbyte SkinShade => (sbyte)(-1 + ((data.genes[Constants.GENE_SKIN] + data.genes[Constants.GENE_RANDOM]) % 4));
+        public sbyte SkinShade => (sbyte)(-1 + ((Genes[Constants.GENE_SKIN] + Genes[Constants.GENE_RANDOM]) % 4));
 
         public LeagueRank League => LeagueRank.None;
 
@@ -456,7 +454,7 @@ namespace Phantasma.Spook.Nachomen
         {
             get
             {
-                var result = (Country)data.genes[Constants.GENE_COUNTRY];
+                var result = (Country)Genes[Constants.GENE_COUNTRY];
                 if (IsInvalidCountry(result))
                 {
                     return Country.United_States;
@@ -663,9 +661,9 @@ namespace Phantasma.Spook.Nachomen
         {
             switch (stat)
             {
-                case StatKind.Attack: return data.gymBoostAtk;
-                case StatKind.Defense: return data.gymBoostDef;
-                case StatKind.Stamina: return data.gymBoostStamina;
+                case StatKind.Attack: return Data.gymBoostAtk;
+                case StatKind.Defense: return Data.gymBoostDef;
+                case StatKind.Stamina: return Data.gymBoostStamina;
                 default: return 0;
             }
         }
@@ -981,7 +979,7 @@ namespace Phantasma.Spook.Nachomen
 
         //public Gender Gender => WrestlerValidation.IsFemale(this.GetBodyPart(BodyPart.Head).Variation, this.Rarity) ? Gender.Female : Gender.Male;
 
-        public bool IsShiny     => data.flags == WrestlerFlags.Shine;
+        public bool IsShiny     => Data.flags == WrestlerFlags.Shine;
 
         public static int GetMaxPossibleStatAtLevel(StatKind stat, int level)
         {
