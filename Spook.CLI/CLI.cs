@@ -441,9 +441,6 @@ namespace Phantasma.Spook
 
             var settings = new Arguments(args);
 
-            // this line needs to be here, to be executed as soon as possible
-            InteropUtils.Seed = settings.GetString("swaps.seed", InteropUtils.Seed);
-
             /*
             for (int i = 0; i < 200; i++)
             {

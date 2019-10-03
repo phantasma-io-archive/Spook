@@ -15,6 +15,7 @@ using Phantasma.Contracts.Native;
 using Phantasma.Core.Types;
 using System;
 using Phantasma.API;
+using System.Threading;
 
 namespace Phantasma.Spook.Swaps
 {
@@ -32,6 +33,13 @@ namespace Phantasma.Spook.Swaps
             this.source = source;
             this.destination = destination;
         }
+    }
+
+    public struct PendingSettle
+    {
+        public Hash sourceHash;
+        public Hash destinationHash;
+        public DateTime time;
     }
 
     public abstract class ChainWatcher
@@ -163,6 +171,8 @@ namespace Phantasma.Spook.Swaps
         private Dictionary<Address, List<Hash>> _swapAddressMap = new Dictionary<Address, List<Hash>>();
         private Dictionary<Hash, Hash> _settlements = new Dictionary<Hash, Hash>();
 
+        private List<PendingSettle> _pendingSettles = new List<PendingSettle>();
+
         private void MapSwap(Address address, Hash hash)
         {
             List<Hash> list;
@@ -189,6 +199,22 @@ namespace Phantasma.Spook.Swaps
                 _finders["neo"] = new NeoInterop(this, interopBlocks["neo"], neoAPI, neoscanAPI, logger);
             }
 
+            int i = 0;
+            while (i < _pendingSettles.Count)
+            {
+                var settlement = _pendingSettles[i];
+                var diff = DateTime.UtcNow - settlement.time;
+                if (diff.TotalSeconds > 30)
+                {
+                    SettleTransaction(DomainSettings.PlatformName, DomainSettings.RootChainName, settlement.destinationHash);
+                    _pendingSettles.RemoveAt(i);
+                }
+                else
+                {
+                    i++;
+                }
+            }
+
             foreach (var finder in _finders.Values)
             {
                 var swaps = finder.Update();
@@ -212,7 +238,7 @@ namespace Phantasma.Spook.Swaps
         {
             if (destPlatform == PhantasmaWallet.PhantasmaPlatform)
             {
-                return SettleSwapToPhantasma(sourcePlatform, sourceHash);
+                return SettleTransaction(sourcePlatform, sourcePlatform, sourceHash);
             }
             else 
             if (sourcePlatform != PhantasmaWallet.PhantasmaPlatform)
@@ -220,8 +246,17 @@ namespace Phantasma.Spook.Swaps
                 throw new SwapException("Invalid source platform");
             }
 
+            var settleHash = GetSettleHash(sourcePlatform, sourceHash);
+            if (settleHash != Hash.Null)
+            {
+                return settleHash;
+            }
+
             switch (destPlatform)
             {
+                case NeoWallet.NeoPlatform:
+                    return SettleSwapToNeo(sourceHash);
+
                 default:
                     return Hash.Null;
             }
@@ -234,6 +269,14 @@ namespace Phantasma.Spook.Swaps
                 return _settlements[sourceHash];
             }
 
+            foreach (var settlement in _pendingSettles)
+            {
+                if (settlement.sourceHash == sourceHash)
+                {
+                    return settlement.destinationHash;
+                }
+            }
+
             var hash = (Hash)Nexus.RootChain.InvokeContract(Nexus.RootStorage, "interop", nameof(InteropContract.GetSettlement), sourcePlatform, sourceHash).ToObject();
             if (hash != Hash.Null && !_settlements.ContainsKey(sourceHash))
             {
@@ -242,17 +285,11 @@ namespace Phantasma.Spook.Swaps
             return hash;
         }
 
-        private Hash SettleSwapToPhantasma(string sourcePlatform, Hash sourceHash)
+        private Hash SettleTransaction(string sourcePlatform, string chain, Hash txHash)
         {
-            var settleHash = GetSettleHash(sourcePlatform, sourceHash);
-            if (settleHash != Hash.Null)
-            {
-                return settleHash;
-            }
-
             var script = new ScriptBuilder().
                 AllowGas(SwapKeys.Address, Address.Null, MinimumFee, 9999).
-                CallContract("interop", nameof(InteropContract.SettleTransaction), SwapKeys.Address, sourcePlatform, sourcePlatform, sourceHash).
+                CallContract("interop", nameof(InteropContract.SettleTransaction), SwapKeys.Address, sourcePlatform, chain, txHash).
                 SpendGas(SwapKeys.Address).
                 EndScript();
 
@@ -305,6 +342,58 @@ namespace Phantasma.Spook.Swaps
             }
 
             return Enumerable.Empty<ChainSwap>();
+        }
+
+        private Hash SettleSwapToNeo(Hash sourceHash)
+        {
+            return SettleSwapToExternal(NeoWallet.NeoPlatform, sourceHash, (destination, token, amount) =>
+            {
+                var total = UnitConversion.ToDecimal(amount, token.Decimals);
+
+                var interopKeys = InteropUtils.GenerateInteropKeys(SwapKeys, Nexus.GenesisHash, NeoWallet.NeoPlatform);
+                var neoKeys = Phantasma.Neo.Core.NeoKeys.FromWIF(interopKeys.ToWIF());
+
+                var destAddress = NeoWallet.DecodeAddress(destination);
+
+                Neo.Core.Transaction tx;
+                if (token.Symbol == "NEO" || token.Symbol == "GAS")
+                {
+                    tx = neoAPI.SendAsset(neoKeys, destAddress, token.Symbol, total);
+                }
+                else
+                {
+                    var nep5 = neoAPI.GetToken(token.Symbol);
+                    tx = nep5.Transfer(neoKeys, destAddress, total);
+                }
+
+                var txHash = Hash.Parse(tx.Hash.ToString());
+                return txHash;
+            });
+        }
+
+        private Hash SettleSwapToExternal(string destinationPlatform, Hash sourceHash, Func<Address, IToken, BigInteger, Hash> generator)
+        {
+            var oracleReader = Nexus.CreateOracleReader();
+            var swap = oracleReader.ReadTransactionFromOracle(DomainSettings.PlatformName, DomainSettings.RootChainName, sourceHash);
+
+            // TODO not support yet
+            if (swap.Transfers.Length != 1)
+            {
+                logger.Warning($"Not implemented: Swap support for multiple transfers in a single transaction");
+                return Hash.Null;
+            }
+
+            var transfer = swap.Transfers[0];
+
+            var token = Nexus.GetTokenInfo(transfer.Symbol);
+
+            var destHash = generator(transfer.destinationAddress, token, transfer.Value);
+            if (destHash != Hash.Null)
+            {
+                _pendingSettles.Add(new PendingSettle() {sourceHash = sourceHash, destinationHash = destHash, time = DateTime.UtcNow });
+            }
+
+            return destHash;
         }
     }
 }

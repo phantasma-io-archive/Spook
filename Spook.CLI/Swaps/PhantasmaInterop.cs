@@ -89,51 +89,6 @@ namespace Phantasma.Spook.Swaps
             return swaps;
         }
 
-        private void ProcessBrokerRequest(Hash hash, Address from, Address target, IEnumerable<Event> events, List<ChainSwap> swaps)
-        {
-            string symbol = null;
-            BigInteger amount = 0;
-
-            foreach (var evt in events)
-            {
-                if (evt.Kind == EventKind.TokenBurn)
-                {
-                    var data = evt.GetContent<TokenEventData>();
-                    symbol = data.Symbol;
-                    amount = data.Value;
-                    break;
-                }
-            }
-
-            if (symbol == null || amount <= 0)
-            {
-                return;
-            }
-
-            TokenInfo tokenInfo;
-            
-            if (!Swapper.FindTokenBySymbol(symbol, out tokenInfo))
-            {
-                return;
-            }
-
-            string destinationPlatform = "NEO"; // TODO fix this
-
-            var swap = new ChainSwap()
-            {
-                symbol = symbol,
-                amount = amount,
-                destinationAddress = target,
-                destinationPlatform = destinationPlatform,
-                sourceHash = hash,
-                sourceAddress = from,
-                sourcePlatform = DomainSettings.PlatformName,
-                status = ChainSwapStatus.Pending
-            };
-
-            swaps.Add(swap);
-        }
-
         public override BrokerResult PrepareBroker(ChainSwap swap, out Hash hash)
         {
             var nexus = Swapper.Nexus;
