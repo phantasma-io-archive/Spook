@@ -52,7 +52,8 @@ namespace Phantasma.Spook.Swaps
                 var json = neoscanAPI.ExecuteRequest($"get_address_abstracts/{LocalAddress}/{page}");
                 if (json == null)
                 {
-                    throw new SwapException("failed to fetch address page");
+                    logger.Warning("failed to fetch address page");
+                    break;
                 }
 
                 var root = JSONReader.ReadFromString(json);
