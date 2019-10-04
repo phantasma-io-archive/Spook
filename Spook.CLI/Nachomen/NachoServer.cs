@@ -761,12 +761,14 @@ namespace Phantasma.Spook.Nachomen
                 };
 
                 var luchador = Luchador.FromData(1, ownerKey.Address, nachoWrestler);
+                var genes = Luchador.MineGenes(_rnd, null);
+
+                luchador.Genes = genes;
 
                 if (WrestlerValidation.IsValidWrestler(luchador))
                 {
                     amount--;
 
-                    var genes       = Luchador.MineGenes(_rnd, null);
                     var wrestler    = new KeyValuePair<NachoWrestler, byte[]>(nachoWrestler, genes);
 
                     EnqueueWrestler(wrestler);
