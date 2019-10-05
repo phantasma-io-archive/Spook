@@ -228,7 +228,7 @@ lsb_release -a
 
 ````
 #create the MS license
-wget -q https://packages.microsoft.com/config/ubuntu/19.04/ -O packages-microsoft-prod.deb
+wget -q https://packages.microsoft.com/config/ubuntu/19.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb 
 sudo dpkg -i packages-microsoft-prod.deb
 #Install the runtime
 sudo add-apt-repository universe
