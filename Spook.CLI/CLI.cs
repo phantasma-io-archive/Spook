@@ -527,11 +527,18 @@ namespace Phantasma.Spook
 
             bool bootstrap = false;
 
-            if (settings.GetBool("nexus.bootstrap"))
+            if (!nexus.HasGenesis)
             {
-                if (!nexus.HasGenesis)
+                if (settings.GetBool("nexus.bootstrap"))
                 {
-                    logger.Debug("Boostraping nexus...");
+                    if (!ValidationUtils.IsValidIdentifier(nexusName))
+                    {
+                        logger.Error("Invalid nexus name: " + nexusName);
+                        this.Terminate();
+                        return;
+                    }
+
+                    logger.Debug($"Boostraping {nexusName} nexus...");
                     bootstrap = true;
                     if (!nexus.CreateGenesisBlock(nexusName, node_keys, Timestamp.Now))
                     {
@@ -540,11 +547,15 @@ namespace Phantasma.Spook
 
                     logger.Debug("Genesis block created: " + nexus.GenesisHash);
                 }
+                else
+                {
+                    logger.Error("No Nexus found.");
+                    this.Terminate();
+                }
             }
             else
             {
-                //nexus = new Nexus(nexusName, genesisAddress, logger);
-                nexus = new Nexus(logger);
+                logger.Success("Loaded Nexus with genesis " + nexus.GenesisHash);
                 //seeds.Add("127.0.0.1:7073");
             }
 
@@ -756,7 +767,6 @@ namespace Phantasma.Spook
                     bool fillMarket = settings.GetBool("nacho.market", false);
 
                     NachoServer.InitNachoServer(nexus, simulator, node_keys, fillMarket, minimumFee, logger);
-                    MakeReady(dispatcher);
 
                     bool genBlocks = settings.GetBool("simulator.blocks", false);
                     if (genBlocks)
@@ -779,6 +789,8 @@ namespace Phantasma.Spook
                             }
                         }
                     }
+
+                    MakeReady(dispatcher);
                 }).Start();
 
             }

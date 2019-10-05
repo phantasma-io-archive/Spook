@@ -244,6 +244,11 @@ namespace Phantasma.Spook.Swaps
         {
             if (this.platforms == null)
             {
+                if (!Nexus.HasGenesis)
+                {
+                    return;
+                }
+
                 this.platforms = Nexus.Platforms.Select(x => Nexus.GetPlatformInfo(x)).ToArray();
 
                 if (this.platforms.Length == 0)
