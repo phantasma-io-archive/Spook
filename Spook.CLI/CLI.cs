@@ -150,14 +150,14 @@ namespace Phantasma.Spook
             return total;
         }
 
-        private static Hash SendTransfer(JSONRPC_Client rpc, Logger logger, string host, PhantasmaKeys from, Address to, BigInteger amount)
+        private static Hash SendTransfer(JSONRPC_Client rpc, Logger logger, string nexusName, string host, PhantasmaKeys from, Address to, BigInteger amount)
         {
             Throw.IfNull(rpc, nameof(rpc));
             Throw.IfNull(logger, nameof(logger));
 
             var script = ScriptUtils.BeginScript().AllowGas(from.Address, Address.Null, 1, 9999).TransferTokens("SOUL", from.Address, to, amount).SpendGas(from.Address).EndScript();
 
-            var tx = new Transaction("simnet", "main", script, Timestamp.Now + TimeSpan.FromMinutes(30));
+            var tx = new Transaction(nexusName, "main", script, Timestamp.Now + TimeSpan.FromMinutes(30));
             tx.Sign(from);
 
             var bytes = tx.ToByteArray(true);
@@ -216,7 +216,7 @@ namespace Phantasma.Spook
             } while (true);
         }
 
-        private void SenderSpawn(int ID, PhantasmaKeys masterKeys, string host, BigInteger initialAmount, int addressesListSize)
+        private void SenderSpawn(int ID, PhantasmaKeys masterKeys, string nexusName, string host, BigInteger initialAmount, int addressesListSize)
         {
             Throw.IfNull(logger, nameof(logger));
 
@@ -231,7 +231,7 @@ namespace Phantasma.Spook
 
             var peerKey = PhantasmaKeys.Generate();
             logger.Message($"#{ID}: Connecting to peer: {host} with address {peerKey.Address.Text}");
-            var request = new RequestMessage(RequestKind.None, "simnet", peerKey.Address);
+            var request = new RequestMessage(RequestKind.None, nexusName, peerKey.Address);
             request.Sign(peerKey);
             peer.Send(request);
 
@@ -240,7 +240,7 @@ namespace Phantasma.Spook
             var rpc = new JSONRPC_Client();
             {
                 logger.Message($"#{ID}: Sending funds to address {peerKey.Address.Text}");
-                var hash = SendTransfer(rpc, logger, host, masterKeys, peerKey.Address, initialAmount);
+                var hash = SendTransfer(rpc, logger, nexusName, host, masterKeys, peerKey.Address, initialAmount);
                 if (hash == Hash.Null)
                 {
                     logger.Error($"#{ID}:Stopping, fund transfer failed");
@@ -274,7 +274,7 @@ namespace Phantasma.Spook
                         foreach (var target in addressList)
                         {
                             var script = ScriptUtils.BeginScript().AllowGas(target.Address, Address.Null, 1, 9999).TransferTokens("SOUL", target.Address, peerKey.Address, 1).SpendGas(target.Address).EndScript();
-                            var tx = new Transaction("simnet", "main", script, Timestamp.Now + TimeSpan.FromMinutes(30));
+                            var tx = new Transaction(nexusName, "main", script, Timestamp.Now + TimeSpan.FromMinutes(30));
                             tx.Sign(target);
                             txs.Add(tx);
                         }
@@ -298,7 +298,7 @@ namespace Phantasma.Spook
                             addressList.Add(target);
 
                             var script = ScriptUtils.BeginScript().AllowGas(peerKey.Address, Address.Null, 1, 9999).TransferTokens("SOUL", peerKey.Address, target.Address, 1 + fee).SpendGas(peerKey.Address).EndScript();
-                            var tx = new Transaction("simnet", "main", script, Timestamp.Now + TimeSpan.FromMinutes(30));
+                            var tx = new Transaction(nexusName, "main", script, Timestamp.Now + TimeSpan.FromMinutes(30));
                             tx.Sign(peerKey);
                             txs.Add(tx);
                         }
@@ -356,7 +356,7 @@ namespace Phantasma.Spook
             logger.Message($"#{ID}: Thread ran out of funds");
         }
 
-        private void RunSender(string wif, string host, int threadCount, int addressesListSize)
+        private void RunSender(string wif, string nexusName, string host, int threadCount, int addressesListSize)
         {
             logger.Message("Running in sender mode.");
 
@@ -389,7 +389,7 @@ namespace Phantasma.Spook
                 logger.Message($"Starting thread #{i}...");
                 try
                 {
-                    new Thread(() => { SenderSpawn(i, masterKeys, host, initialAmount, addressesListSize); }).Start();
+                    new Thread(() => { SenderSpawn(i, masterKeys, nexusName, host, initialAmount, addressesListSize); }).Start();
                     Thread.Sleep(200);
                 }
                 catch (Exception e)
@@ -441,10 +441,9 @@ namespace Phantasma.Spook
 
             var settings = new Arguments(args);
 
-            /*
-            for (int i = 0; i < 200; i++)
+            /*for (int i = 0; i < 200; i++)
             {
-                var k = KeyPair.Generate();
+                var k = PhantasmaKeys.Generate();
                 Console.WriteLine(k.ToWIF() + " => " + k.Address.Text);
             }
             Console.ReadLine();*/
@@ -487,7 +486,7 @@ namespace Phantasma.Spook
                     string host = settings.GetString("sender.host");
                     int threadCount = settings.GetInt("sender.threads", 8);
                     int addressesPerSender = settings.GetInt("sender.addressCount", 100);
-                    RunSender(wif, host, threadCount, addressesPerSender);
+                    RunSender(wif, nexusName, host, threadCount, addressesPerSender);
                     Console.WriteLine("Sender finished operations.");
                     return;
 
