@@ -246,7 +246,18 @@ namespace Phantasma.Spook.Swaps
             {
                 this.platforms = Nexus.Platforms.Select(x => Nexus.GetPlatformInfo(x)).ToArray();
 
+                if (this.platforms.Length == 0)
+                {
+                    logger.Warning("No interop platforms found. Make sure that the Nexus was created correctly.");
+                    return;
+                }
+
                 _finders["neo"] = new NeoInterop(this, interopBlocks["neo"], neoAPI, neoscanAPI, logger);
+            }
+
+            if (this.platforms.Length == 0)
+            {
+                return;
             }
 
             var pendingList = new StorageList(PendingTag, this.Storage);

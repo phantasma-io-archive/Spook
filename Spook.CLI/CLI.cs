@@ -57,38 +57,12 @@ namespace Phantasma.Spook
 
     public class CLI
     {
-        public const string SpookVersion = "0.1.10";
+        public const string SpookVersion = "0.1.11";
 
         static void Main(string[] args)
         {
             new CLI(args);
         }
-
-        // testnet validators, hardcoded for now
-        private static readonly string[] validatorWIFs = new string[]
-        {
-            "L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25", // PKtRvkhUhAiHsg4YnaxSM9dyyLBogTpHwtUEYvMYDKuV8
-            "L1sEB8Z6h5Y7aQKqxbAkrzQLY5DodmPacjqSkFPmcR82qdmHEEdY", // PZR3AFPJkqSpxXSZkFTxbdQi7dRZAnvGBkwN96P7zJt78
-            "KxWUCAD2wECLfA7diT7sV7V3jcxAf9GSKqZy3cvAt79gQLHQ2Qo8", // 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
-    };
 
         private readonly Node node;
         private readonly Logger logger;
@@ -498,21 +472,7 @@ namespace Phantasma.Spook
                     }
             }
 
-            int defaultPort = 0;
-            for (int i = 0; i < validatorWIFs.Length; i++)
-            {
-                if (validatorWIFs[i] == wif)
-                {
-                    defaultPort = (7073 + i);
-                }
-            }
-
-            if (defaultPort == 0)
-            {
-                defaultPort = (7073 + validatorWIFs.Length);
-            }
-
-            int port = settings.GetInt("node.port", defaultPort);
+            int port = settings.GetInt("node.port", 7073);
             var defaultStoragePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/Storage";
             var storagePath = settings.GetString("storage.path", defaultStoragePath);
             var storageBackend = settings.GetString("storage.backend", "file");
@@ -567,7 +527,7 @@ namespace Phantasma.Spook
 
             bool bootstrap = false;
 
-            if (wif == validatorWIFs[0])
+            if (settings.GetBool("nexus.bootstrap"))
             {
                 if (!nexus.HasGenesis)
                 {
@@ -585,7 +545,7 @@ namespace Phantasma.Spook
             {
                 //nexus = new Nexus(nexusName, genesisAddress, logger);
                 nexus = new Nexus(logger);
-                seeds.Add("127.0.0.1:7073");
+                //seeds.Add("127.0.0.1:7073");
             }
 
             // TODO this should be later optional to enable
@@ -756,7 +716,7 @@ namespace Phantasma.Spook
             var dispatcher = new CommandDispatcher();
             SetupCommands(dispatcher);
 
-            if (wif == validatorWIFs[0] && settings.GetBool("swaps.enabled"))
+            if (settings.GetBool("swaps.enabled"))
             {
                 var tokenSwapper = new TokenSwapper(node_keys, api, neoScanAPI, neoAPI, minimumFee, logger, settings);
                 api.TokenSwapper = tokenSwapper;
