@@ -15,16 +15,26 @@ using Phantasma.Contracts.Native;
 using Phantasma.Core.Types;
 using System;
 using Phantasma.API;
-using System.Threading;
+using Phantasma.Storage.Context;
+using Phantasma.Storage;
+using Phantasma.Storage.Utils;
+using System.IO;
 
 namespace Phantasma.Spook.Swaps
 {
-    public struct PendingSwap
+    public enum SwapStatus
     {
-        public readonly string platform;
-        public readonly Hash hash;
-        public readonly Address source;
-        public readonly Address destination;
+        Settle,
+        Confirm,
+        Finished
+    }
+
+    public struct PendingSwap: ISerializable
+    {
+        public string platform;
+        public Hash hash;
+        public Address source;
+        public Address destination;
 
         public PendingSwap(string platform, Hash hash, Address source, Address destination)
         {
@@ -33,13 +43,49 @@ namespace Phantasma.Spook.Swaps
             this.source = source;
             this.destination = destination;
         }
+
+        public void SerializeData(BinaryWriter writer)
+        {
+            writer.WriteVarString(platform);
+            writer.WriteHash(hash);
+            writer.WriteAddress(source);
+            writer.WriteAddress(destination);
+        }
+
+        public void UnserializeData(BinaryReader reader)
+        {
+            this.platform = reader.ReadVarString();
+            this.hash = reader.ReadHash();
+            this.source = reader.ReadAddress();
+            this.destination = reader.ReadAddress();
+        }
     }
 
-    public struct PendingSettle
+    public struct PendingSettle : ISerializable
     {
         public Hash sourceHash;
         public Hash destinationHash;
-        public DateTime time;
+        public Hash settleHash;
+        public Timestamp time;
+        public SwapStatus status;
+
+        public void SerializeData(BinaryWriter writer)
+        {
+            writer.WriteHash(sourceHash);
+            writer.WriteHash(destinationHash);
+            writer.WriteHash(settleHash);
+            writer.Write(time.Value);
+            writer.Write((byte)status);
+        }
+
+        public void UnserializeData(BinaryReader reader)
+        {
+            sourceHash = reader.ReadHash();
+            destinationHash = reader.ReadHash();
+            settleHash = reader.ReadHash();
+            time = new Timestamp(reader.ReadUInt32());
+            this.status = (SwapStatus)reader.ReadByte();
+        }
     }
 
     public abstract class ChainWatcher
@@ -70,7 +116,7 @@ namespace Phantasma.Spook.Swaps
         public readonly NexusAPI NexusAPI;
         public Nexus Nexus => NexusAPI.Nexus;
         public readonly Logger logger;
-
+        private StorageContext Storage;
         private readonly PhantasmaKeys SwapKeys;
         private readonly BigInteger MinimumFee;
         private readonly NeoAPI neoAPI;
@@ -90,6 +136,8 @@ namespace Phantasma.Spook.Swaps
             this.neoAPI = neoAPI;
             this.neoscanAPI = neoscanAPI;
             this.logger = logger;
+
+            this.Storage = new KeyStoreStorage(Nexus.CreateKeyStoreAdapter("swaps"));
 
             this.interopBlocks = new Dictionary<string, BigInteger>();
 
@@ -167,11 +215,13 @@ namespace Phantasma.Spook.Swaps
             return platforms.Where(x => x.Name == platformName).Select(x => x.InteropAddresses[0].ExternalAddress).FirstOrDefault();
         }
 
+        private const string SettlementTag = ".settled";
+        private const string PendingTag = ".pending";
+
         private Dictionary<Hash, PendingSwap> _pendingSwaps = new Dictionary<Hash, PendingSwap>();
         private Dictionary<Address, List<Hash>> _swapAddressMap = new Dictionary<Address, List<Hash>>();
-        private Dictionary<Hash, Hash> _settlements = new Dictionary<Hash, Hash>();
-
-        private List<PendingSettle> _pendingSettles = new List<PendingSettle>();
+       // private Dictionary<Hash, Hash> _settlements = new Dictionary<Hash, Hash>();    
+        //private List<PendingSettle> _pendingSettles = new List<PendingSettle>();
 
         private void MapSwap(Address address, Hash hash)
         {
@@ -199,15 +249,16 @@ namespace Phantasma.Spook.Swaps
                 _finders["neo"] = new NeoInterop(this, interopBlocks["neo"], neoAPI, neoscanAPI, logger);
             }
 
+            var pendingList = new StorageList(PendingTag, this.Storage);
             int i = 0;
-            while (i < _pendingSettles.Count)
+            var count = pendingList.Count();
+            while (i < count)
             {
-                var settlement = _pendingSettles[i];
-                var diff = DateTime.UtcNow - settlement.time;
-                if (diff.TotalSeconds > 30)
+                var settlement = pendingList.Get<PendingSettle>(i);
+                if (UpdatePendingSettle(pendingList, i))
                 {
-                    SettleTransaction(DomainSettings.PlatformName, DomainSettings.RootChainName, settlement.destinationHash);
-                    _pendingSettles.RemoveAt(i);
+                    pendingList.RemoveAt<PendingSettle>(i);
+                    count--;
                 }
                 else
                 {
@@ -236,20 +287,20 @@ namespace Phantasma.Spook.Swaps
 
         public Hash SettleSwap(string sourcePlatform, string destPlatform, Hash sourceHash)
         {
-            if (destPlatform == PhantasmaWallet.PhantasmaPlatform)
-            {
-                return SettleTransaction(sourcePlatform, sourcePlatform, sourceHash);
-            }
-            else 
-            if (sourcePlatform != PhantasmaWallet.PhantasmaPlatform)
-            {
-                throw new SwapException("Invalid source platform");
-            }
-
             var settleHash = GetSettleHash(sourcePlatform, sourceHash);
             if (settleHash != Hash.Null)
             {
                 return settleHash;
+            }
+
+            if (destPlatform == PhantasmaWallet.PhantasmaPlatform)
+            {
+                return SettleTransaction(sourcePlatform, sourcePlatform, sourceHash);
+            }
+
+            if (sourcePlatform != PhantasmaWallet.PhantasmaPlatform)
+            {
+                throw new SwapException("Invalid source platform");
             }
 
             switch (destPlatform)
@@ -264,13 +315,18 @@ namespace Phantasma.Spook.Swaps
 
         public Hash GetSettleHash(string sourcePlatform, Hash sourceHash)
         {
-            if (_settlements.ContainsKey(sourceHash))
+            var settlements = new StorageMap(SettlementTag, this.Storage);
+
+            if (settlements.ContainsKey<Hash>(sourceHash))
             {
-                return _settlements[sourceHash];
+                return settlements.Get<Hash, Hash>(sourceHash);
             }
 
-            foreach (var settlement in _pendingSettles)
+            var pendingList = new StorageList(PendingTag, this.Storage);
+            var count = pendingList.Count();
+            for (int i = 0; i < count; i++)
             {
+                var settlement = pendingList.Get<PendingSettle>(i);
                 if (settlement.sourceHash == sourceHash)
                 {
                     return settlement.destinationHash;
@@ -278,9 +334,9 @@ namespace Phantasma.Spook.Swaps
             }
 
             var hash = (Hash)Nexus.RootChain.InvokeContract(Nexus.RootStorage, "interop", nameof(InteropContract.GetSettlement), sourcePlatform, sourceHash).ToObject();
-            if (hash != Hash.Null && !_settlements.ContainsKey(sourceHash))
+            if (hash != Hash.Null && !settlements.ContainsKey<Hash>(sourceHash))
             {
-                _settlements[sourceHash] = hash;
+                settlements.Set<Hash, Hash>(sourceHash, hash);
             }
             return hash;
         }
@@ -302,7 +358,6 @@ namespace Phantasma.Spook.Swaps
             var result = this.NexusAPI.SendRawTransaction(txData);
             if (result is SingleResult)
             {
-                //var hash = (string)((SingleResult)result).value;
                 return tx.Hash;
             }
 
@@ -311,13 +366,14 @@ namespace Phantasma.Spook.Swaps
 
         public IEnumerable<ChainSwap> GetPendingSwaps(Address address)
         {
+            var dict = new Dictionary<Hash, ChainSwap>();
+
             if (_swapAddressMap.ContainsKey(address))
             {
                 var swaps = _swapAddressMap[address].
                     Select(x => _pendingSwaps[x]).
                     Select(x => new ChainSwap(x.platform, x.platform, x.hash, DomainSettings.PlatformName, DomainSettings.RootChainName, Hash.Null));
 
-                var dict = new Dictionary<Hash, ChainSwap>();
                 foreach (var entry in swaps)
                 {
                     dict[entry.sourceHash] = entry;
@@ -332,16 +388,38 @@ namespace Phantasma.Spook.Swaps
                         var settleHash = GetSettleHash(entry.sourcePlatform, hash);
                         if (settleHash != Hash.Null)
                         {
-                            entry.destinationHash = _settlements[entry.sourceHash];
+                            entry.destinationHash = settleHash;
                             dict[hash] = entry;
                         }
                     }
                 }
 
-                return dict.Values;
             }
 
-            return Enumerable.Empty<ChainSwap>();
+            var hashes = Nexus.RootChain.GetSwapHashesForAddress(Nexus.RootChain.Storage, address);
+            foreach (var hash in hashes)
+            {
+                if (dict.ContainsKey(hash))
+                {
+                    continue;
+                }
+
+                var swap = Nexus.RootChain.GetSwap(Nexus.RootChain.Storage, hash);
+                if (swap.destinationHash != Hash.Null)
+                {
+                    continue;
+                }
+
+                var settleHash = GetSettleHash(DomainSettings.PlatformName, hash);
+                if (settleHash != Hash.Null)
+                {
+                    continue;
+                }
+
+                dict[hash] = swap;
+            }
+
+            return dict.Values;
         }
 
         private Hash SettleSwapToNeo(Hash sourceHash)
@@ -390,10 +468,72 @@ namespace Phantasma.Spook.Swaps
             var destHash = generator(transfer.destinationAddress, token, transfer.Value);
             if (destHash != Hash.Null)
             {
-                _pendingSettles.Add(new PendingSettle() {sourceHash = sourceHash, destinationHash = destHash, time = DateTime.UtcNow });
+                var pendingList = new StorageList(PendingTag, this.Storage);
+                var settle = new PendingSettle() { sourceHash = sourceHash, destinationHash = destHash, settleHash = Hash.Null, time = DateTime.UtcNow, status = SwapStatus.Settle };
+                pendingList.Add<PendingSettle>(settle);
             }
 
             return destHash;
+        }
+
+        private bool UpdatePendingSettle(StorageList list, int index)
+        {
+            var swap = list.Get<PendingSettle>(index);
+            var prevStatus = swap.status;
+            switch (swap.status)
+            {
+                case SwapStatus.Settle:
+                    {
+                        var diff = Timestamp.Now - swap.time;
+                        if (diff >= 60)
+                        {
+                            swap.settleHash = SettleTransaction(DomainSettings.PlatformName, DomainSettings.RootChainName, swap.sourceHash);
+                            if (swap.settleHash != Hash.Null)
+                            {
+                                swap.status = SwapStatus.Confirm;
+                            }
+                        }
+                        break;
+                    }
+
+                case SwapStatus.Confirm:
+                    {
+                        var result = this.NexusAPI.GetTransaction(swap.settleHash.ToString());
+                        if (result is TransactionResult)
+                        {
+                            var tx = (TransactionResult)result;
+                            swap.status = SwapStatus.Finished;
+                        }
+                        else
+                        if (result is ErrorResult)
+                        {
+                            var error = ((ErrorResult)result).error;
+                            if (error != "pending")
+                            {
+                                swap.settleHash = Hash.Null;
+                                swap.time = Timestamp.Now;
+                                swap.status = SwapStatus.Settle;
+                            }
+                        }
+                        break;
+                    }
+
+                default: return false;
+            }
+
+            if (swap.status == SwapStatus.Finished)
+            {
+                var settlements = new StorageMap(SettlementTag, this.Storage);
+                settlements.Set<Hash, Hash>(swap.sourceHash, swap.destinationHash);
+                return true;
+            }
+
+            if (swap.status != prevStatus)
+            {
+                list.Replace<PendingSettle>(index, swap);
+            }
+
+            return false;
         }
     }
 }
