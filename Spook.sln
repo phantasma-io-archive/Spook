@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.28010.2036
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phantasma.Core", "..\PhantasmaChain\Phantasma.Core\Phantasma.Core.csproj", "{964F3AE1-7E46-4C9D-BF49-32F9860F9F6F}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phantasma.Blockchain", "..\PhantasmaChain\Phantasma.Blockchain\Phantasma.Blockchain.csproj", "{974F9761-3388-48AA-9DF6-EA5A85F5C168}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phantasma.VM", "..\PhantasmaChain\Phantasma.VM\Phantasma.VM.csproj", "{62963BDD-80CB-4C4C-8800-5BE507289F26}"
@@ -43,16 +41,14 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phantasma.Domain", "..\Phan
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phantasma.Contracts", "..\PhantasmaChain\Phantasma.Contracts\Phantasma.Contracts.csproj", "{B5A5637B-5521-44C1-9713-BBCBDC0A5CCC}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phantasma.Core", "..\PhantasmaChain\Phantasma.Core\Phantasma.Core.csproj", "{ED8D0641-1F8E-44F9-80E2-3995B13EBA1D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{964F3AE1-7E46-4C9D-BF49-32F9860F9F6F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{964F3AE1-7E46-4C9D-BF49-32F9860F9F6F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{964F3AE1-7E46-4C9D-BF49-32F9860F9F6F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{964F3AE1-7E46-4C9D-BF49-32F9860F9F6F}.Release|Any CPU.Build.0 = Release|Any CPU
 		{974F9761-3388-48AA-9DF6-EA5A85F5C168}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{974F9761-3388-48AA-9DF6-EA5A85F5C168}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{974F9761-3388-48AA-9DF6-EA5A85F5C168}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -121,6 +117,10 @@ Global
 		{B5A5637B-5521-44C1-9713-BBCBDC0A5CCC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B5A5637B-5521-44C1-9713-BBCBDC0A5CCC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B5A5637B-5521-44C1-9713-BBCBDC0A5CCC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ED8D0641-1F8E-44F9-80E2-3995B13EBA1D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ED8D0641-1F8E-44F9-80E2-3995B13EBA1D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ED8D0641-1F8E-44F9-80E2-3995B13EBA1D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ED8D0641-1F8E-44F9-80E2-3995B13EBA1D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

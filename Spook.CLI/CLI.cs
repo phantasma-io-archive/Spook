@@ -539,8 +539,11 @@ namespace Phantasma.Spook
                     }
 
                     logger.Debug($"Boostraping {nexusName} nexus...");
+
+                    var genesisTimestamp = new Timestamp(settings.GetUInt("genesis.timestamp", Timestamp.Now.Value));
+
                     bootstrap = true;
-                    if (!nexus.CreateGenesisBlock(nexusName, node_keys, Timestamp.Now))
+                    if (!nexus.CreateGenesisBlock(nexusName, node_keys, genesisTimestamp))
                     {
                         throw new ChainException("Genesis block failure");
                     }
@@ -848,13 +851,13 @@ namespace Phantasma.Spook
 
             logger.Message("Termination started...");
 
-            if (mempool.IsRunning)
+            if (mempool != null && mempool.IsRunning)
             {
                 logger.Message("Stopping mempool...");
                 mempool.Stop();
             }
 
-            if (node.IsRunning)
+            if (node != null && node.IsRunning)
             {
                 logger.Message("Stopping node...");
                 node.Stop();
