@@ -64,10 +64,11 @@ namespace Phantasma.Spook.Oracles
         {
             var hashText = hash.ToString();
 
-            var json = ExecuteRequest($"get_transaction/{hashText}");
+            var apiCall = $"get_transaction/{hashText}";
+            var json = ExecuteRequest(apiCall);
             if (json == null)
             {
-                throw new OracleException("Network read failure");
+                throw new OracleException("Network read failure: "+ apiCall);
             }
 
             try
@@ -109,10 +110,11 @@ namespace Phantasma.Spook.Oracles
 
             while (page <= maxPages)
             {
-                var json = ExecuteRequest($"get_address_abstracts/{inputAddress}/{page}");
+                var apiCall = $"get_address_abstracts/{inputAddress}/{page}";
+                var json = ExecuteRequest(apiCall);
                 if (json == null)
                 {
-                    throw new OracleException("Network read failure");
+                    throw new OracleException("Network read failure: " + apiCall);
                 }
 
                 var root = JSONReader.ReadFromString(json);
@@ -178,10 +180,11 @@ namespace Phantasma.Spook.Oracles
                 blockText = blockText.Substring(2);
             }
 
-            var json = ExecuteRequest($"get_block/{blockText}");
+            var apiCall = $"get_block/{blockText}";
+            var json = ExecuteRequest(apiCall);
             if (json == null)
             {
-                throw new OracleException("Network read failure");
+                throw new OracleException("Network read failure: " + apiCall);
             }
 
             try

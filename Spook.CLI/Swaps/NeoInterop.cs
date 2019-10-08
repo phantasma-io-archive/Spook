@@ -101,11 +101,14 @@ namespace Phantasma.Spook.Swaps
 
             var transaction = neoAPI.GetTransaction(hash);
 
-            var destAddress = transaction.ExtractInteropAddress();
-            var sourceAddress = NeoWallet.EncodeAddress(neoSourceAddress);
+            if (transaction != null)
+            {
+                var destAddress = transaction.ExtractInteropAddress();
+                var sourceAddress = NeoWallet.EncodeAddress(neoSourceAddress);
 
-            var swap = new PendingSwap(this.PlatformName, Hash.Parse(hash), sourceAddress, destAddress);
-            result.Add(swap);
+                var swap = new PendingSwap(this.PlatformName, Hash.Parse(hash), sourceAddress, destAddress);
+                result.Add(swap);
+            }
         }
 
         /*
