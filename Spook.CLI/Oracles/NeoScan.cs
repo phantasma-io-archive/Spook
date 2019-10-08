@@ -9,6 +9,7 @@ using Phantasma.Core;
 using Phantasma.Core.Log;
 using Phantasma.Domain;
 using Phantasma.Neo.Core;
+using System.Text;
 
 namespace Phantasma.Spook.Oracles
 {
@@ -71,31 +72,70 @@ namespace Phantasma.Spook.Oracles
                 throw new OracleException("Network read failure: "+ apiCall);
             }
 
+            string inputSource = null;
+
             try
             {
                 var root = JSONReader.ReadFromString(json);
 
-                var vins = root.GetNode("vin");
-                Throw.IfNull(vins, nameof(vins));
+                var scripts = root.GetNode("scripts");
+                Throw.IfNull(scripts, nameof(scripts));
 
-                string inputSource = null;
-
-                foreach (var input in vins.Children)
+                if (scripts.ChildCount != 1)
                 {
-                    var addrText = input.GetString("address_hash");
-                    if (inputSource == null)
+                    throw new OracleException("Transactions with multiple sources not supported yet");
+                }
+
+                Address interopAddress = Address.Null;
+                foreach (var scriptEntry in scripts.Children)
+                {
+                    var vs = scriptEntry.GetNode("verification");
+                    if (vs == null)
                     {
-                        inputSource = addrText;
-                        break;
+                        continue;
                     }
-                    else
-                    if (inputSource != addrText)
+
+                    var verificationScript = Base16.Decode(vs.Value);
+                    var pubKey = new byte[33];
+                    Core.Utils.ByteArrayUtils.CopyBytes(verificationScript, 1, pubKey, 0, 33);
+                    var signatureScript = NeoKeys.CreateSignatureScript(pubKey);
+                    var signatureHash = Neo.Utils.CryptoUtils.ToScriptHash(signatureScript);
+                    inputSource = Neo.Utils.CryptoUtils.ToAddress(signatureHash);
+                    interopAddress = Address.FromInterop(NeoWallet.NeoID, pubKey);
+                    break;
+                }
+
+                if (interopAddress.IsNull)
+                {
+                    throw new OracleException("Could not fetch public key from transaction");
+                }
+
+                if (string.IsNullOrEmpty(inputSource))
+                {
+                    throw new OracleException("Could not fetch source address from transaction");
+                }
+
+                var attrNodes = root.GetNode("attributes");
+                if (attrNodes != null)
+                {
+                    foreach (var entry in attrNodes.Children)
                     {
-                        throw new OracleException("transaction with multiple input sources, unsupported for now");
+                        var kind = entry.GetString("usage");
+                        if (kind == "Description")
+                        {
+                            var data = entry.GetString("data");
+                            var bytes = Base16.Decode(data);
+
+                            var text = Encoding.UTF8.GetString(bytes);
+                            if (Address.IsValidAddress(text))
+                            {
+                                interopAddress = Address.FromText(text);
+                            }
+                        }
                     }
                 }
 
-                return FillTransaction(hashText, inputSource);
+                return FillTransaction(hashText, inputSource, interopAddress);
             }
             catch (Exception e)
             {
@@ -103,7 +143,7 @@ namespace Phantasma.Spook.Oracles
             }
         }
 
-        private InteropTransaction FillTransaction(string hashText, string inputAddress)
+        private InteropTransaction FillTransaction(string hashText, string inputAddress, Address interopAddress)
         {
             int page = 1;
             int maxPages = 9999;
@@ -138,10 +178,6 @@ namespace Phantasma.Spook.Oracles
 
                         var sourceAddress = entry.GetString("address_from");
                         var destAddress = entry.GetString("address_to");
-
-                        var neoTx = neoAPI.GetTransaction(hashText);
-
-                        var interopAddress = neoTx.ExtractInteropAddress();
 
                         var info = nexus.GetTokenInfo(symbol);
                         var amount = UnitConversion.ToBigInteger(inputAmount, info.Decimals);

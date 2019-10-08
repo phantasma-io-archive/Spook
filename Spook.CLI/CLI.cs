@@ -986,6 +986,13 @@ namespace Phantasma.Spook
                 }
             });
 
+            dispatcher.RegisterCommand("test", "Tests something", (args) =>
+            {
+                var reader = nexus.CreateOracleReader();
+                var txx4 = reader.ReadTransactionFromOracle("neo", "neo", Hash.Parse("0bf2890e8403e6a221d218f5d2fd7274ba76455a3bb6df177161d0dc594d9691"));
+                Console.Write(txx4.Hash);
+            });
+
             if (useSimulator)
             {
                 dispatcher.RegisterCommand("simulator.timeskip", $"Skips minutse in simulator",
