@@ -11,6 +11,7 @@ using Phantasma.Cryptography;
 using Phantasma.Spook.Oracles;
 using Phantasma.Blockchain;
 using Phantasma.Core.Log;
+using System;
 
 namespace Phantasma.Spook.Swaps
 {
@@ -69,9 +70,15 @@ namespace Phantasma.Spook.Swaps
 
                     if (height > _blockHeight)
                     {
-                        _blockHeight = height;
-
-                        ProcessTransaction(entry, result);
+                        try
+                        {
+                            ProcessTransaction(entry, result);
+                            _blockHeight = height;
+                        }
+                        catch (Exception e)
+                        {
+                            logger.Error("error: " + e.ToString());
+                        }
                     }
                 }
             }
@@ -96,19 +103,21 @@ namespace Phantasma.Spook.Swaps
                 return;
             }
 
-            var neoSourceAddress = entry.GetString("address_from");
-            var amount = entry.GetDecimal("amount");
+            var reader = Swapper.Nexus.CreateOracleReader();
+            var interopTx = reader.ReadTransactionFromOracle("neo", "neo", Hash.Parse(hash));
 
-            var transaction = neoAPI.GetTransaction(hash);
-
-            if (transaction != null)
+            if (interopTx.Transfers.Length != 1)
             {
-                var destAddress = transaction.ExtractInteropAddress();
-                var sourceAddress = NeoWallet.EncodeAddress(neoSourceAddress);
-
-                var swap = new PendingSwap(this.PlatformName, Hash.Parse(hash), sourceAddress, destAddress);
-                result.Add(swap);
+                throw new OracleException("neo transfers with multiple sources or tokens not supported yet");
             }
+
+            var transfer = interopTx.Transfers[0];
+
+            var destAddress = transfer.interopAddress;
+            var sourceAddress = transfer.sourceAddress;
+
+            var swap = new PendingSwap(this.PlatformName, Hash.Parse(hash), sourceAddress, destAddress);
+            result.Add(swap);
         }
 
         /*
