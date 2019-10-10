@@ -3,5 +3,6 @@ packages/*
 Spook.CLI/obj/*
 Spook.CLI/bin/*
 Spook.CLI/Publish/*
-Storage/*
+StorageDump/obj/*
+StorageDump/bin/*
 launchSettings.json

@@ -43,6 +43,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phantasma.Contracts", "..\P
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phantasma.Core", "..\PhantasmaChain\Phantasma.Core\Phantasma.Core.csproj", "{ED8D0641-1F8E-44F9-80E2-3995B13EBA1D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StorageDump", "StorageDump\StorageDump.csproj", "{98CB27AB-65CB-4CF8-AABD-C5DE92B162D7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -121,6 +123,10 @@ Global
 		{ED8D0641-1F8E-44F9-80E2-3995B13EBA1D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{ED8D0641-1F8E-44F9-80E2-3995B13EBA1D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{ED8D0641-1F8E-44F9-80E2-3995B13EBA1D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{98CB27AB-65CB-4CF8-AABD-C5DE92B162D7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{98CB27AB-65CB-4CF8-AABD-C5DE92B162D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{98CB27AB-65CB-4CF8-AABD-C5DE92B162D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{98CB27AB-65CB-4CF8-AABD-C5DE92B162D7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
