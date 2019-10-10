@@ -14,6 +14,8 @@ using Phantasma.Spook.Oracles;
 using Phantasma.Blockchain.Contracts;
 using Phantasma.Domain;
 using Phantasma.Spook.GUI;
+using System.IO;
+using System.Globalization;
 
 namespace Phantasma.Spook.Modules
 {
@@ -492,6 +494,55 @@ namespace Phantasma.Spook.Modules
                 }
             } while (true);
             logger.Success($"Sent transaction with hash {hash}!");
+        }
+
+        public static void Airdrop(string[] args, NexusAPI api, BigInteger minFee)
+        {
+            if (args.Length != 1)
+            {
+                throw new CommandException("Invalid number of arguments, expected airdrop filename");
+            }
+
+            var fileName = args[0];
+            if (!File.Exists(fileName))
+            {
+                throw new CommandException("Airdrop file does not exist");
+            }
+
+            var lines = File.ReadAllLines(fileName);
+            var sb = new ScriptBuilder();
+
+            var expectedLimit = 100 + 600 * lines.Length;
+
+            var expectedGas = UnitConversion.ToDecimal(expectedLimit * minFee, DomainSettings.FuelTokenDecimals);
+            logger.Message($"This airdrop will require at least {expectedGas} {DomainSettings.FuelTokenSymbol}");
+
+            sb.AllowGas(Keys.Address, Address.Null, minFee, expectedLimit);
+
+            int addressCount = 0;
+            foreach (var line in lines)
+            {
+                var temp = line.Split(',');
+                
+                if (!Address.IsValidAddress(temp[0]))
+                {
+                    continue;
+                }
+
+                addressCount++;
+
+                var target = Address.FromText(temp[0]);
+                var symbol = temp[1];
+                var amount = BigInteger.Parse(temp[2]);
+
+                sb.TransferTokens(symbol, Keys.Address, target, amount);
+            }
+
+            sb.SpendGas(Keys.Address);
+            var script = sb.EndScript();
+
+            logger.Message($"Sending airdrop to {addressCount} addresses...");
+            ExecuteTransaction(api, script, ProofOfWork.None, Keys);
         }
     }
 }

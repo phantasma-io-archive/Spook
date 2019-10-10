@@ -21,7 +21,6 @@ using Phantasma.Spook.Modules;
 using Phantasma.Spook.Plugins;
 using Phantasma.Blockchain.Contracts;
 using Phantasma.Simulator;
-using Phantasma.Blockchain.Plugins;
 using Phantasma.CodeGen.Assembler;
 using Phantasma.VM.Utils;
 using Phantasma.Core;
@@ -77,7 +76,7 @@ namespace Phantasma.Spook
         public int restPort { get; private set; }
         
         private Nexus nexus;
-        private NexusAPI api;
+        private NexusAPI nexusApi;
 
         private bool autoRestart;
 
@@ -562,11 +561,6 @@ namespace Phantasma.Spook
                 //seeds.Add("127.0.0.1:7073");
             }
 
-            // TODO this should be later optional to enable
-            nexus.AddPlugin(new ChainAddressesPlugin());
-            nexus.AddPlugin(new TokenTransactionsPlugin());
-            nexus.AddPlugin(new UnclaimedTransactionsPlugin());
-
             running = true;
 
             // mempool setup
@@ -654,16 +648,16 @@ namespace Phantasma.Spook
 
             var useAPICache = settings.GetBool("api.cache", true);
             logger.Message($"API cache is {(useAPICache ? "enabled" : "disabled")}.");
-            api = new NexusAPI(nexus, useAPICache, apiLog ? logger : null);
-            api.Mempool = mempool;
-            api.Node = node;
+            nexusApi = new NexusAPI(nexus, useAPICache, apiLog ? logger : null);
+            nexusApi.Mempool = mempool;
+            nexusApi.Node = node;
 
             // RPC setup
             if (hasRPC)
             {
                 rpcPort = settings.GetInt("rpc.port", 7077);
                 logger.Message($"RPC server listening on port {rpcPort}...");
-                var rpcServer = new RPCServer(api, "/rpc", rpcPort, (level, text) => WebLogMapper("rpc", level, text));
+                var rpcServer = new RPCServer(nexusApi, "/rpc", rpcPort, (level, text) => WebLogMapper("rpc", level, text));
                 rpcServer.Start(ThreadPriority.AboveNormal);
             }
             else
@@ -676,7 +670,7 @@ namespace Phantasma.Spook
             {
                 restPort = settings.GetInt("rest.port", 7078);
                 logger.Message($"REST server listening on port {restPort}...");
-                var restServer = new RESTServer(api, "/api", restPort, (level, text) => WebLogMapper("rest", level, text));
+                var restServer = new RESTServer(nexusApi, "/api", restPort, (level, text) => WebLogMapper("rest", level, text));
                 restServer.Start(ThreadPriority.AboveNormal);
             }
             else
@@ -732,8 +726,8 @@ namespace Phantasma.Spook
 
             if (settings.GetBool("swaps.enabled"))
             {
-                var tokenSwapper = new TokenSwapper(node_keys, api, neoScanAPI, neoAPI, minimumFee, logger, settings);
-                api.TokenSwapper = tokenSwapper;
+                var tokenSwapper = new TokenSwapper(node_keys, nexusApi, neoScanAPI, neoAPI, minimumFee, logger, settings);
+                nexusApi.TokenSwapper = tokenSwapper;
 
                 new Thread(() =>
                 {
@@ -893,7 +887,7 @@ namespace Phantasma.Spook
 
         private void ExecuteAPI(string name, string[] args)
         {
-            var result = api.Execute(name, args);
+            var result = nexusApi.Execute(name, args);
             if (result == null)
             {
                 logger.Warning("API returned null value...");
@@ -909,6 +903,8 @@ namespace Phantasma.Spook
         {
             ModuleLogger.Init(logger, gui);
 
+            var minimumFee = this.mempool != null ? mempool.MinimumFee : 1;
+
             dispatcher.RegisterCommand("quit", "Stops the node and exits", (args) => Terminate());
 
             if (gui != null)
@@ -919,7 +915,7 @@ namespace Phantasma.Spook
 
             dispatcher.RegisterCommand("help", "Lists available commands", (args) => dispatcher.Commands.ToList().ForEach(x => logger.Message($"{x.Name}\t{x.Description}")));
 
-            foreach (var method in api.Methods)
+            foreach (var method in nexusApi.Methods)
             {
                 dispatcher.RegisterCommand("api." + method.Name, "API CALL", (args) => ExecuteAPI(method.Name, args));
             }
@@ -940,16 +936,19 @@ namespace Phantasma.Spook
             (args) => WalletModule.Create(args));
 
             dispatcher.RegisterCommand("wallet.balance", "Shows the current wallet balance",
-                (args) => WalletModule.Balance(api, restPort, neoScanAPI, args));
+                (args) => WalletModule.Balance(nexusApi, restPort, neoScanAPI, args));
 
             dispatcher.RegisterCommand("wallet.transfer", "Generates a new transfer transaction",
-                (args) => WalletModule.Transfer(api, this.mempool != null ? mempool.MinimumFee : 1, neoAPI, args));
+                (args) => WalletModule.Transfer(nexusApi, minimumFee, neoAPI, args));
 
             dispatcher.RegisterCommand("wallet.stake", $"Stakes {DomainSettings.StakingTokenSymbol}",
-                (args) => WalletModule.Stake(api, args));
+                (args) => WalletModule.Stake(nexusApi, args));
+
+            dispatcher.RegisterCommand("wallet.airdrop", "Does a batch transfer from a .csv", 
+                (args) => WalletModule.Airdrop(args, nexusApi, minimumFee));
 
             dispatcher.RegisterCommand("file.upload", "Uploads a file into Phantasma",
-                (args) => FileModule.Upload(WalletModule.Keys, api, args));
+                (args) => FileModule.Upload(WalletModule.Keys, nexusApi, args));
 
             if (mempool != null)
             {
@@ -986,11 +985,9 @@ namespace Phantasma.Spook
                 }
             });
 
-            dispatcher.RegisterCommand("test", "Tests something", (args) =>
+            dispatcher.RegisterCommand("exit", "Terminates the node", (args) =>
             {
-                var reader = nexus.CreateOracleReader();
-                var txx4 = reader.ReadTransactionFromOracle("neo", "neo", Hash.Parse("0bf2890e8403e6a221d218f5d2fd7274ba76455a3bb6df177161d0dc594d9691"));
-                Console.Write(txx4.Hash);
+                this.Terminate();
             });
 
             if (useSimulator)
