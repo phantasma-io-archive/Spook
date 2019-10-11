@@ -78,7 +78,7 @@ namespace Phantasma.Spook
         private Nexus nexus;
         private NexusAPI nexusApi;
 
-        private bool autoRestart;
+        private int restartTime;
 
         private ConsoleGUI gui;
 
@@ -436,7 +436,7 @@ namespace Phantasma.Spook
 
             string mode = settings.GetString("node.mode", "validator");
 
-            autoRestart = settings.GetBool("node.reboot", false);
+            restartTime = settings.GetInt("node.reboot", 0);
 
             showWebLogs = settings.GetBool("web.log", false);
             bool apiLog = settings.GetBool("api.log", true);
@@ -828,10 +828,10 @@ namespace Phantasma.Spook
                 }
                 this.plugins.ForEach(x => x.Update());
 
-                if (autoRestart)
+                if (restartTime > 0)
                 {
                     var diff = DateTime.UtcNow - startTime;
-                    if (diff.TotalMinutes >= 10)
+                    if (diff.TotalMinutes >= restartTime)
                     {
                         this.Terminate();
                     }
