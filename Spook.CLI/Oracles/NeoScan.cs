@@ -98,10 +98,13 @@ namespace Phantasma.Spook.Oracles
                     var verificationScript = Base16.Decode(vs.Value);
                     var pubKey = new byte[33];
                     Core.Utils.ByteArrayUtils.CopyBytes(verificationScript, 1, pubKey, 0, 33);
+
                     var signatureScript = NeoKeys.CreateSignatureScript(pubKey);
                     var signatureHash = Neo.Utils.CryptoUtils.ToScriptHash(signatureScript);
                     inputSource = Neo.Utils.CryptoUtils.ToAddress(signatureHash);
-                    interopAddress = Address.FromInterop(NeoWallet.NeoID, pubKey);
+
+                    pubKey = Core.Utils.ByteArrayUtils.ConcatBytes((byte)AddressKind.User, pubKey);
+                    interopAddress = Address.FromBytes(pubKey);
                     break;
                 }
 

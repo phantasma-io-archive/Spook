@@ -950,6 +950,15 @@ namespace Phantasma.Spook
             dispatcher.RegisterCommand("file.upload", "Uploads a file into Phantasma",
                 (args) => FileModule.Upload(WalletModule.Keys, nexusApi, args));
 
+            dispatcher.RegisterCommand("oracle.read", "Read transaction from oracle",
+            (args) =>
+            {
+                var hash = Hash.Parse(args[0]);
+                var reader = nexus.CreateOracleReader();
+                var tx = reader.ReadTransactionFromOracle("neo", "neo", hash);
+                logger.Message(tx.Transfers[0].interopAddress.Text);
+            });
+
             if (mempool != null)
             {
                 dispatcher.RegisterCommand("mempool.size", "Shows size of mempool",
