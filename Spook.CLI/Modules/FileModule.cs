@@ -47,7 +47,7 @@ namespace Phantasma.Spook.Modules
                 CallContract("storage", "UploadFile", source.Address, fileName, fileContent.Length, contentMerkle, ArchiveFlags.None, new byte[0]).
                 SpendGas(source.Address).
                 EndScript();
-            var tx = new Transaction(api.Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5));
+            var tx = new Transaction(api.Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5), CLI.Identifier);
             tx.Sign(source);
             var rawTx = tx.ToByteArray(true);
 

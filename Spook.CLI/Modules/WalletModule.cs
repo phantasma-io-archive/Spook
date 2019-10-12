@@ -15,7 +15,6 @@ using Phantasma.Blockchain.Contracts;
 using Phantasma.Domain;
 using Phantasma.Spook.GUI;
 using System.IO;
-using System.Globalization;
 
 namespace Phantasma.Spook.Modules
 {
@@ -159,7 +158,12 @@ namespace Phantasma.Spook.Modules
 
         private static Hash ExecuteTransaction(NexusAPI api, byte[] script, ProofOfWork proofOfWork, IKeyPair keys)
         {
-            var tx = new Blockchain.Transaction(api.Nexus.Name, DomainSettings.RootChainName, script, Timestamp.Now + TimeSpan.FromMinutes(5));
+            return ExecuteTransaction(api, script, proofOfWork, new IKeyPair[] { keys });
+        }
+
+        private static Hash ExecuteTransaction(NexusAPI api, byte[] script, ProofOfWork proofOfWork, params IKeyPair[] keys)
+        {
+            var tx = new Blockchain.Transaction(api.Nexus.Name, DomainSettings.RootChainName, script, Timestamp.Now + TimeSpan.FromMinutes(5), CLI.Identifier);
 
             if (proofOfWork != ProofOfWork.None)
             {
@@ -168,7 +172,11 @@ namespace Phantasma.Spook.Modules
             }
 
             logger.Message("Signing message...");
-            tx.Sign(keys);
+            foreach (var keyPair in keys)
+            {
+                tx.Sign(keyPair);
+            }
+
             var rawTx = tx.ToByteArray(true);
 
             try
@@ -523,7 +531,7 @@ namespace Phantasma.Spook.Modules
             foreach (var line in lines)
             {
                 var temp = line.Split(',');
-                
+
                 if (!Address.IsValidAddress(temp[0]))
                 {
                     continue;
@@ -543,6 +551,33 @@ namespace Phantasma.Spook.Modules
 
             logger.Message($"Sending airdrop to {addressCount} addresses...");
             ExecuteTransaction(api, script, ProofOfWork.None, Keys);
+        }
+
+        public static void Migrate(string[] args, NexusAPI api, BigInteger minFee)
+        {
+            if (args.Length != 1)
+            {
+                throw new CommandException("Invalid number of arguments, expected new wif");
+            }
+
+            var newWIF = args[0];
+            var newKeys = PhantasmaKeys.FromWIF(newWIF);
+
+            var expectedLimit = 800;
+
+            var sb = new ScriptBuilder();
+
+            sb.AllowGas(Keys.Address, Address.Null, minFee, expectedLimit);
+            sb.CallContract("validator", "Migrate", Keys.Address, newKeys.Address);
+            sb.SpendGas(Keys.Address);
+            var script = sb.EndScript();
+
+            var hash = ExecuteTransaction(api, script, ProofOfWork.None, Keys/*, newKeys*/);
+            if (hash != Hash.Null)
+            {
+                logger.Success($"Migrated to " + newKeys.Address);
+                Keys = newKeys;
+            }
         }
     }
 }

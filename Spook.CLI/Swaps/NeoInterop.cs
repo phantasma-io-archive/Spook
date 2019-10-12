@@ -68,7 +68,7 @@ namespace Phantasma.Spook.Swaps
                     var temp = entry.GetString("block_height");
                     var height = BigInteger.Parse(temp);
 
-                    if (height > _blockHeight)
+                    if (height >= _blockHeight)
                     {
                         try
                         {
@@ -100,6 +100,7 @@ namespace Phantasma.Spook.Swaps
             var token = Swapper.FindTokenByHash(asset);
             if (token == null)
             {
+                logger.Warning("Someone tried to swap unsupported asset: " + asset);
                 return;
             }
 

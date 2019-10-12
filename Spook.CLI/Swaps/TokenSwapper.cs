@@ -365,7 +365,7 @@ namespace Phantasma.Spook.Swaps
                 SpendGas(SwapKeys.Address).
                 EndScript();
 
-            var tx = new Blockchain.Transaction(Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5));
+            var tx = new Blockchain.Transaction(Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5), CLI.Identifier);
             tx.Sign(SwapKeys);
 
             var bytes = tx.ToByteArray(true);
