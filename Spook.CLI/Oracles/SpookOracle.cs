@@ -1,4 +1,5 @@
 ﻿using Phantasma.Blockchain;
+using Phantasma.Core.Types;
 using Phantasma.Cryptography;
 using Phantasma.Domain;
 using Phantasma.Pay.Chains;
@@ -14,13 +15,13 @@ namespace Phantasma.Spook.Oracles
             this.CLI = cli;
         }
 
-        protected override decimal PullPrice(string symbol)
+        public override decimal PullPrice(Timestamp time, string symbol)
         {
             if (!string.IsNullOrEmpty(CLI.cryptoCompareAPIKey))
             {
                 if (symbol == DomainSettings.FuelTokenSymbol)
                 {
-                    var result = PullPrice(DomainSettings.StakingTokenSymbol);
+                    var result = PullPrice(time, DomainSettings.StakingTokenSymbol);
                     return result / 5;
                 }
              
@@ -31,7 +32,7 @@ namespace Phantasma.Spook.Oracles
             throw new OracleException("No support for oracle prices in this node");
         }
 
-        protected override InteropBlock PullPlatformBlock(string platformName, string chainName, Hash hash)
+        public override InteropBlock PullPlatformBlock(string platformName, string chainName, Hash hash)
         {
             switch (platformName)
             {
@@ -43,7 +44,7 @@ namespace Phantasma.Spook.Oracles
             }
         }
 
-        protected override InteropTransaction PullPlatformTransaction(string platformName, string chainName, Hash hash)
+        public override InteropTransaction PullPlatformTransaction(string platformName, string chainName, Hash hash)
         {
             switch (platformName)
             {
@@ -55,7 +56,7 @@ namespace Phantasma.Spook.Oracles
             }
         }
 
-        protected override byte[] PullData(string url)
+        public override byte[] PullData(Timestamp time, string url)
         {
             throw new OracleException("unknown oracle url");
         }

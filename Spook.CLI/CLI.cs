@@ -56,7 +56,7 @@ namespace Phantasma.Spook
 
     public class CLI
     {
-        public const string SpookVersion = "0.1.11";
+        public const string SpookVersion = "1.0";
         public static readonly string Identifier = "SPK" + SpookVersion;
 
         static void Main(string[] args)
@@ -414,14 +414,7 @@ namespace Phantasma.Spook
             var seeds = new List<string>();
 
             var settings = new Arguments(args);
-
-            /*for (int i = 0; i < 200; i++)
-            {
-                var k = PhantasmaKeys.Generate();
-                Console.WriteLine(k.ToWIF() + " => " + k.Address.Text);
-            }
-            Console.ReadLine();*/
-
+            
             var useGUI = settings.GetBool("gui.enabled", true);
 
             if (useGUI)
@@ -601,7 +594,7 @@ namespace Phantasma.Spook
 
             if (hasMempool)
             {
-                this.mempool = new Mempool(node_keys, nexus, blockTime, minimumFee, 0, logger);
+                this.mempool = new Mempool(node_keys, nexus, blockTime, minimumFee, System.Text.Encoding.UTF8.GetBytes(Identifier), 0, logger);
 
                 var mempoolLogging = settings.GetBool("mempool.log", true);
                 if (mempoolLogging)
@@ -686,7 +679,7 @@ namespace Phantasma.Spook
             this.neoAPI = new Neo.Core.RemoteRPCNode(neoScanURL, neoRpcURLs);
             this.neoAPI.SetLogger((s) => logger.Message(s));
 
-            this.neoScanAPI = new NeoScanAPI(neoScanURL, logger, nexus, neoAPI, node_keys);
+            this.neoScanAPI = new NeoScanAPI(neoScanURL, logger, nexus, node_keys);
 
             cryptoCompareAPIKey = settings.GetString("cryptocompare.apikey", "");
             if (!string.IsNullOrEmpty(cryptoCompareAPIKey))
@@ -977,7 +970,7 @@ namespace Phantasma.Spook
             {
                 var hash = Hash.Parse(args[0]);
                 var reader = nexus.CreateOracleReader();
-                var tx = reader.ReadTransactionFromOracle("neo", "neo", hash);
+                var tx = reader.PullPlatformTransaction("neo", "neo", hash);
                 logger.Message(tx.Transfers[0].interopAddress.Text);
             });
 
