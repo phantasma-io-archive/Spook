@@ -57,6 +57,7 @@ namespace Phantasma.Spook
     public class CLI
     {
         public const string SpookVersion = "0.1.11";
+        public static readonly string Identifier = "SPK" + SpookVersion;
 
         static void Main(string[] args)
         {
@@ -600,15 +601,15 @@ namespace Phantasma.Spook
 
             if (hasMempool)
             {
-                this.mempool = new Mempool(node_keys, nexus, blockTime, minimumFee);
+                this.mempool = new Mempool(node_keys, nexus, blockTime, minimumFee, 0, logger);
 
                 var mempoolLogging = settings.GetBool("mempool.log", true);
                 if (mempoolLogging)
                 {
                     mempool.OnTransactionFailed += Mempool_OnTransactionFailed;
-                    mempool.OnTransactionAdded += (tx) => logger.Message($"Received transaction {tx.Hash}");
-                    mempool.OnTransactionCommitted += (tx) => logger.Message($"Commited transaction {tx.Hash}");
-                    mempool.OnTransactionDiscarded += (tx) => logger.Message($"Discarded transaction {tx.Hash}");
+                    mempool.OnTransactionAdded += (hash) => logger.Message($"Received transaction {hash}");
+                    mempool.OnTransactionCommitted += (hash) => logger.Message($"Commited transaction {hash}");
+                    mempool.OnTransactionDiscarded += (hash) => logger.Message($"Discarded transaction {hash}");
                 }
 
                 mempool.Start(ThreadPriority.AboveNormal);
@@ -806,10 +807,15 @@ namespace Phantasma.Spook
             gui?.MakeReady(dispatcher);
         }
 
-        private void Mempool_OnTransactionFailed(Transaction tx)
+        private void Mempool_OnTransactionFailed(Hash hash)
         {
-            var status = mempool.GetTransactionStatus(tx.Hash, out string reason);
-            logger.Warning($"Rejected transaction {tx.Hash} => " + reason);
+            if (!running)
+            {
+                return;
+            }
+
+            var status = mempool.GetTransactionStatus(hash, out string reason);
+            logger.Warning($"Rejected transaction {hash} => " + reason);
         }
 
         private void Run()
@@ -841,6 +847,12 @@ namespace Phantasma.Spook
 
         private void Terminate()
         {
+            if (!running)
+            {
+                logger.Message("Termination in progress...");
+                return;
+            }
+
             running = false;
 
             logger.Message("Termination started...");
@@ -947,6 +959,16 @@ namespace Phantasma.Spook
             dispatcher.RegisterCommand("wallet.airdrop", "Does a batch transfer from a .csv", 
                 (args) => WalletModule.Airdrop(args, nexusApi, minimumFee));
 
+            dispatcher.RegisterCommand("wallet.migrate", "Migrates a validator to another address ",
+                (args) =>
+                {
+                    WalletModule.Migrate(args, nexusApi, minimumFee);
+                    if (mempool != null)
+                    {
+                        mempool.SetKeys(WalletModule.Keys);
+                    }
+                });
+
             dispatcher.RegisterCommand("file.upload", "Uploads a file into Phantasma",
                 (args) => FileModule.Upload(WalletModule.Keys, nexusApi, args));
 
@@ -961,8 +983,15 @@ namespace Phantasma.Spook
 
             if (mempool != null)
             {
-                dispatcher.RegisterCommand("mempool.size", "Shows size of mempool",
-                    (args) => logger.Message("Size: "+mempool.Size));
+                dispatcher.RegisterCommand("mempool.list", "Shows mempool pending transaction list",
+                    (args) =>
+                    {
+                        var txs = mempool.GetTransactions();
+                        foreach (var tx in txs)
+                        {
+                            logger.Message(tx.ToString());
+                        }
+                    });
             }
 
             dispatcher.RegisterCommand("neo.deploy", "Deploys a contract into NEO",

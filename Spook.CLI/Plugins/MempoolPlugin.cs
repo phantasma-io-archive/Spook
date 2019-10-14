@@ -35,7 +35,7 @@ namespace Phantasma.Spook.Plugins
 
         public void Update()
         {
-            var txs = Mempool.Size;
+            var txs = 0; // TODO FIX Mempool.Size;
 
             if (txs > maxTxInPeriod)
             {
