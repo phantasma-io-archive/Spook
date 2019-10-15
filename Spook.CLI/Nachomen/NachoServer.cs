@@ -30,7 +30,12 @@ namespace Phantasma.Spook.Nachomen
 
         private static Random _rnd = new Random();
 
-        private static BigInteger _nextItemID;
+        private static Nexus            _nexus;
+        private static NexusSimulator   _simulator;
+        private static BigInteger       _nextItemID, _minFee;
+        private static Chain            _nachoChain;
+        private static PhantasmaKeys    _ownerKeys, _nachoKeys;
+        private static Logger           _logger;
 
         public static void InitNachoServer(Nexus nexus, NexusSimulator simulator, PhantasmaKeys ownerKeys, bool fillMarket, BigInteger minFee, Logger logger)
         {
@@ -44,54 +49,64 @@ namespace Phantasma.Spook.Nachomen
 
             //InitialNachoFill();
 
+            _nexus      = nexus;
+            _simulator  = simulator;
+            _ownerKeys  = ownerKeys;
+            _minFee     = minFee;
+            _logger     = logger;
+
             if (fillMarket)
             {
-                GenerateTokens(nexus, simulator, ownerKeys, minFee, logger);
-                FillNachoMarket(nexus, simulator, ownerKeys, minFee, logger);
+                InitNachoChain();
+                GenerateTokens();
+                FillNachoMarket();
             }
         }
 
-        public static void GenerateTokens(Nexus nexus, NexusSimulator simulator, PhantasmaKeys ownerKeys, BigInteger minFee, Logger logger)
+        public static void InitNachoChain()
         {
-            simulator.BeginBlock();
-            simulator.GenerateChain(ownerKeys, nexus.RootChain.Name, "nacho");
-            simulator.EndBlock();
+            _simulator.BeginBlock();
+            _simulator.GenerateChain(_ownerKeys, _nexus.RootChain.Name, "nacho");
+            _simulator.EndBlock();
 
-            var nachoChain = nexus.GetChainByName("nacho");
+            _nachoChain = _nexus.GetChainByName("nacho");
 
-            simulator.BeginBlock();
-            var tx0 = simulator.GenerateSideChainSend(ownerKeys, DomainSettings.FuelTokenSymbol, nexus.RootChain, ownerKeys.Address, nachoChain, 19999 * minFee, 0);
-            simulator.EndBlock();
+            _simulator.BeginBlock();
+            var tx0 = _simulator.GenerateSideChainSend(_ownerKeys, DomainSettings.FuelTokenSymbol, _nexus.RootChain, _ownerKeys.Address, _nachoChain, 19999 * _minFee, 0);
+            _simulator.EndBlock();
 
-            simulator.BeginBlock();
-            simulator.GenerateSideChainSettlement(ownerKeys, nexus.RootChain, nachoChain, tx0);
-            simulator.DeployContracts(ownerKeys, nachoChain, "nacho", "market");
-            simulator.EndBlock();
+            _simulator.BeginBlock();
+            _simulator.GenerateSideChainSettlement(_ownerKeys, _nexus.RootChain, _nachoChain, tx0);
+            _simulator.DeployContracts(_ownerKeys, _nachoChain, "nacho", "market");
+            _simulator.EndBlock();
 
-            var nachoKeys = PhantasmaKeys.FromWIF("Kwgg5tbcgDmZ5UFgpwbv96CvduBA2T5kSVSmEYiqmW8QdvGHKH25");
-            
+            _nachoKeys = PhantasmaKeys.FromWIF("Kwgg5tbcgDmZ5UFgpwbv96CvduBA2T5kSVSmEYiqmW8QdvGHKH25");
+
             var nachoFuel = UnitConversion.ToBigInteger(5, DomainSettings.FuelTokenDecimals);
 
-            var hasMarket = nachoChain.IsContractDeployed(nachoChain.Storage, "market");
+            var hasMarket = _nachoChain.IsContractDeployed(_nachoChain.Storage, "market");
 
             if (!hasMarket)
             {
                 throw new Exception("Seems market contract deployment failed on the side chain");
             }
 
-            simulator.BeginBlock();
-            var txB = simulator.GenerateSideChainSend(ownerKeys, DomainSettings.FuelTokenSymbol, nexus.RootChain, nachoKeys.Address, nachoChain, nachoFuel, 9999);
-            simulator.EndBlock();
+            _simulator.BeginBlock();
+            var txB = _simulator.GenerateSideChainSend(_ownerKeys, DomainSettings.FuelTokenSymbol, _nexus.RootChain, _nachoKeys.Address, _nachoChain, nachoFuel, 9999);
+            _simulator.EndBlock();
 
-            simulator.BeginBlock();
-            simulator.GenerateSideChainSettlement(nachoKeys, nexus.RootChain, nachoChain, txB);
-            simulator.EndBlock();
+            _simulator.BeginBlock();
+            _simulator.GenerateSideChainSettlement(_nachoKeys, _nexus.RootChain, _nachoChain, txB);
+            _simulator.EndBlock();
+        }
 
-            simulator.BeginBlock();
+        public static void GenerateTokens()
+        {
+            _simulator.BeginBlock();
 
             var nachoSupply = UnitConversion.ToBigInteger(10000, Constants.NACHO_TOKEN_DECIMALS);
-            simulator.GenerateToken(ownerKeys, Constants.NACHO_SYMBOL, "Nachomen Token", DomainSettings.PlatformName, Hash.FromString(Constants.NACHO_SYMBOL), nachoSupply, Constants.NACHO_TOKEN_DECIMALS, TokenFlags.Transferable | TokenFlags.Fungible | TokenFlags.Finite | TokenFlags.Divisible);
-            simulator.MintTokens(ownerKeys, ownerKeys.Address, Constants.NACHO_SYMBOL, nachoSupply);
+            _simulator.GenerateToken(_ownerKeys, Constants.NACHO_SYMBOL, "Nachomen Token", DomainSettings.PlatformName, Hash.FromString(Constants.NACHO_SYMBOL), nachoSupply, Constants.NACHO_TOKEN_DECIMALS, TokenFlags.Transferable | TokenFlags.Fungible | TokenFlags.Finite | TokenFlags.Divisible);
+            _simulator.MintTokens(_ownerKeys, _ownerKeys.Address, Constants.NACHO_SYMBOL, nachoSupply);
 
             var wrestlerTokenScript = new []
             {
@@ -118,7 +133,7 @@ namespace Phantasma.Spook.Nachomen
 
             var wrestlerCallScript = AssemblerUtils.BuildScript(wrestlerTokenScript);
 
-            simulator.GenerateToken(ownerKeys, Constants.WRESTLER_SYMBOL, "Nachomen Luchador", DomainSettings.PlatformName, Hash.FromString(Constants.WRESTLER_SYMBOL), 0, 0, TokenFlags.Transferable, wrestlerCallScript);
+            _simulator.GenerateToken(_ownerKeys, Constants.WRESTLER_SYMBOL, "Nachomen Luchador", DomainSettings.PlatformName, Hash.FromString(Constants.WRESTLER_SYMBOL), 0, 0, TokenFlags.Transferable, wrestlerCallScript);
 
             var itemTokenScript = new[]
             {
@@ -145,16 +160,16 @@ namespace Phantasma.Spook.Nachomen
 
             var itemCallScript = AssemblerUtils.BuildScript(itemTokenScript);
 
-            simulator.GenerateToken(ownerKeys, Constants.ITEM_SYMBOL, "Nachomen Item", DomainSettings.PlatformName, Hash.FromString(Constants.ITEM_SYMBOL), 0, 0, TokenFlags.Transferable, itemCallScript);
-            simulator.EndBlock();
+            _simulator.GenerateToken(_ownerKeys, Constants.ITEM_SYMBOL, "Nachomen Item", DomainSettings.PlatformName, Hash.FromString(Constants.ITEM_SYMBOL), 0, 0, TokenFlags.Transferable, itemCallScript);
+            _simulator.EndBlock();
 
-            simulator.BeginBlock();
-            var txA = simulator.GenerateSideChainSend(ownerKeys, Constants.NACHO_SYMBOL, nexus.RootChain, nachoKeys.Address, nachoChain, UnitConversion.ToBigInteger(1000, Constants.NACHO_TOKEN_DECIMALS), 1);
-            simulator.EndBlock();
+            _simulator.BeginBlock();
+            var txA = _simulator.GenerateSideChainSend(_ownerKeys, Constants.NACHO_SYMBOL, _nexus.RootChain, _nachoKeys.Address, _nachoChain, UnitConversion.ToBigInteger(1000, Constants.NACHO_TOKEN_DECIMALS), 1);
+            _simulator.EndBlock();
 
-            simulator.BeginBlock();
-            simulator.GenerateSideChainSettlement(nachoKeys, nexus.RootChain, nachoChain, txA);
-            simulator.EndBlock();
+            _simulator.BeginBlock();
+            _simulator.GenerateSideChainSettlement(_nachoKeys, _nexus.RootChain, _nachoChain, txA);
+            _simulator.EndBlock();
 
             //simulator.BeginBlock();
             //simulator.GenerateSetTokenMetadata(ownerKeys, Constants.WRESTLER_SYMBOL, "details", "https://nacho.men/luchador/*");
@@ -270,11 +285,11 @@ namespace Phantasma.Spook.Nachomen
             //}
         }
 
-        private static void FillNachoMarket(Nexus nexus, NexusSimulator simulator, PhantasmaKeys ownerKeys, BigInteger minFee, Logger logger)
+        private static void FillNachoMarket()
         {
-            logger.Message("Filling initial nacho market");
+            _logger.Message("Filling initial nacho market");
 
-            var nachoChain = simulator.Nexus.GetChainByName("nacho");
+            var nachoChain = _simulator.Nexus.GetChainByName("nacho");
             //var nachoChain = simulator.Nexus.RootChain;
 
             //_logger.Message("token owner: " + _ownerKeys.Address.Text + " | test user: " + testUser.Address.Text);
@@ -292,15 +307,15 @@ namespace Phantasma.Spook.Nachomen
             var testUser = PhantasmaKeys.FromWIF("Kwgg5tbcgDmZ5UFgpwbv96CvduBA2T5kSVSmEYiqmW8QdvGHKH25"); // => PXZiNZJarPaErRjJZZuAvAHSCN8oyJUy5Gec1jv4k6eEJ
 
             // Transfer Fuel Tokens to the test user address
-            simulator.BeginBlock();
-            simulator.GenerateTransfer(ownerKeys, testUser.Address, nexus.RootChain, DomainSettings.FuelTokenSymbol, 1000);
-            simulator.EndBlock();
+            _simulator.BeginBlock();
+            _simulator.GenerateTransfer(_ownerKeys, testUser.Address, _nexus.RootChain, DomainSettings.FuelTokenSymbol, 1000);
+            _simulator.EndBlock();
 
             // WRESTLERS
 
-            logger.Message("Filling the market with luchadores...");
+            _logger.Message("Filling the market with luchadores...");
 
-            var auctions = (MarketAuction[])simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootStorage, "market", "GetAuctions").ToObject();
+            var auctions = (MarketAuction[])_simulator.Nexus.RootChain.InvokeContract(_simulator.Nexus.RootStorage, "market", "GetAuctions").ToObject();
             var previousAuctionCount = auctions.Length;
 
             var createdAuctions = 0;
@@ -321,16 +336,16 @@ namespace Phantasma.Spook.Nachomen
                 }
 
                 var count = luchadorCounts[rarity];
-                logger.Message($"Generating {count} {rarity} luchadores...");
+                _logger.Message($"Generating {count} {rarity} luchadores...");
 
-                var wrestlerToken = simulator.Nexus.GetTokenInfo(Constants.WRESTLER_SYMBOL);
-                Throw.If(!nexus.TokenExists(Constants.WRESTLER_SYMBOL), "Can't find the token symbol");
+                var wrestlerToken = _simulator.Nexus.GetTokenInfo(Constants.WRESTLER_SYMBOL);
+                Throw.If(!_nexus.TokenExists(Constants.WRESTLER_SYMBOL), "Can't find the token symbol");
 
                 for (var i = 1; i <= count; i++)
                 {
                     if (createdAuctions == 10) break; // REMOVE
 
-                    var wrestler        = DequeueWrestler(ownerKeys, rarity);
+                    var wrestler        = DequeueWrestler(_ownerKeys, rarity);
                     var wrestlerBytes   = wrestler.Key.Serialize();
 
                     var rand        = new Random();
@@ -340,9 +355,9 @@ namespace Phantasma.Spook.Nachomen
                     var tokenROM = wrestler.Value;  // new byte[0];     //wrestlerBytes;
                     var tokenRAM = wrestlerBytes;   //new byte[0];
 
-                    simulator.BeginBlock();
-                    var mintTx = simulator.MintNonFungibleToken(ownerKeys, ownerKeys.Address, Constants.WRESTLER_SYMBOL, tokenROM, tokenRAM);
-                    var blockA = simulator.EndBlock().First();
+                    _simulator.BeginBlock();
+                    var mintTx = _simulator.MintNonFungibleToken(_ownerKeys, _ownerKeys.Address, Constants.WRESTLER_SYMBOL, tokenROM, tokenRAM);
+                    var blockA = _simulator.EndBlock().First();
 
                     var tokenID = BigInteger.Zero;
 
@@ -367,13 +382,13 @@ namespace Phantasma.Spook.Nachomen
                     var extraFee = UnitConversion.ToBigInteger(0.0001m, DomainSettings.FuelTokenDecimals);
 
                     // transfer wrestler nft from main chain to nacho chain
-                    simulator.BeginBlock();
-                    var txA = simulator.GenerateSideChainSend(ownerKeys, wrestlerToken.Symbol, nexus.RootChain, ownerKeys.Address, nachoChain, tokenID, 999);
-                    simulator.EndBlock();
+                    _simulator.BeginBlock();
+                    var txA = _simulator.GenerateSideChainSend(_ownerKeys, wrestlerToken.Symbol, _nexus.RootChain, _ownerKeys.Address, nachoChain, tokenID, 999);
+                    _simulator.EndBlock();
 
-                    simulator.BeginBlock();
-                    simulator.GenerateSideChainSettlement(ownerKeys, nexus.RootChain, nachoChain, txA);
-                    simulator.EndBlock();
+                    _simulator.BeginBlock();
+                    _simulator.GenerateSideChainSettlement(_ownerKeys, _nexus.RootChain, nachoChain, txA);
+                    _simulator.EndBlock();
 
                     // Create auction
                     decimal minPrice, maxPrice;
@@ -388,18 +403,18 @@ namespace Phantasma.Spook.Nachomen
 
                     createdAuctions++;
 
-                    Timestamp endWrestlerAuctionDate = simulator.CurrentTime + TimeSpan.FromDays(2);
+                    Timestamp endWrestlerAuctionDate = _simulator.CurrentTime + TimeSpan.FromDays(2);
 
-                    simulator.BeginBlock();
-                    simulator.GenerateCustomTransaction(ownerKeys, ProofOfWork.None, nachoChain, () =>
+                    _simulator.BeginBlock();
+                    _simulator.GenerateCustomTransaction(_ownerKeys, ProofOfWork.None, nachoChain, () =>
                         ScriptUtils.
                             BeginScript().
-                            AllowGas(ownerKeys.Address, Address.Null, simulator.MinimumFee, 800).
-                            CallContract("market", "SellToken", ownerKeys.Address, wrestlerToken.Symbol, Constants.NACHO_SYMBOL, tokenID, finalPrice, endWrestlerAuctionDate).
-                            SpendGas(ownerKeys.Address).
+                            AllowGas(_ownerKeys.Address, Address.Null, _simulator.MinimumFee, 800).
+                            CallContract("market", "SellToken", _ownerKeys.Address, wrestlerToken.Symbol, Constants.NACHO_SYMBOL, tokenID, finalPrice, endWrestlerAuctionDate).
+                            SpendGas(_ownerKeys.Address).
                             EndScript()
                     );
-                    simulator.EndBlock();
+                    _simulator.EndBlock();
                 }
             }
 
@@ -408,7 +423,7 @@ namespace Phantasma.Spook.Nachomen
 
             // ITEMS
 
-            logger.Message("Generating items for market...");
+            _logger.Message("Generating items for market...");
 
             //var itemCounts = new Dictionary<Rarity, int>
             //{
@@ -419,7 +434,7 @@ namespace Phantasma.Spook.Nachomen
             //    [Rarity.Legendary]  = 1
             //};
 
-            MineItems(logger);
+            MineItems(_logger);
 
             var itemCounter = 1;
 
@@ -442,17 +457,17 @@ namespace Phantasma.Spook.Nachomen
                 //var count = itemCounts[rarity];
                 var count = _itemQueue[rarity].Count;
 
-                logger.Message($"Generating {count} {rarity} items...");
+                _logger.Message($"Generating {count} {rarity} items...");
 
 
-                var itemToken = simulator.Nexus.GetTokenInfo(Constants.ITEM_SYMBOL);
-                Throw.If(!nexus.TokenExists(Constants.ITEM_SYMBOL), "Can't find the token symbol");
+                var itemToken = _simulator.Nexus.GetTokenInfo(Constants.ITEM_SYMBOL);
+                Throw.If(!_nexus.TokenExists(Constants.ITEM_SYMBOL), "Can't find the token symbol");
 
                 for (var i = 1; i <= count; i++)
                 {
                     if (itemCounter == 18) break; // REMOVE
 
-                    var item        = DequeueItem(rarity, logger);
+                    var item        = DequeueItem(rarity, _logger);
                     var itemBytes   = item.Serialize();
 
                     var rand        = new Random();
@@ -462,9 +477,9 @@ namespace Phantasma.Spook.Nachomen
                     var tokenROM = BitConverter.GetBytes(itemCounter); // new byte[0]; //itemBytes;
                     var tokenRAM = itemBytes;   //new byte[0];
 
-                    simulator.BeginBlock();
-                    var mintTx = simulator.MintNonFungibleToken(ownerKeys, ownerKeys.Address, Constants.ITEM_SYMBOL, tokenROM, tokenRAM);
-                    var blockA = simulator.EndBlock().First();
+                    _simulator.BeginBlock();
+                    var mintTx = _simulator.MintNonFungibleToken(_ownerKeys, _ownerKeys.Address, Constants.ITEM_SYMBOL, tokenROM, tokenRAM);
+                    var blockA = _simulator.EndBlock().First();
 
                     var tokenID = BigInteger.Zero;
 
@@ -489,15 +504,15 @@ namespace Phantasma.Spook.Nachomen
                     var extraFee = UnitConversion.ToBigInteger(0.0001m, DomainSettings.FuelTokenDecimals);
 
                     // transfer item nft from main chain to nacho chain
-                    simulator.BeginBlock();
-                    var txA = simulator.GenerateSideChainSend(ownerKeys, itemToken.Symbol, nexus.RootChain, ownerKeys.Address, nachoChain, tokenID, 999);
+                    _simulator.BeginBlock();
+                    var txA = _simulator.GenerateSideChainSend(_ownerKeys, itemToken.Symbol, _nexus.RootChain, _ownerKeys.Address, nachoChain, tokenID, 999);
                     //var txB = simulator.GenerateSideChainSend(ownerKeys, DomainSettings.FuelTokenSymbol, nexus.RootChain, ownerKeys.Address, nachoChain, fuelAmount, 0);
-                    simulator.EndBlock();
+                    _simulator.EndBlock();
 
-                    simulator.BeginBlock();
-                    simulator.GenerateSideChainSettlement(ownerKeys, nexus.RootChain, nachoChain, txA);
+                    _simulator.BeginBlock();
+                    _simulator.GenerateSideChainSettlement(_ownerKeys, _nexus.RootChain, nachoChain, txA);
                     //simulator.GenerateSideChainSettlement(ownerKeys, nexus.RootChain, nachoChain, txB);
-                    simulator.EndBlock();
+                    _simulator.EndBlock();
 
                     // Create auction
                     decimal minPrice, maxPrice;
@@ -512,18 +527,18 @@ namespace Phantasma.Spook.Nachomen
 
                     createdAuctions++;
 
-                    Timestamp endItemAuctionDate = simulator.CurrentTime + TimeSpan.FromDays(2);
+                    Timestamp endItemAuctionDate = _simulator.CurrentTime + TimeSpan.FromDays(2);
 
-                    simulator.BeginBlock();
-                    simulator.GenerateCustomTransaction(ownerKeys, ProofOfWork.None, nachoChain, () =>
+                    _simulator.BeginBlock();
+                    _simulator.GenerateCustomTransaction(_ownerKeys, ProofOfWork.None, nachoChain, () =>
                         ScriptUtils.
                             BeginScript().
-                            AllowGas(ownerKeys.Address, Address.Null, simulator.MinimumFee, 9999).
-                            CallContract("market", "SellToken", ownerKeys.Address, itemToken.Symbol, Constants.NACHO_SYMBOL, tokenID, finalPrice, endItemAuctionDate).
-                            SpendGas(ownerKeys.Address).
+                            AllowGas(_ownerKeys.Address, Address.Null, _simulator.MinimumFee, 9999).
+                            CallContract("market", "SellToken", _ownerKeys.Address, itemToken.Symbol, Constants.NACHO_SYMBOL, tokenID, finalPrice, endItemAuctionDate).
+                            SpendGas(_ownerKeys.Address).
                             EndScript()
                     );
-                    simulator.EndBlock();
+                    _simulator.EndBlock();
 
                     itemCounter++;
                 }
@@ -532,7 +547,7 @@ namespace Phantasma.Spook.Nachomen
             auctions = (MarketAuction[])nachoChain.InvokeContract(nachoChain.Storage, "market", "GetAuctions").ToObject();
             Throw.If(auctions.Length != createdAuctions + previousAuctionCount, "items auction ids missing");
 
-            logger.Success("Nacho Market is ready!");
+            _logger.Success("Nacho Market is ready!");
         }
 
         /*
