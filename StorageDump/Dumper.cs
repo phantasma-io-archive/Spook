@@ -85,11 +85,11 @@ namespace StorageDump
                         amount = 0;
                     }
 
-                    if (symbol == DomainSettings.StakingTokenSymbol && stakeMap.ContainsKey<Address>(addr))
+                    /*if (symbol == DomainSettings.StakingTokenSymbol && stakeMap.ContainsKey<Address>(addr))
                     {
-                        var temp = stakeMap.Get<Address, EnergyAction>(addr);
-                        amount += temp.totalAmount;
-                    }
+                        var temp = stakeMap.Get<Address, EnergyStake>(addr);
+                        amount += temp.stakeAmount;
+                    }*/
 
                     addresses.Add(addr);
 
@@ -110,6 +110,7 @@ namespace StorageDump
                 }
             });
 
+            /*
             if (symbol == DomainSettings.StakingTokenSymbol)
             {
                 var masterListKey = GetKeyForField<StakeContract>("_mastersList");
@@ -140,7 +141,7 @@ namespace StorageDump
 
                     Console.WriteLine($"{master.address.Text},{symbol},{s}");
                 }
-            }
+            }*/
 
             if (PrettyPrint)
             {
@@ -152,13 +153,20 @@ namespace StorageDump
         {
             Thread.CurrentThread.CurrentCulture = new CultureInfo("en-US");
 
-            store = new BasicDiskStore(@"C:\Code\Poltergeist\Builds\chain.main.csv");
+            store = new BasicDiskStore(@"chain.main.csv");
 
+            store.Visit((key, val) =>
+            {
+                var name = Encoding.UTF8.GetString(key);
+                Console.WriteLine(name);
+                Console.ReadKey();
+            });
+            /*
             DumpBalances("SOUL", DomainSettings.StakingTokenDecimals);
             DumpBalances("NEO", 0);
             DumpBalances("GAS", 8);
             DumpBalances("MKNI", 0);
-            DumpBalances("KCAL", DomainSettings.FuelTokenDecimals);
+            DumpBalances("KCAL", DomainSettings.FuelTokenDecimals);*/
 
             Console.ReadKey();
         }

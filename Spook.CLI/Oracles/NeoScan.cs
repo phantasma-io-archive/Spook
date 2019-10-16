@@ -34,7 +34,7 @@ namespace Phantasma.Spook.Oracles
             this.logger = logger;
             this.nexus = nexus;
 
-            var key = InteropUtils.GenerateInteropKeys(keys, nexus.GenesisHash,  platformName);
+            var key = InteropUtils.GenerateInteropKeys(keys, nexus.GetGenesisHash(nexus.RootStorage),  platformName);
             this.platformAddress = key.Address;
         }
 
@@ -180,7 +180,7 @@ namespace Phantasma.Spook.Oracles
                         var sourceAddress = entry.GetString("address_from");
                         var destAddress = entry.GetString("address_to");
 
-                        var info = nexus.GetTokenInfo(symbol);
+                        var info = nexus.GetTokenInfo(nexus.RootStorage, symbol);
                         var amount = UnitConversion.ToBigInteger(inputAmount, info.Decimals);
 
                         var txHash = Hash.Parse(hashText);

@@ -6,3 +6,4 @@ Spook.CLI/Publish/*
 StorageDump/obj/*
 StorageDump/bin/*
 launchSettings.json
+ScanScanner/*

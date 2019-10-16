@@ -323,8 +323,8 @@ namespace Phantasma.Spook.Nachomen
                 var count = luchadorCounts[rarity];
                 logger.Message($"Generating {count} {rarity} luchadores...");
 
-                var wrestlerToken = simulator.Nexus.GetTokenInfo(Constants.WRESTLER_SYMBOL);
-                Throw.If(!nexus.TokenExists(Constants.WRESTLER_SYMBOL), "Can't find the token symbol");
+                var wrestlerToken = simulator.Nexus.GetTokenInfo(simulator.Nexus.RootStorage, Constants.WRESTLER_SYMBOL);
+                Throw.If(!nexus.TokenExists(simulator.Nexus.RootStorage, Constants.WRESTLER_SYMBOL), "Can't find the token symbol");
 
                 for (var i = 1; i <= count; i++)
                 {
@@ -445,8 +445,8 @@ namespace Phantasma.Spook.Nachomen
                 logger.Message($"Generating {count} {rarity} items...");
 
 
-                var itemToken = simulator.Nexus.GetTokenInfo(Constants.ITEM_SYMBOL);
-                Throw.If(!nexus.TokenExists(Constants.ITEM_SYMBOL), "Can't find the token symbol");
+                var itemToken = simulator.Nexus.GetTokenInfo(nexus.RootStorage, Constants.ITEM_SYMBOL);
+                Throw.If(!nexus.TokenExists(nexus.RootStorage, Constants.ITEM_SYMBOL), "Can't find the token symbol");
 
                 for (var i = 1; i <= count; i++)
                 {

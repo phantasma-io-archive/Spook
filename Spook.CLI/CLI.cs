@@ -520,7 +520,7 @@ namespace Phantasma.Spook
 
             bool bootstrap = false;
 
-            if (!nexus.HasGenesis)
+            if (nexus.HasGenesis)
             {
                 if (settings.GetBool("nexus.bootstrap"))
                 {
@@ -541,7 +541,7 @@ namespace Phantasma.Spook
                         throw new ChainException("Genesis block failure");
                     }
 
-                    logger.Debug("Genesis block created: " + nexus.GenesisHash);
+                    logger.Debug("Genesis block created: " + nexus.GetGenesisHash(nexus.RootStorage));
                 }
                 else
                 {
@@ -551,7 +551,7 @@ namespace Phantasma.Spook
             }
             else
             {
-                logger.Success("Loaded Nexus with genesis " + nexus.GenesisHash);
+                logger.Success("Loaded Nexus with genesis " + nexus.GetGenesisHash(nexus.RootStorage));
                 //seeds.Add("127.0.0.1:7073");
             }
 
@@ -970,7 +970,7 @@ namespace Phantasma.Spook
             {
                 var hash = Hash.Parse(args[0]);
                 var reader = nexus.CreateOracleReader();
-                var tx = reader.PullPlatformTransaction("neo", "neo", hash);
+                var tx = reader.ReadTransaction("neo", "neo", hash);
                 logger.Message(tx.Transfers[0].interopAddress.Text);
             });
 

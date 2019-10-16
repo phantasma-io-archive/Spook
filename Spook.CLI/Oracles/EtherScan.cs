@@ -37,7 +37,7 @@ namespace Phantasma.Spook.Oracles
             this.nexus = nexus;
             this.apiToken = apiToken;
 
-            var key = InteropUtils.GenerateInteropKeys(keys, this.nexus.GenesisHash, platformName);
+            var key = InteropUtils.GenerateInteropKeys(keys, this.nexus.GetGenesisHash(this.nexus.RootStorage), platformName);
             this.platformAddress = key.Address;
         }
 

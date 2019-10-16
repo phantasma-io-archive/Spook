@@ -15,7 +15,7 @@ namespace Phantasma.Spook.Oracles
             this.CLI = cli;
         }
 
-        public override decimal PullPrice(Timestamp time, string symbol)
+        protected override decimal PullPrice(Timestamp time, string symbol)
         {
             if (!string.IsNullOrEmpty(CLI.cryptoCompareAPIKey))
             {
@@ -32,7 +32,7 @@ namespace Phantasma.Spook.Oracles
             throw new OracleException("No support for oracle prices in this node");
         }
 
-        public override InteropBlock PullPlatformBlock(string platformName, string chainName, Hash hash)
+        protected override InteropBlock PullPlatformBlock(string platformName, string chainName, Hash hash)
         {
             switch (platformName)
             {
@@ -44,7 +44,7 @@ namespace Phantasma.Spook.Oracles
             }
         }
 
-        public override InteropTransaction PullPlatformTransaction(string platformName, string chainName, Hash hash)
+        protected override InteropTransaction PullPlatformTransaction(string platformName, string chainName, Hash hash)
         {
             switch (platformName)
             {
@@ -56,7 +56,7 @@ namespace Phantasma.Spook.Oracles
             }
         }
 
-        public override byte[] PullData(Timestamp time, string url)
+        protected override byte[] PullData(Timestamp time, string url)
         {
             throw new OracleException("unknown oracle url");
         }
