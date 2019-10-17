@@ -520,7 +520,7 @@ namespace Phantasma.Spook
 
             bool bootstrap = false;
 
-            if (nexus.HasGenesis)
+            if (!nexus.HasGenesis)
             {
                 if (settings.GetBool("nexus.bootstrap"))
                 {
