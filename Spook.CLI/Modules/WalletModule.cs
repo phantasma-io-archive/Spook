@@ -339,7 +339,7 @@ namespace Phantasma.Spook.Modules
                 {
                     logger.Warning($"Source is {sourcePlatform} address, a swap will be performed using an interop address.");
 
-                    IPlatform platformInfo = api.Nexus.GetPlatformInfo(sourcePlatform);
+                    IPlatform platformInfo = api.Nexus.GetPlatformInfo(api.Nexus.RootStorage, sourcePlatform);
 
                     Hash extHash;
                     IKeyPair extKeys;

@@ -22,7 +22,7 @@ namespace Phantasma.Spook.Swaps
         private NeoScanAPI neoscanAPI;
         private BigInteger _blockHeight;
 
-        public NeoInterop(TokenSwapper swapper, BigInteger blockHeight, NeoAPI neoAPI, NeoScanAPI neoscanAPI, Logger logger) : base(swapper, "neo")
+        public NeoInterop(TokenSwapper swapper, string wif, BigInteger blockHeight, NeoAPI neoAPI, NeoScanAPI neoscanAPI, Logger logger) : base(swapper, wif, "neo")
         {
             this._blockHeight = blockHeight;
 
@@ -30,6 +30,12 @@ namespace Phantasma.Spook.Swaps
             this.neoAPI = neoAPI;
 
             this.logger = logger;
+        }
+
+        protected override string GetAvailableAddress(string wif)
+        {
+            var neoKeys = Phantasma.Neo.Core.NeoKeys.FromWIF(wif);
+            return neoKeys.Address;
         }
 
         public override IEnumerable<PendingSwap> Update()
@@ -105,7 +111,7 @@ namespace Phantasma.Spook.Swaps
             }
 
             var reader = Swapper.Nexus.CreateOracleReader();
-            var interopTx = reader.ReadTransactionFromOracle("neo", "neo", Hash.Parse(hash));
+            var interopTx = reader.ReadTransaction("neo", "neo", Hash.Parse(hash));
 
             if (interopTx.Transfers.Length != 1)
             {

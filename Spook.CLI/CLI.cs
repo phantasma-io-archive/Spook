@@ -56,7 +56,7 @@ namespace Phantasma.Spook
 
     public class CLI
     {
-        public const string SpookVersion = "0.1.11";
+        public const string SpookVersion = "1.0";
         public static readonly string Identifier = "SPK" + SpookVersion;
 
         static void Main(string[] args)
@@ -414,14 +414,7 @@ namespace Phantasma.Spook
             var seeds = new List<string>();
 
             var settings = new Arguments(args);
-
-            /*for (int i = 0; i < 200; i++)
-            {
-                var k = PhantasmaKeys.Generate();
-                Console.WriteLine(k.ToWIF() + " => " + k.Address.Text);
-            }
-            Console.ReadLine();*/
-
+            
             var useGUI = settings.GetBool("gui.enabled", true);
 
             if (useGUI)
@@ -527,7 +520,7 @@ namespace Phantasma.Spook
 
             bool bootstrap = false;
 
-            if (!nexus.HasGenesis)
+            if (nexus.HasGenesis)
             {
                 if (settings.GetBool("nexus.bootstrap"))
                 {
@@ -548,7 +541,7 @@ namespace Phantasma.Spook
                         throw new ChainException("Genesis block failure");
                     }
 
-                    logger.Debug("Genesis block created: " + nexus.GenesisHash);
+                    logger.Debug("Genesis block created: " + nexus.GetGenesisHash(nexus.RootStorage));
                 }
                 else
                 {
@@ -558,7 +551,7 @@ namespace Phantasma.Spook
             }
             else
             {
-                logger.Success("Loaded Nexus with genesis " + nexus.GenesisHash);
+                logger.Success("Loaded Nexus with genesis " + nexus.GetGenesisHash(nexus.RootStorage));
                 //seeds.Add("127.0.0.1:7073");
             }
 
@@ -601,7 +594,7 @@ namespace Phantasma.Spook
 
             if (hasMempool)
             {
-                this.mempool = new Mempool(node_keys, nexus, blockTime, minimumFee, 0, logger);
+                this.mempool = new Mempool(node_keys, nexus, blockTime, minimumFee, System.Text.Encoding.UTF8.GetBytes(Identifier), 0, logger);
 
                 var mempoolLogging = settings.GetBool("mempool.log", true);
                 if (mempoolLogging)
@@ -686,7 +679,7 @@ namespace Phantasma.Spook
             this.neoAPI = new Neo.Core.RemoteRPCNode(neoScanURL, neoRpcURLs);
             this.neoAPI.SetLogger((s) => logger.Message(s));
 
-            this.neoScanAPI = new NeoScanAPI(neoScanURL, logger, nexus, neoAPI, node_keys);
+            this.neoScanAPI = new NeoScanAPI(neoScanURL, logger, nexus, node_keys);
 
             cryptoCompareAPIKey = settings.GetString("cryptocompare.apikey", "");
             if (!string.IsNullOrEmpty(cryptoCompareAPIKey))
@@ -977,7 +970,7 @@ namespace Phantasma.Spook
             {
                 var hash = Hash.Parse(args[0]);
                 var reader = nexus.CreateOracleReader();
-                var tx = reader.ReadTransactionFromOracle("neo", "neo", hash);
+                var tx = reader.ReadTransaction("neo", "neo", hash);
                 logger.Message(tx.Transfers[0].interopAddress.Text);
             });
 

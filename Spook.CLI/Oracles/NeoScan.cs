@@ -22,9 +22,8 @@ namespace Phantasma.Spook.Oracles
         private static readonly string platformName = NeoWallet.NeoPlatform;
 
         private readonly Nexus nexus;
-        private NeoAPI neoAPI;
 
-        public NeoScanAPI(string url, Logger logger, Nexus nexus, NeoAPI neoAPI, PhantasmaKeys keys)
+        public NeoScanAPI(string url, Logger logger, Nexus nexus, PhantasmaKeys keys)
         {
             if (!url.Contains("://"))
             {
@@ -34,9 +33,8 @@ namespace Phantasma.Spook.Oracles
             this.URL = url;
             this.logger = logger;
             this.nexus = nexus;
-            this.neoAPI = neoAPI;
 
-            var key = InteropUtils.GenerateInteropKeys(keys, nexus.GenesisHash,  platformName);
+            var key = InteropUtils.GenerateInteropKeys(keys, nexus.GetGenesisHash(nexus.RootStorage),  platformName);
             this.platformAddress = key.Address;
         }
 
@@ -182,7 +180,7 @@ namespace Phantasma.Spook.Oracles
                         var sourceAddress = entry.GetString("address_from");
                         var destAddress = entry.GetString("address_to");
 
-                        var info = nexus.GetTokenInfo(symbol);
+                        var info = nexus.GetTokenInfo(nexus.RootStorage, symbol);
                         var amount = UnitConversion.ToBigInteger(inputAmount, info.Decimals);
 
                         var txHash = Hash.Parse(hashText);

@@ -94,7 +94,9 @@ namespace Phantasma.Spook.Swaps
         public readonly TokenSwapper Swapper;
         public readonly string LocalAddress;
 
-        protected ChainWatcher(TokenSwapper swapper, string platformName)
+        private readonly string wif;
+
+        protected ChainWatcher(TokenSwapper swapper, string wif, string platformName)
         {
             Swapper = swapper;
             this.PlatformName = platformName;
@@ -102,12 +104,21 @@ namespace Phantasma.Spook.Swaps
 
             if (string.IsNullOrEmpty(LocalAddress))
             {
-                throw new SwapException("Invalid address for neo swaps");
+                throw new SwapException($"Invalid address for {platformName} swaps");
             }
 
-            Swapper.logger.Message($"Listening for {platformName} swaps at address {LocalAddress}");
+            var localKeys = GetAvailableAddress(wif);
+            if (localKeys == LocalAddress)
+            {
+                Swapper.logger.Message($"Listening for {platformName} swaps at address {LocalAddress}");
+            }
+            else
+            {
+                Swapper.logger.Error($"Expected {platformName} keys to {LocalAddress}, instead got keys to {localKeys}");
+            }
         }
 
+        protected abstract string GetAvailableAddress(string wif);
         public abstract IEnumerable<PendingSwap> Update();
     }
 
@@ -117,13 +128,15 @@ namespace Phantasma.Spook.Swaps
         public Nexus Nexus => NexusAPI.Nexus;
         public readonly Logger logger;
         private StorageContext Storage;
-        private readonly PhantasmaKeys SwapKeys;
+        internal readonly PhantasmaKeys SwapKeys;
         private readonly BigInteger MinimumFee;
         private readonly NeoAPI neoAPI;
         private readonly NeoScanAPI neoscanAPI;
 
         private readonly Dictionary<string, BigInteger> interopBlocks;
         private PlatformInfo[] platforms;
+
+        private Dictionary<string, string> wifs = new Dictionary<string, string>(); 
 
         private Dictionary<string, ChainWatcher> _finders = new Dictionary<string, ChainWatcher>();
 
@@ -144,7 +157,8 @@ namespace Phantasma.Spook.Swaps
             interopBlocks["phantasma"] = BigInteger.Parse(arguments.GetString("interop.phantasma.height", "0"));
             interopBlocks["neo"] = BigInteger.Parse(arguments.GetString("interop.neo.height", "4261049"));
             //interopBlocks["ethereum"] = BigInteger.Parse(arguments.GetString("interop.ethereum.height", "4261049"));
-            
+
+            InitWIF("neo", arguments);
 
             /*
             foreach (var entry in interopBlocks)
@@ -204,10 +218,22 @@ namespace Phantasma.Spook.Swaps
             }*/
         }
 
+        private void InitWIF(string platformName, Arguments arguments)
+        {
+            var genesisHash = Nexus.GetGenesisHash(Nexus.RootStorage);
+            var interopKeys = InteropUtils.GenerateInteropKeys(SwapKeys, genesisHash, platformName);
+            var defaultWif = interopKeys.ToWIF();
+
+            var wif = arguments.GetString($"{platformName}.wif", defaultWif);
+
+            wifs[platformName] = wif;
+        }
+
         internal IToken FindTokenByHash(string asset)
         {
             var hash = Hash.FromUnpaddedHex(asset);
-            return Nexus.Tokens.Select(x => Nexus.GetTokenInfo(x)).Where(x => x.Hash == hash).FirstOrDefault();
+            var symbols = Nexus.GetTokens(Nexus.RootStorage);
+            return symbols.Select(x => Nexus.GetTokenInfo(Nexus.RootStorage, x)).Where(x => x.Hash == hash).FirstOrDefault();
         }
 
         internal string FindAddress(string platformName)
@@ -249,7 +275,8 @@ namespace Phantasma.Spook.Swaps
                     return;
                 }
 
-                this.platforms = Nexus.Platforms.Select(x => Nexus.GetPlatformInfo(x)).ToArray();
+                var platforms = Nexus.GetPlatforms(Nexus.RootStorage);
+                this.platforms = platforms.Select(x => Nexus.GetPlatformInfo(Nexus.RootStorage, x)).ToArray();
 
                 if (this.platforms.Length == 0)
                 {
@@ -257,7 +284,7 @@ namespace Phantasma.Spook.Swaps
                     return;
                 }
 
-                _finders["neo"] = new NeoInterop(this, interopBlocks["neo"], neoAPI, neoscanAPI, logger);
+                _finders["neo"] = new NeoInterop(this, wifs["neo"], interopBlocks["neo"], neoAPI, neoscanAPI, logger);
             }
 
             if (this.platforms.Length == 0)
@@ -444,8 +471,8 @@ namespace Phantasma.Spook.Swaps
             {
                 var total = UnitConversion.ToDecimal(amount, token.Decimals);
 
-                var interopKeys = InteropUtils.GenerateInteropKeys(SwapKeys, Nexus.GenesisHash, NeoWallet.NeoPlatform);
-                var neoKeys = Phantasma.Neo.Core.NeoKeys.FromWIF(interopKeys.ToWIF());
+                var wif = wifs["neo"];
+                var neoKeys = Phantasma.Neo.Core.NeoKeys.FromWIF(wif);
 
                 var destAddress = NeoWallet.DecodeAddress(destination);
 
@@ -468,18 +495,20 @@ namespace Phantasma.Spook.Swaps
         private Hash SettleSwapToExternal(string destinationPlatform, Hash sourceHash, Func<Address, IToken, BigInteger, Hash> generator)
         {
             var oracleReader = Nexus.CreateOracleReader();
-            var swap = oracleReader.ReadTransactionFromOracle(DomainSettings.PlatformName, DomainSettings.RootChainName, sourceHash);
+            var swap = oracleReader.ReadTransaction(DomainSettings.PlatformName, DomainSettings.RootChainName, sourceHash);
+
+            var transfers = swap.Transfers.Where(x => x.destinationAddress.IsInterop).ToArray();
 
             // TODO not support yet
-            if (swap.Transfers.Length != 1)
+            if (transfers.Length != 1)
             {
                 logger.Warning($"Not implemented: Swap support for multiple transfers in a single transaction");
                 return Hash.Null;
             }
 
-            var transfer = swap.Transfers[0];
+            var transfer = transfers[0];
 
-            var token = Nexus.GetTokenInfo(transfer.Symbol);
+            var token = Nexus.GetTokenInfo(Nexus.RootStorage, transfer.Symbol);
 
             var destHash = generator(transfer.destinationAddress, token, transfer.Value);
             if (destHash != Hash.Null)

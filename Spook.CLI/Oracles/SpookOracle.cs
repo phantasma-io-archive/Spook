@@ -1,4 +1,5 @@
 ﻿using Phantasma.Blockchain;
+using Phantasma.Core.Types;
 using Phantasma.Cryptography;
 using Phantasma.Domain;
 using Phantasma.Pay.Chains;
@@ -14,13 +15,13 @@ namespace Phantasma.Spook.Oracles
             this.CLI = cli;
         }
 
-        protected override decimal PullPrice(string symbol)
+        protected override decimal PullPrice(Timestamp time, string symbol)
         {
             if (!string.IsNullOrEmpty(CLI.cryptoCompareAPIKey))
             {
                 if (symbol == DomainSettings.FuelTokenSymbol)
                 {
-                    var result = PullPrice(DomainSettings.StakingTokenSymbol);
+                    var result = PullPrice(time, DomainSettings.StakingTokenSymbol);
                     return result / 5;
                 }
              
@@ -55,7 +56,7 @@ namespace Phantasma.Spook.Oracles
             }
         }
 
-        protected override byte[] PullData(string url)
+        protected override byte[] PullData(Timestamp time, string url)
         {
             throw new OracleException("unknown oracle url");
         }
