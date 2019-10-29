@@ -145,6 +145,11 @@ Below are instructions needed for the various operating systems supported.
 #Default: /Storage
 #Selects the path where the node will save the chain data
 
+-storage.backend=
+#Default: file
+#Options: 'file' or 'db'
+#Defines the used storage backend, for 'db' RocksDB has to be installed.
+
 -simulator.enabled=
 #Options: 'true' or 'false'
 #Utilised when supporting Nachomen - Luchadores get ready for action in the startup when enabled
@@ -170,6 +175,53 @@ Below are instructions needed for the various operating systems supported.
 #Default: false
 #Enables the mempool usage plugin. View the graph with comand "gui.graph mempool". Note, this is not the same as enabling the mempool.
 ```` 
+### Debian 10 (Buster)
+
+##### Register the Microsoft key:
+
+````
+wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.asc.gpg
+sudo mv microsoft.asc.gpg /etc/apt/trusted.gpg.d/
+wget -q https://packages.microsoft.com/config/debian/9/prod.list
+sudo mv prod.list /etc/apt/sources.list.d/microsoft-prod.list
+sudo chown root:root /etc/apt/trusted.gpg.d/microsoft.asc.gpg
+sudo chown root:root /etc/apt/sources.list.d/microsoft-prod.list
+
+````
+
+##### Install dotnet-core-2.2
+
+````
+sudo apt-get update
+sudo apt-get install apt-transport-https
+sudo apt-get update
+sudo apt-get install dotnet-sdk-3.0
+````
+
+##### Install libssl1.0.0
+- Debian 10 has `libssl1.1.0` installed which is not compatible with dotnet-core. To make Debian behave you have to install `libssl1.0.0`
+
+````
+sudo apt-get install multiarch-support
+wget http://security.debian.org/debian-security/pool/updates/main/o/openssl/libssl1.0.0_1.0.1t-1+deb8u12_amd64.deb
+sudo dpkg -i libssl1.0.0_1.0.1t-1+deb8u12_amd64.deb
+````
+
+##### Run Spook
+
+- In a terminal navigate to the location you placed the compiled contents of Spook
+- Then run the instance 
+
+````
+dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet -rpc.enabled=true
+#to disable the graphic in the terminal, add the following argument to the line above
+-gui.enabled=false
+````
+- An example shell script to execute the above and run it in the background as a process is
+````
+#!/bin/bash
+dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet -rpc.enabled=true -gui.enabled=false &
+````
 
 ### Ubuntu 18.04+
 
