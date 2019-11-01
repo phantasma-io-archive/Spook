@@ -156,12 +156,12 @@ namespace Phantasma.Spook.Modules
 
         }
 
-        private static Hash ExecuteTransaction(NexusAPI api, byte[] script, ProofOfWork proofOfWork, IKeyPair keys)
+        public static Hash ExecuteTransaction(NexusAPI api, byte[] script, ProofOfWork proofOfWork, IKeyPair keys)
         {
             return ExecuteTransaction(api, script, proofOfWork, new IKeyPair[] { keys });
         }
 
-        private static Hash ExecuteTransaction(NexusAPI api, byte[] script, ProofOfWork proofOfWork, params IKeyPair[] keys)
+        public static Hash ExecuteTransaction(NexusAPI api, byte[] script, ProofOfWork proofOfWork, params IKeyPair[] keys)
         {
             var tx = new Blockchain.Transaction(api.Nexus.Name, DomainSettings.RootChainName, script, Timestamp.Now + TimeSpan.FromMinutes(5), CLI.Identifier);
 
@@ -179,9 +179,10 @@ namespace Phantasma.Spook.Modules
 
             var rawTx = tx.ToByteArray(true);
 
+            var encodedRawTx = Base16.Encode(rawTx);
             try
             {
-                api.SendRawTransaction(Base16.Encode(rawTx));
+                api.SendRawTransaction(encodedRawTx);
             }
             catch (Exception e)
             {

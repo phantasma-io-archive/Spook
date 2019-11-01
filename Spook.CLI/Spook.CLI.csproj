@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="LunarLabs.Parser" Version="1.2.6" />
+    <PackageReference Include="LunarLabs.Parser" Version="1.2.7" />
   </ItemGroup>
 
   <ItemGroup>
