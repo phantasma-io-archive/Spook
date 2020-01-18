@@ -4,7 +4,7 @@ using Phantasma.Numerics;
 using Phantasma.Cryptography;
 using Phantasma.Contracts.Extra;
 
-namespace Phantasma.Spook.Nachomen
+namespace Phantasma.Spook.Dapps
 {
     public enum LuchadorDescriptionKind
     {

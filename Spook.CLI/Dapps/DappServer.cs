@@ -11,16 +11,15 @@ using Phantasma.Core.Log;
 using Phantasma.Core.Types;
 using Phantasma.Cryptography;
 using Phantasma.Numerics;
-using Phantasma.Pay.Chains;
 using Phantasma.Storage;
 using Phantasma.VM.Utils;
 using Phantasma.Core;
 using Phantasma.Domain;
 using Phantasma.Contracts.Extra;
 
-namespace Phantasma.Spook.Nachomen
+namespace Phantasma.Spook.Dapps
 {
-    class NachoServer
+    public class DappServer
     {
         private static int _legendaryWrestlerDelay = 0;
         private static int _legendaryItemDelay = 0;
@@ -32,7 +31,7 @@ namespace Phantasma.Spook.Nachomen
 
         private static BigInteger _nextItemID;
 
-        public static void InitNachoServer(Nexus nexus, NexusSimulator simulator, PhantasmaKeys ownerKeys, bool fillMarket, BigInteger minFee, Logger logger)
+        public static void InitDapps(Nexus nexus, NexusSimulator simulator, PhantasmaKeys ownerKeys, string[] dapps, BigInteger minFee, Logger logger)
         {
             /*
             var keys = PhantasmaKeys.FromWIF("L2sbKk7TJTkbwbwJ2EX7qM23ycShESGhQhLNyAaKxVHEqqBhFMk3");
@@ -40,21 +39,59 @@ namespace Phantasma.Spook.Nachomen
             simulator.GenerateCustomTransaction(new [] { keys, ownerKeys }, ProofOfWork.None, () => new ScriptBuilder().AllowGas(ownerKeys.Address, Address.Null, simulator.MinimumFee, 999).CallContract("interop", "RegisterLink", keys.Address, NeoWallet.EncodeAddress("AbZJjZ5F1x82VybfsqM7zi4nkWoX8uwepy")).SpendGas(ownerKeys.Address).EndScript());
             simulator.EndBlock();*/
 
-            //GenerateBotGenes(ownerKeys.Address, logger);
-
-            //InitialNachoFill();
-
-            if (fillMarket)
+            foreach (var dapp in dapps)
             {
-                GenerateTokens(nexus, simulator, ownerKeys, minFee, logger);
-                FillNachoMarket(nexus, simulator, ownerKeys, minFee, logger);
+                logger.Message("Initializing dapp: " + dapp);
+
+                switch (dapp)
+                {
+                    case "nacho":
+                        {
+                            //GenerateBotGenes(ownerKeys.Address, logger);
+                            //InitialNachoFill();
+
+                            GenerateNachoTokens(nexus, simulator, ownerKeys, minFee, logger);
+                            FillNachoMarket(nexus, simulator, ownerKeys, minFee, logger);
+                            break;
+                        }
+
+                    case "tetramino":
+                        {
+                            break;
+                        }
+
+                    default:
+                        {
+                            logger.Error("Unknown dapp: " + dapp);
+                            break;
+                        }
+                }
             }
         }
 
-        public static void GenerateTokens(Nexus nexus, NexusSimulator simulator, PhantasmaKeys ownerKeys, BigInteger minFee, Logger logger)
+        public static void InitTetramino(Nexus nexus, NexusSimulator simulator, PhantasmaKeys ownerKeys, BigInteger minFee, Logger logger)
+        {
+            var contract = "tetramino";
+
+            simulator.BeginBlock();
+            simulator.DeployContracts(ownerKeys, nexus.RootChain, contract);
+            simulator.EndBlock();
+
+            simulator.BeginBlock();
+            simulator.GenerateCustomTransaction(ownerKeys, ProofOfWork.None, nexus.RootChain, () =>
+            {
+                return new ScriptBuilder().
+                AllowGas(ownerKeys.Address, Address.Null, minFee, 9999).
+                CallContract(contract, "OpenBoard").
+                SpendGas(ownerKeys.Address).EndScript();
+            });
+            simulator.EndBlock();
+        }
+
+        public static void GenerateNachoTokens(Nexus nexus, NexusSimulator simulator, PhantasmaKeys ownerKeys, BigInteger minFee, Logger logger)
         {
             simulator.BeginBlock();
-            simulator.GenerateChain(ownerKeys, nexus.RootChain.Name, "nacho");
+            simulator.GenerateChain(ownerKeys, DomainSettings.ValidatorsOrganizationName, nexus.RootChain.Name, "nacho");
             simulator.EndBlock();
 
             var nachoChain = nexus.GetChainByName("nacho");

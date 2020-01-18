@@ -1,6 +1,6 @@
 ﻿using Phantasma.Contracts.Extra;
 
-namespace Phantasma.Spook.Nachomen
+namespace Phantasma.Spook.Dapps
 {
     public static class WrestlerValidation
     {

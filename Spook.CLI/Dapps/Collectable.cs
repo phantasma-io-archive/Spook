@@ -2,7 +2,7 @@
 using Phantasma.Contracts.Extra;
 using Phantasma.Cryptography;
 
-namespace Phantasma.Spook.Nachomen
+namespace Phantasma.Spook.Dapps
 {
     public interface IIndexable
     {

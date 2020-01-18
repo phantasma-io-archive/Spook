@@ -1,7 +1,7 @@
 using System;
 using System.Drawing;
 
-namespace Phantasma.Spook.Nachomen
+namespace Phantasma.Spook.Dapps
 {
     public enum Hue
     {

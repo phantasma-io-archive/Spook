@@ -26,7 +26,7 @@ using Phantasma.VM.Utils;
 using Phantasma.Core;
 using Phantasma.Network.P2P.Messages;
 using Phantasma.RocksDB;
-using Phantasma.Spook.Nachomen;
+using Phantasma.Spook.Dapps;
 using Phantasma.Storage;
 using Phantasma.Spook.Oracles;
 using Phantasma.Spook.Swaps;
@@ -755,9 +755,9 @@ namespace Phantasma.Spook
                     }
                     simulator.EndBlock();*/
 
-                    bool fillMarket = settings.GetBool("nacho.market", false);
+                    string[] dapps = settings.GetString("dapps", "").Split(',');
 
-                    NachoServer.InitNachoServer(nexus, simulator, node_keys, fillMarket, minimumFee, logger);
+                    DappServer.InitDapps(nexus, simulator, node_keys, dapps, minimumFee, logger);
 
                     bool genBlocks = settings.GetBool("simulator.blocks", false);
                     if (genBlocks)

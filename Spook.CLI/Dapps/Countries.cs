@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Phantasma.Spook.Nachomen
+namespace Phantasma.Spook.Dapps
 {
     public enum Continent
     {

@@ -1,22 +1,21 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="Current">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp2.0</TargetFramework>
     <AssemblyName>Spook</AssemblyName>
     <RootNamespace>Phantasma.Spook</RootNamespace>
+    <FileUpgradeFlags>40</FileUpgradeFlags>
+    <UpgradeBackupLocation>C:\Code\PhantasmaSpook\Backup\Spook.CLI\</UpgradeBackupLocation>
+    <OldToolsVersion>2.0</OldToolsVersion>
   </PropertyGroup>
-
   <ItemGroup>
     <Compile Remove="Publish\**" />
     <EmbeddedResource Remove="Publish\**" />
     <None Remove="Publish\**" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="LunarLabs.Parser" Version="1.2.7" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.API\Phantasma.API.csproj" />
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.Blockchain\Phantasma.Blockchain.csproj" />
@@ -31,5 +30,4 @@
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.Storage\Phantasma.Storage.csproj" />
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.VM\Phantasma.VM.csproj" />
   </ItemGroup>
-
 </Project>
