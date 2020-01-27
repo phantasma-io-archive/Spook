@@ -646,6 +646,13 @@ namespace Phantasma.Spook
             nexusApi.Mempool = mempool;
             nexusApi.Node = node;
 
+            var readOnlyMode = settings.GetBool("readonly", false);
+            if (readOnlyMode)
+            {
+                logger.Warning($"Node will be running in read-only mode.");
+                nexusApi.acceptTransactions = false;
+            }
+
             // RPC setup
             if (hasRPC)
             {
