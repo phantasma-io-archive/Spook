@@ -551,8 +551,17 @@ namespace Phantasma.Spook
             }
             else
             {
-                logger.Success("Loaded Nexus with genesis " + nexus.GetGenesisHash(nexus.RootStorage));
-                //seeds.Add("127.0.0.1:7073");
+                var genesisAddress = nexus.GetGenesisAddress(nexus.RootStorage);
+                if (node_keys.Address != genesisAddress)
+                {
+                    logger.Error("Specified node key does not match genesis address " + genesisAddress.Text);
+                    return;
+                }
+                else
+                {
+                    logger.Success("Loaded Nexus with genesis " + nexus.GetGenesisHash(nexus.RootStorage));
+                    //seeds.Add("127.0.0.1:7073");
+                }
             }
 
             running = true;
