@@ -1,33 +1,27 @@
-﻿using System.Linq;
+﻿using System;
 using System.Collections.Generic;
 using LunarLabs.Parser.JSON;
 using LunarLabs.Parser;
 using Phantasma.Numerics;
 using Phantasma.Neo.Core;
-using Phantasma.Pay.Chains;
-using Phantasma.Blockchain.Tokens;
 using Phantasma.Domain;
 using Phantasma.Cryptography;
 using Phantasma.Spook.Oracles;
-using Phantasma.Blockchain;
 using Phantasma.Core.Log;
-using System;
 
 namespace Phantasma.Spook.Swaps
 {
     public class NeoInterop : ChainWatcher
     {
-        private NeoAPI neoAPI;
         private Logger logger;
         private NeoScanAPI neoscanAPI;
         private BigInteger _blockHeight;
 
-        public NeoInterop(TokenSwapper swapper, string wif, BigInteger blockHeight, NeoAPI neoAPI, NeoScanAPI neoscanAPI, Logger logger) : base(swapper, wif, "neo")
+        public NeoInterop(TokenSwapper swapper, string wif, BigInteger blockHeight, NeoScanAPI neoscanAPI, Logger logger) : base(swapper, wif, "neo")
         {
             this._blockHeight = blockHeight;
 
             this.neoscanAPI = neoscanAPI;
-            this.neoAPI = neoAPI;
 
             this.logger = logger;
         }

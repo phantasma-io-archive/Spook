@@ -284,7 +284,7 @@ namespace Phantasma.Spook.Swaps
                     return;
                 }
 
-                _finders["neo"] = new NeoInterop(this, wifs["neo"], interopBlocks["neo"], neoAPI, neoscanAPI, logger);
+                _finders["neo"] = new NeoInterop(this, wifs["neo"], interopBlocks["neo"], neoscanAPI, logger);
             }
 
             if (this.platforms.Length == 0)
@@ -485,6 +485,12 @@ namespace Phantasma.Spook.Swaps
                 {
                     var nep5 = neoAPI.GetToken(token.Symbol);
                     tx = nep5.Transfer(neoKeys, destAddress, total);
+                }
+
+                if (tx == null)
+                {
+                    logger.Error("NeoAPI error: " + neoAPI.LastError);
+                    return Hash.Null;
                 }
 
                 var txHash = Hash.Parse(tx.Hash.ToString());
