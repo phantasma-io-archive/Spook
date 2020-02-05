@@ -127,7 +127,7 @@ namespace Phantasma.Spook.Dapps
             simulator.BeginBlock();
 
             var nachoSupply = UnitConversion.ToBigInteger(10000, Constants.NACHO_TOKEN_DECIMALS);
-            simulator.GenerateToken(ownerKeys, Constants.NACHO_SYMBOL, "Nachomen Token", DomainSettings.PlatformName, Hash.FromString(Constants.NACHO_SYMBOL), nachoSupply, Constants.NACHO_TOKEN_DECIMALS, TokenFlags.Transferable | TokenFlags.Fungible | TokenFlags.Finite | TokenFlags.Divisible);
+            simulator.GenerateToken(ownerKeys, Constants.NACHO_SYMBOL, "Nachomen Token", nachoSupply, Constants.NACHO_TOKEN_DECIMALS, TokenFlags.Transferable | TokenFlags.Fungible | TokenFlags.Finite | TokenFlags.Divisible);
             simulator.MintTokens(ownerKeys, ownerKeys.Address, Constants.NACHO_SYMBOL, nachoSupply);
 
             var wrestlerTokenScript = new []
@@ -155,7 +155,7 @@ namespace Phantasma.Spook.Dapps
 
             var wrestlerCallScript = AssemblerUtils.BuildScript(wrestlerTokenScript);
 
-            simulator.GenerateToken(ownerKeys, Constants.WRESTLER_SYMBOL, "Nachomen Luchador", DomainSettings.PlatformName, Hash.FromString(Constants.WRESTLER_SYMBOL), 0, 0, TokenFlags.Transferable, wrestlerCallScript);
+            simulator.GenerateToken(ownerKeys, Constants.WRESTLER_SYMBOL, "Nachomen Luchador", 0, 0, TokenFlags.Transferable, wrestlerCallScript);
 
             var itemTokenScript = new[]
             {
@@ -182,7 +182,7 @@ namespace Phantasma.Spook.Dapps
 
             var itemCallScript = AssemblerUtils.BuildScript(itemTokenScript);
 
-            simulator.GenerateToken(ownerKeys, Constants.ITEM_SYMBOL, "Nachomen Item", DomainSettings.PlatformName, Hash.FromString(Constants.ITEM_SYMBOL), 0, 0, TokenFlags.Transferable, itemCallScript);
+            simulator.GenerateToken(ownerKeys, Constants.ITEM_SYMBOL, "Nachomen Item", 0, 0, TokenFlags.Transferable, itemCallScript);
             simulator.EndBlock();
 
             simulator.BeginBlock();

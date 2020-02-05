@@ -229,11 +229,21 @@ namespace Phantasma.Spook.Swaps
             wifs[platformName] = wif;
         }
 
-        internal IToken FindTokenByHash(string asset)
+        internal IToken FindTokenByHash(string asset, string platform)
         {
             var hash = Hash.FromUnpaddedHex(asset);
             var symbols = Nexus.GetTokens(Nexus.RootStorage);
-            return symbols.Select(x => Nexus.GetTokenInfo(Nexus.RootStorage, x)).Where(x => x.Hash == hash).FirstOrDefault();
+
+            foreach (var symbol in symbols)
+            {
+                var otherHash = Nexus.GetTokenPlatformHash(symbol, platform, Nexus.RootStorage);
+                if (hash == otherHash)
+                {
+                    return Nexus.GetTokenInfo(Nexus.RootStorage, symbol);
+                }
+            }
+
+            return null;
         }
 
         internal string FindAddress(string platformName)
@@ -475,6 +485,8 @@ namespace Phantasma.Spook.Swaps
                 var neoKeys = Phantasma.Neo.Core.NeoKeys.FromWIF(wif);
 
                 var destAddress = NeoWallet.DecodeAddress(destination);
+
+                logger.Message($"NEOSWAP: Trying transfer of {total} {token.Symbol} from {neoKeys.Address} to {destAddress}");
 
                 Neo.Core.Transaction tx;
                 if (token.Symbol == "NEO" || token.Symbol == "GAS")

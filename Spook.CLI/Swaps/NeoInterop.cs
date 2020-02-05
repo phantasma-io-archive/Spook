@@ -97,7 +97,7 @@ namespace Phantasma.Spook.Swaps
             var asset = entry.GetString("asset");
             var hash = entry.GetString("txid");
 
-            var token = Swapper.FindTokenByHash(asset);
+            var token = Swapper.FindTokenByHash(asset, "neo");
             if (token == null)
             {
                 logger.Warning("Someone tried to swap unsupported asset: " + asset);
