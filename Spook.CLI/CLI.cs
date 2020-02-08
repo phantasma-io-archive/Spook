@@ -531,7 +531,7 @@ namespace Phantasma.Spook
                         return;
                     }
 
-                    logger.Debug($"Boostraping {nexusName} nexus...");
+                    logger.Debug($"Boostraping {nexusName} nexus using {node_keys.Address}...");
 
                     var genesisTimestamp = new Timestamp(settings.GetUInt("genesis.timestamp", Timestamp.Now.Value));
 
