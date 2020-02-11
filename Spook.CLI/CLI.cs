@@ -405,6 +405,18 @@ namespace Phantasma.Spook
             }
         }
 
+        private static string FixPath(string path)
+        {
+            path = path.Replace("\\", "/");
+
+            if (!path.EndsWith('/'))
+            {
+                path += '/';
+            }
+
+            return path;
+        }
+
         public CLI(string[] args)
         {
             var culture = new CultureInfo("en-US");
@@ -467,16 +479,12 @@ namespace Phantasma.Spook
 
             int port = settings.GetInt("node.port", 7073);
             var defaultStoragePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/Storage";
-            var storagePath = settings.GetString("storage.path", defaultStoragePath);
+            var defaultOraclePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/Oracle";
+            var storagePath = FixPath(settings.GetString("storage.path", defaultStoragePath));
+            var oraclePath = FixPath(settings.GetString("storage.oracle", defaultOraclePath));
             var storageBackend = settings.GetString("storage.backend", "file");
 
             logger.Message("Storage backend: " + storageBackend);
-
-            storagePath = storagePath.Replace("\\", "/");
-            if (!storagePath.EndsWith('/'))
-            {
-                storagePath += '/';
-            }
 
             var storageFix = settings.GetBool("storage.fix", false);
 
@@ -495,6 +503,7 @@ namespace Phantasma.Spook
             }
 
             logger.Message("Storage path: " + storagePath);
+            logger.Message("Oracle path: " + oraclePath);
 
             var node_keys = PhantasmaKeys.FromWIF(wif);
             WalletModule.Keys = PhantasmaKeys.FromWIF(wif);
@@ -503,14 +512,14 @@ namespace Phantasma.Spook
             {
                 nexus = new Nexus(logger, 
                         (name) => new BasicDiskStore(storagePath + name + ".csv"),
-                        (n) => new SpookOracle(this, n)
+                        (n) => new SpookOracle(this, n, oraclePath)
                         );
             }
             else if (storageBackend == "db")
             {
                 nexus = new Nexus(logger, 
                         (name) => new DBPartition(storagePath + name),
-                        (n) => new SpookOracle(this, n)
+                        (n) => new SpookOracle(this, n, oraclePath)
                         );
             }
             else
