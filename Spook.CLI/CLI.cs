@@ -69,13 +69,13 @@ namespace Phantasma.Spook
         private readonly Mempool mempool;
         private bool running = false;
         private bool nodeReady = false;
-        
+
         public NeoScanAPI neoScanAPI { get; private set; }
         public Neo.Core.NeoAPI neoAPI { get; private set; }
 
         public int rpcPort { get; private set; }
         public int restPort { get; private set; }
-        
+
         private Nexus nexus;
         private NexusAPI nexusApi;
 
@@ -335,7 +335,8 @@ namespace Phantasma.Spook
             logger.Message("Running in sender mode.");
 
             running = true;
-            Console.CancelKeyPress += delegate {
+            Console.CancelKeyPress += delegate
+            {
                 running = false;
                 logger.Message("Stopping sender...");
             };
@@ -426,7 +427,7 @@ namespace Phantasma.Spook
             var seeds = new List<string>();
 
             var settings = new Arguments(args);
-            
+
             var useGUI = settings.GetBool("gui.enabled", true);
 
             if (useGUI)
@@ -440,12 +441,14 @@ namespace Phantasma.Spook
                 logger = new ConsoleLogger();
             }
 
-            string mode = settings.GetString("node.mode", "validator");
+            string mode = settings.GetString("node.mode", "default");
 
             restartTime = settings.GetInt("node.reboot", 0);
 
             showWebLogs = settings.GetBool("web.log", false);
             bool apiLog = settings.GetBool("api.log", true);
+
+            string apiProxyURL = settings.GetString("api.proxy", null);
 
             bool hasSync = settings.GetBool("sync.enabled", true);
             bool hasMempool = settings.GetBool("mempool.enabled", true);
@@ -454,22 +457,28 @@ namespace Phantasma.Spook
             bool hasArchive = settings.GetBool("archive.enabled", true);
             bool hasRPC = settings.GetBool("rpc.enabled", false);
             bool hasREST = settings.GetBool("rest.enabled", false);
-
-            string wif = settings.GetString("node.wif");
-
+           
             var nexusName = settings.GetString("nexus.name", "simnet");
+
+            bool isValidator = false;
 
             switch (mode)
             {
                 case "sender":
-                    string host = settings.GetString("sender.host");
-                    int threadCount = settings.GetInt("sender.threads", 8);
-                    int addressesPerSender = settings.GetInt("sender.addressCount", 100);
-                    RunSender(wif, nexusName, host, threadCount, addressesPerSender);
-                    Console.WriteLine("Sender finished operations.");
-                    return;
+                    {
+                        string host = settings.GetString("sender.host");
+                        int threadCount = settings.GetInt("sender.threads", 8);
+                        int addressesPerSender = settings.GetInt("sender.addressCount", 100);
 
-                case "validator": break;
+                        string wif = settings.GetString("node.wif");
+                        RunSender(wif, nexusName, host, threadCount, addressesPerSender);
+                        Console.WriteLine("Sender finished operations.");
+                        return;
+                    }
+
+                case "validator": isValidator = true; break;
+                case "default": break;
+
                 default:
                     {
                         logger.Error("Unknown mode: " + mode);
@@ -505,73 +514,27 @@ namespace Phantasma.Spook
             logger.Message("Storage path: " + storagePath);
             logger.Message("Oracle path: " + oraclePath);
 
-            var node_keys = PhantasmaKeys.FromWIF(wif);
-            WalletModule.Keys = PhantasmaKeys.FromWIF(wif);
-
-            if (storageBackend == "file")
+            switch (storageBackend)
             {
-                nexus = new Nexus(logger, 
-                        (name) => new BasicDiskStore(storagePath + name + ".csv"),
-                        (n) => new SpookOracle(this, n, oraclePath)
-                        );
+
+                case "file":
+                    nexus = new Nexus(logger,
+                            (name) => new BasicDiskStore(storagePath + name + ".csv"),
+                            (n) => new SpookOracle(this, n, oraclePath)
+                            );
+                    break;
+
+                case "db":
+                    nexus = new Nexus(logger,
+                            (name) => new DBPartition(storagePath + name),
+                            (n) => new SpookOracle(this, n, oraclePath)
+                            );
+                    break;
+
+                default:
+                    throw new Exception("Backend has to be set to either \"db\" or \"file\"");
             }
-            else if (storageBackend == "db")
-            {
-                nexus = new Nexus(logger, 
-                        (name) => new DBPartition(storagePath + name),
-                        (n) => new SpookOracle(this, n, oraclePath)
-                        );
-            }
-            else
-            {
-                throw new Exception("Backend has to be set to either \"db\" or \"file\"");
-            }
 
-            bool bootstrap = false;
-
-            if (!nexus.HasGenesis)
-            {
-                if (settings.GetBool("nexus.bootstrap"))
-                {
-                    if (!ValidationUtils.IsValidIdentifier(nexusName))
-                    {
-                        logger.Error("Invalid nexus name: " + nexusName);
-                        this.Terminate();
-                        return;
-                    }
-
-                    logger.Debug($"Boostraping {nexusName} nexus using {node_keys.Address}...");
-
-                    var genesisTimestamp = new Timestamp(settings.GetUInt("genesis.timestamp", Timestamp.Now.Value));
-
-                    bootstrap = true;
-                    if (!nexus.CreateGenesisBlock(nexusName, node_keys, genesisTimestamp))
-                    {
-                        throw new ChainException("Genesis block failure");
-                    }
-
-                    logger.Debug("Genesis block created: " + nexus.GetGenesisHash(nexus.RootStorage));
-                }
-                else
-                {
-                    logger.Error("No Nexus found.");
-                    this.Terminate();
-                }
-            }
-            else
-            {
-                var genesisAddress = nexus.GetGenesisAddress(nexus.RootStorage);
-                if (node_keys.Address != genesisAddress)
-                {
-                    logger.Error("Specified node key does not match genesis address " + genesisAddress.Text);
-                    return;
-                }
-                else
-                {
-                    logger.Success("Loaded Nexus with genesis " + nexus.GetGenesisHash(nexus.RootStorage));
-                    //seeds.Add("127.0.0.1:7073");
-                }
-            }
 
             running = true;
 
@@ -609,10 +572,25 @@ namespace Phantasma.Spook
                 return;
             }
 
+            if (apiProxyURL != null)
+            {
+                hasMempool = false;
+                isValidator = false;
+                hasSync = false;
+                hasEvents = false;
+                hasRelay = false;
+                hasArchive = false;
+
+                if (!hasRPC && !hasREST)
+                {
+                    logger.Error("API proxy must have REST or RPC enabled.");
+                    return;
+                }
+            }
 
             if (hasMempool)
             {
-                this.mempool = new Mempool(node_keys, nexus, blockTime, minimumFee, System.Text.Encoding.UTF8.GetBytes(Identifier), 0, logger);
+                this.mempool = new Mempool(nexus, blockTime, minimumFee, System.Text.Encoding.UTF8.GetBytes(Identifier), 0, logger);
 
                 var mempoolLogging = settings.GetBool("mempool.log", true);
                 if (mempoolLogging)
@@ -628,6 +606,12 @@ namespace Phantasma.Spook
             else
             {
                 this.mempool = null;
+            }
+
+            if (!isValidator && !hasSync && apiProxyURL == null)
+            {
+                logger.Warning("Non-validator nodes require sync feature to be enabled, auto enabled now");
+                hasSync = true;
             }
 
             PeerCaps caps = PeerCaps.None;
@@ -648,23 +632,121 @@ namespace Phantasma.Spook
                 }
             }
 
-            try
+            PhantasmaKeys node_keys = null;
+            bool bootstrap = false;
+
+            if (hasSync)
             {
-                this.node = new Node("Spook v"+ SpookVersion, nexus, mempool, node_keys, port, caps, seeds, logger);
+                string wif = settings.GetString("node.wif");
+                node_keys = PhantasmaKeys.FromWIF(wif);
+                WalletModule.Keys = PhantasmaKeys.FromWIF(wif);
+
+                try
+                {
+                    this.node = new Node("Spook v" + SpookVersion, nexus, mempool, node_keys, port, caps, seeds, logger);
+                }
+                catch (Exception e)
+                {
+                    logger.Error(e.Message);
+                    return;
+                }
+
+                if (!nexus.HasGenesis)
+                {
+                    if (isValidator)
+                    {
+                        if (settings.GetBool("nexus.bootstrap"))
+                        {
+                            if (!ValidationUtils.IsValidIdentifier(nexusName))
+                            {
+                                logger.Error("Invalid nexus name: " + nexusName);
+                                this.Terminate();
+                                return;
+                            }
+
+                            logger.Debug($"Boostraping {nexusName} nexus using {node_keys.Address}...");
+
+                            var genesisTimestamp = new Timestamp(settings.GetUInt("genesis.timestamp", Timestamp.Now.Value));
+
+                            bootstrap = true;
+                            if (!nexus.CreateGenesisBlock(nexusName, node_keys, genesisTimestamp))
+                            {
+                                throw new ChainException("Genesis block failure");
+                            }
+
+                            logger.Debug("Genesis block created: " + nexus.GetGenesisHash(nexus.RootStorage));
+                        }
+                        else
+                        {
+                            logger.Error("No Nexus found.");
+                            this.Terminate();
+                        }
+                    }
+                }
+                else
+                {
+                    var genesisAddress = nexus.GetGenesisAddress(nexus.RootStorage);
+                    if (isValidator && node_keys.Address != genesisAddress)
+                    {
+                        logger.Error("Specified node key does not match genesis address " + genesisAddress.Text);
+                        return;
+                    }
+                    else
+                    {
+                        logger.Success("Loaded Nexus with genesis " + nexus.GetGenesisHash(nexus.RootStorage));
+                        //seeds.Add("127.0.0.1:7073");
+                    }
+                }
             }
-            catch (Exception e)
+            else
             {
-                logger.Error(e.Message);
-                return;
+                this.node = null;
+            }
+
+            if (mempool != null)
+            {
+                if (isValidator)
+                {
+                    this.mempool.SetKeys(node_keys);
+                }
+                else
+                {
+                    this.mempool.SubmissionCallback = (tx, chain) =>
+                    {
+                        logger.Message($"Relaying tx {tx.Hash} to other node");
+                        //this.node.
+                    };
+                }
             }
 
             var useAPICache = settings.GetBool("api.cache", true);
+
+            if (apiProxyURL != null)
+            {
+                useAPICache = true;
+            }
+
             logger.Message($"API cache is {(useAPICache ? "enabled" : "disabled")}.");
             nexusApi = new NexusAPI(nexus, useAPICache, apiLog ? logger : null);
             nexusApi.Mempool = mempool;
-            nexusApi.Node = node;
+
+            if (!string.IsNullOrEmpty(apiProxyURL))
+            {
+                nexusApi.ProxyURL = apiProxyURL;
+                logger.Message($"API will be acting as proxy for {apiProxyURL}");
+            }
+            else
+            {
+                nexusApi.Node = node;
+            }
 
             var readOnlyMode = settings.GetBool("readonly", false);
+
+            if (apiProxyURL != null)
+            {
+                readOnlyMode = true;
+            }
+
             if (readOnlyMode)
             {
                 logger.Warning($"Node will be running in read-only mode.");
@@ -697,22 +779,25 @@ namespace Phantasma.Spook
                 restPort = 0;
             }
 
-            var neoScanURL = settings.GetString("neoscan.url", "https://api.neoscan.io");
-
-            var rpcList = settings.GetString("neo.rpc", "http://seed6.ngd.network:10332,http://seed.neoeconomy.io:10332");
-            var neoRpcURLs = rpcList.Split(',');
-            this.neoAPI = new Neo.Core.RemoteRPCNode(neoScanURL, neoRpcURLs);
-            this.neoAPI.SetLogger((s) => logger.Message(s));
-
-            this.neoScanAPI = new NeoScanAPI(neoScanURL, logger, nexus, node_keys);
-
-            cryptoCompareAPIKey = settings.GetString("cryptocompare.apikey", "");
-            if (!string.IsNullOrEmpty(cryptoCompareAPIKey))
+            if (node != null)
             {
-                logger.Message($"CryptoCompare API enabled...");
-            }
+                var neoScanURL = settings.GetString("neoscan.url", "https://api.neoscan.io");
 
-            node.Start();
+                var rpcList = settings.GetString("neo.rpc", "http://seed6.ngd.network:10332,http://seed.neoeconomy.io:10332");
+                var neoRpcURLs = rpcList.Split(',');
+                this.neoAPI = new Neo.Core.RemoteRPCNode(neoScanURL, neoRpcURLs);
+                this.neoAPI.SetLogger((s) => logger.Message(s));
+
+                this.neoScanAPI = new NeoScanAPI(neoScanURL, logger, nexus, node_keys);
+
+                cryptoCompareAPIKey = settings.GetString("cryptocompare.apikey", "");
+                if (!string.IsNullOrEmpty(cryptoCompareAPIKey))
+                {
+                    logger.Message($"CryptoCompare API enabled...");
+                }
+
+                node.Start();
+            }
 
             if (gui != null)
             {
@@ -734,7 +819,8 @@ namespace Phantasma.Spook
                 }
             }
 
-            Console.CancelKeyPress += delegate {
+            Console.CancelKeyPress += delegate
+            {
                 Terminate();
             };
 
@@ -924,9 +1010,7 @@ namespace Phantasma.Spook
                 return;
             }
 
-            var node = APIUtils.FromAPIResult(result);
-            var json = JSONWriter.WriteToString(node);
-            logger.Message(json);
+            logger.Message(result);
         }
 
         private void SetupCommands(CommandDispatcher dispatcher)
@@ -974,7 +1058,7 @@ namespace Phantasma.Spook
             dispatcher.RegisterCommand("wallet.stake", $"Stakes {DomainSettings.StakingTokenSymbol}",
                 (args) => WalletModule.Stake(nexusApi, args));
 
-            dispatcher.RegisterCommand("wallet.airdrop", "Does a batch transfer from a .csv", 
+            dispatcher.RegisterCommand("wallet.airdrop", "Does a batch transfer from a .csv",
                 (args) => WalletModule.Airdrop(args, nexusApi, minimumFee));
 
             dispatcher.RegisterCommand("wallet.migrate", "Migrates a validator to another address ",
