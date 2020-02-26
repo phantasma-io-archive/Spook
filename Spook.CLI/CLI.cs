@@ -460,6 +460,10 @@ namespace Phantasma.Spook
            
             var nexusName = settings.GetString("nexus.name", "simnet");
 
+            string profilePath = settings.GetString("mempool.profile", "");
+            if (string.IsNullOrEmpty(profilePath))
+                profilePath = null;
+
             bool isValidator = false;
 
             switch (mode)
@@ -590,7 +594,7 @@ namespace Phantasma.Spook
 
             if (hasMempool)
             {
-                this.mempool = new Mempool(nexus, blockTime, minimumFee, System.Text.Encoding.UTF8.GetBytes(Identifier), 0, logger);
+                this.mempool = new Mempool(nexus, blockTime, minimumFee, System.Text.Encoding.UTF8.GetBytes(Identifier), 0, logger, profilePath);
 
                 var mempoolLogging = settings.GetBool("mempool.log", true);
                 if (mempoolLogging)
