@@ -448,7 +448,9 @@ namespace Phantasma.Spook
             showWebLogs = settings.GetBool("web.log", false);
             bool apiLog = settings.GetBool("api.log", true);
 
-            string apiProxyURL = settings.GetString("api.proxy", null);
+            string apiProxyURL = settings.GetString("api.proxy", "");
+            if (string.IsNullOrEmpty(apiProxyURL))
+                apiProxyURL = null;
 
             bool hasSync = settings.GetBool("sync.enabled", true);
             bool hasMempool = settings.GetBool("mempool.enabled", true);
