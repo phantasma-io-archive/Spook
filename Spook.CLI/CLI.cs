@@ -2,6 +2,8 @@ using System;
 using System.Net.Sockets;
 using System.Linq;
 using System.Collections.Generic;
+using System.Collections;
+using System.Text;
 using System.Threading;
 using System.Reflection;
 using System.IO;
@@ -28,6 +30,7 @@ using Phantasma.Network.P2P.Messages;
 using Phantasma.RocksDB;
 using Phantasma.Spook.Dapps;
 using Phantasma.Storage;
+using Phantasma.Storage.Context;
 using Phantasma.Spook.Oracles;
 using Phantasma.Spook.Swaps;
 using Phantasma.Domain;
@@ -418,6 +421,16 @@ namespace Phantasma.Spook
             return path;
         }
 
+        static bool CompareArchive(Archive a1, Archive a2)
+        {
+            return a1.Hash.Equals(a2.Hash);
+        }
+
+        static bool CompareBA(byte[] ba1, byte[] ba2)
+        {
+            return StructuralComparisons.StructuralEqualityComparer.Equals(ba1, ba2);
+        }
+
         public CLI(string[] args)
         {
             var culture = new CultureInfo("en-US");
@@ -449,8 +462,6 @@ namespace Phantasma.Spook
             bool apiLog = settings.GetBool("api.log", true);
 
             string apiProxyURL = settings.GetString("api.proxy", "");
-            if (string.IsNullOrEmpty(apiProxyURL))
-                apiProxyURL = null;
 
             bool hasSync = settings.GetBool("sync.enabled", true);
             bool hasMempool = settings.GetBool("mempool.enabled", true);
@@ -467,6 +478,8 @@ namespace Phantasma.Spook
                 profilePath = null;
 
             bool isValidator = false;
+
+            bool convertStorage = settings.GetBool("convert.storage", false);
 
             switch (mode)
             {
@@ -496,12 +509,68 @@ namespace Phantasma.Spook
             var defaultStoragePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/Storage";
             var defaultOraclePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/Oracle";
             var storagePath = FixPath(settings.GetString("storage.path", defaultStoragePath));
+            var dbstoragePath = FixPath(settings.GetString("dbstorage.path", defaultStoragePath));
             var oraclePath = FixPath(settings.GetString("storage.oracle", defaultOraclePath));
             var storageBackend = settings.GetString("storage.backend", "file");
 
             logger.Message("Storage backend: " + storageBackend);
 
             var storageFix = settings.GetBool("storage.fix", false);
+
+            if (convertStorage)
+            {
+                Func<string, IKeyValueStoreAdapter> fileStorageFactory  = (name) => new BasicDiskStore(storagePath + name + ".csv");
+                Func<string, IKeyValueStoreAdapter> dbStorageFactory    = (name) => new DBPartition(dbstoragePath + name);
+
+                KeyValueStore<Hash, Archive> fileStorageArchives = new KeyValueStore<Hash, Archive>(fileStorageFactory("archives"));
+                KeyValueStore<Hash, byte[]> fileStorageContents = new KeyValueStore<Hash, byte[]>(fileStorageFactory("contents"));
+                KeyStoreStorage fileStorageRoot     = new KeyStoreStorage(fileStorageFactory("main"));
+
+                KeyValueStore<Hash, Archive> dbStorageArchives = new KeyValueStore<Hash, Archive>(dbStorageFactory("archives"));
+                KeyValueStore<Hash, byte[]> dbStorageContents = new KeyValueStore<Hash, byte[]>(dbStorageFactory("contents"));
+                KeyStoreStorage dbStorageRoot     = new KeyStoreStorage(dbStorageFactory("main"));
+
+                logger.Message("Starting copying archives...");
+                fileStorageArchives.Visit((key, value) =>
+                {
+                    dbStorageArchives.Set(key, value);
+                    var val = dbStorageArchives.Get(key);
+                    if (!CompareArchive(val, value))
+                    {
+                        logger.Message($"Archives: NewValue: {value.Hash} and oldValue: {val.Hash} differ, fail now!");
+                        Environment.Exit(-1);
+                    }
+                });
+                logger.Message("Finished copying archives...");
+
+                logger.Message("Starting copying contents...");
+                fileStorageContents.Visit((key, value) =>
+                {
+                    dbStorageContents.Set(key, value);
+                    var val = dbStorageContents.Get(key);
+                    if (!CompareBA(val, value))
+                    {
+                        logger.Message($"CONTENTS: NewValue: {Encoding.UTF8.GetString(val)} and oldValue: {Encoding.UTF8.GetString(value)} differ, fail now!");
+                        Environment.Exit(-1);
+                    }
+                });
+                logger.Message("Finished copying contents...");
+
+                logger.Message("Starting copying root...");
+                fileStorageRoot.Visit((key, value) =>
+                {
+                    StorageKey stKey = new StorageKey(key);
+                    dbStorageRoot.Put(stKey, value);
+                    var val = dbStorageRoot.Get(stKey);
+                    if (!CompareBA(val, value))
+                    {
+                        logger.Message($"ROOT: NewValue: {Encoding.UTF8.GetString(val)} and oldValue: {Encoding.UTF8.GetString(value)} differ, fail now!");
+                        Environment.Exit(-1);
+                    }
+                });
+                logger.Message("Finished copying root...");
+                Environment.Exit(0);
+            }
 
             // TODO remove this later
             if (storageFix)
@@ -536,7 +605,6 @@ namespace Phantasma.Spook
                             (n) => new SpookOracle(this, n, oraclePath)
                             );
                     break;
-
                 default:
                     throw new Exception("Backend has to be set to either \"db\" or \"file\"");
             }
@@ -578,7 +646,7 @@ namespace Phantasma.Spook
                 return;
             }
 
-            if (apiProxyURL != null)
+            if (!string.IsNullOrEmpty(apiProxyURL))
             {
                 hasMempool = false;
                 isValidator = false;
@@ -641,16 +709,20 @@ namespace Phantasma.Spook
             PhantasmaKeys node_keys = null;
             bool bootstrap = false;
 
+
+            string nodeWif = settings.GetString("node.wif");
+            node_keys = PhantasmaKeys.FromWIF(nodeWif);
+            WalletModule.Keys = PhantasmaKeys.FromWIF(nodeWif);
+
             if (hasSync)
             {
-                string wif = settings.GetString("node.wif");
-                node_keys = PhantasmaKeys.FromWIF(wif);
-                WalletModule.Keys = PhantasmaKeys.FromWIF(wif);
-
                 try
                 {
-                    if(this.mempool!=null)
+                    if (this.mempool != null)
+                    {
                         this.mempool.SetKeys(node_keys);
+                    }
+
                     this.node = new Node("Spook v" + SpookVersion, nexus, mempool, node_keys, port, caps, seeds, logger);
                 }
                 catch (Exception e)
