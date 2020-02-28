@@ -649,6 +649,8 @@ namespace Phantasma.Spook
 
                 try
                 {
+                    if(this.mempool!=null)
+                        this.mempool.SetKeys(node_keys);
                     this.node = new Node("Spook v" + SpookVersion, nexus, mempool, node_keys, port, caps, seeds, logger);
                 }
                 catch (Exception e)
