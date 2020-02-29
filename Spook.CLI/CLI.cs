@@ -448,7 +448,9 @@ namespace Phantasma.Spook
             showWebLogs = settings.GetBool("web.log", false);
             bool apiLog = settings.GetBool("api.log", true);
 
-            string apiProxyURL = settings.GetString("api.proxy", null);
+            string apiProxyURL = settings.GetString("api.proxy", "");
+            if (string.IsNullOrEmpty(apiProxyURL))
+                apiProxyURL = null;
 
             bool hasSync = settings.GetBool("sync.enabled", true);
             bool hasMempool = settings.GetBool("mempool.enabled", true);
@@ -459,6 +461,10 @@ namespace Phantasma.Spook
             bool hasREST = settings.GetBool("rest.enabled", false);
            
             var nexusName = settings.GetString("nexus.name", "simnet");
+
+            string profilePath = settings.GetString("mempool.profile", "");
+            if (string.IsNullOrEmpty(profilePath))
+                profilePath = null;
 
             bool isValidator = false;
 
@@ -590,7 +596,7 @@ namespace Phantasma.Spook
 
             if (hasMempool)
             {
-                this.mempool = new Mempool(nexus, blockTime, minimumFee, System.Text.Encoding.UTF8.GetBytes(Identifier), 0, logger);
+                this.mempool = new Mempool(nexus, blockTime, minimumFee, System.Text.Encoding.UTF8.GetBytes(Identifier), 0, logger, profilePath);
 
                 var mempoolLogging = settings.GetBool("mempool.log", true);
                 if (mempoolLogging)
@@ -643,6 +649,8 @@ namespace Phantasma.Spook
 
                 try
                 {
+                    if(this.mempool!=null)
+                        this.mempool.SetKeys(node_keys);
                     this.node = new Node("Spook v" + SpookVersion, nexus, mempool, node_keys, port, caps, seeds, logger);
                 }
                 catch (Exception e)
