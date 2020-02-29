@@ -556,19 +556,19 @@ namespace Phantasma.Spook
                 });
                 logger.Message("Finished copying contents...");
 
-                logger.Message("Starting copying root...");
-                fileStorageRoot.Visit((key, value) =>
-                {
-                    StorageKey stKey = new StorageKey(key);
-                    dbStorageRoot.Put(stKey, value);
-                    var val = dbStorageRoot.Get(stKey);
-                    if (!CompareBA(val, value))
-                    {
-                        logger.Message($"ROOT: NewValue: {Encoding.UTF8.GetString(val)} and oldValue: {Encoding.UTF8.GetString(value)} differ, fail now!");
-                        Environment.Exit(-1);
-                    }
-                });
-                logger.Message("Finished copying root...");
+                //logger.Message("Starting copying root...");
+                //fileStorageRoot.Visit((key, value) =>
+                //{
+                //    StorageKey stKey = new StorageKey(key);
+                //    dbStorageRoot.Put(stKey, value);
+                //    var val = dbStorageRoot.Get(stKey);
+                //    if (!CompareBA(val, value))
+                //    {
+                //        logger.Message($"ROOT: NewValue: {Encoding.UTF8.GetString(val)} and oldValue: {Encoding.UTF8.GetString(value)} differ, fail now!");
+                //        Environment.Exit(-1);
+                //    }
+                //});
+                //logger.Message("Finished copying root...");
                 Environment.Exit(0);
             }
 
@@ -682,7 +682,7 @@ namespace Phantasma.Spook
                 this.mempool = null;
             }
 
-            if (!isValidator && !hasSync && apiProxyURL == null)
+            if (!isValidator && !hasSync && string.IsNullOrEmpty(apiProxyURL))
             {
                 logger.Warning("Non-validator nodes require sync feature to be enabled, auto enabled now");
                 hasSync = true;
@@ -801,7 +801,7 @@ namespace Phantasma.Spook
 
             var useAPICache = settings.GetBool("api.cache", true);
 
-            if (apiProxyURL != null)
+            if (!string.IsNullOrEmpty(apiProxyURL))
             {
                 useAPICache = true;
             }
@@ -822,7 +822,7 @@ namespace Phantasma.Spook
 
             var readOnlyMode = settings.GetBool("readonly", false);
 
-            if (apiProxyURL != null)
+                    if (!string.IsNullOrEmpty(apiProxyURL))
             {
                 readOnlyMode = true;
             }
