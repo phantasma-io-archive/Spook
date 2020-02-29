@@ -556,19 +556,19 @@ namespace Phantasma.Spook
                 });
                 logger.Message("Finished copying contents...");
 
-                logger.Message("Starting copying root...");
-                fileStorageRoot.Visit((key, value) =>
-                {
-                    StorageKey stKey = new StorageKey(key);
-                    dbStorageRoot.Put(stKey, value);
-                    var val = dbStorageRoot.Get(stKey);
-                    if (!CompareBA(val, value))
-                    {
-                        logger.Message($"ROOT: NewValue: {Encoding.UTF8.GetString(val)} and oldValue: {Encoding.UTF8.GetString(value)} differ, fail now!");
-                        Environment.Exit(-1);
-                    }
-                });
-                logger.Message("Finished copying root...");
+                //logger.Message("Starting copying root...");
+                //fileStorageRoot.Visit((key, value) =>
+                //{
+                //    StorageKey stKey = new StorageKey(key);
+                //    dbStorageRoot.Put(stKey, value);
+                //    var val = dbStorageRoot.Get(stKey);
+                //    if (!CompareBA(val, value))
+                //    {
+                //        logger.Message($"ROOT: NewValue: {Encoding.UTF8.GetString(val)} and oldValue: {Encoding.UTF8.GetString(value)} differ, fail now!");
+                //        Environment.Exit(-1);
+                //    }
+                //});
+                //logger.Message("Finished copying root...");
                 Environment.Exit(0);
             }
 
