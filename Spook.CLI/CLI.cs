@@ -507,9 +507,10 @@ namespace Phantasma.Spook
 
             int port = settings.GetInt("node.port", 7073);
             var defaultStoragePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/Storage";
+            var defaultDbStoragePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/Storage/db";
             var defaultOraclePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/Oracle";
             var storagePath = FixPath(settings.GetString("storage.path", defaultStoragePath));
-            var dbstoragePath = FixPath(settings.GetString("dbstorage.path", defaultStoragePath));
+            var dbstoragePath = FixPath(settings.GetString("dbstorage.path", defaultDbStoragePath));
             var oraclePath = FixPath(settings.GetString("storage.oracle", defaultOraclePath));
             var storageBackend = settings.GetString("storage.backend", "file");
 
@@ -524,15 +525,17 @@ namespace Phantasma.Spook
 
                 KeyValueStore<Hash, Archive> fileStorageArchives = new KeyValueStore<Hash, Archive>(fileStorageFactory("archives"));
                 KeyValueStore<Hash, byte[]> fileStorageContents = new KeyValueStore<Hash, byte[]>(fileStorageFactory("contents"));
-                KeyStoreStorage fileStorageRoot     = new KeyStoreStorage(fileStorageFactory("main"));
+                KeyStoreStorage fileStorageRoot     = new KeyStoreStorage(fileStorageFactory("chain.main"));
 
                 KeyValueStore<Hash, Archive> dbStorageArchives = new KeyValueStore<Hash, Archive>(dbStorageFactory("archives"));
                 KeyValueStore<Hash, byte[]> dbStorageContents = new KeyValueStore<Hash, byte[]>(dbStorageFactory("contents"));
-                KeyStoreStorage dbStorageRoot     = new KeyStoreStorage(dbStorageFactory("main"));
+                KeyStoreStorage dbStorageRoot     = new KeyStoreStorage(dbStorageFactory("chain.main"));
 
                 logger.Message("Starting copying archives...");
+                int count = 0;
                 fileStorageArchives.Visit((key, value) =>
                 {
+                    count++;
                     dbStorageArchives.Set(key, value);
                     var val = dbStorageArchives.Get(key);
                     if (!CompareArchive(val, value))
@@ -541,34 +544,83 @@ namespace Phantasma.Spook
                         Environment.Exit(-1);
                     }
                 });
-                logger.Message("Finished copying archives...");
+                logger.Message($"Finished copying {count} archives...");
+                count = 0;
 
-                logger.Message("Starting copying contents...");
+                logger.Message("Starting copying content items...");
                 fileStorageContents.Visit((key, value) =>
                 {
+                    count++;
                     dbStorageContents.Set(key, value);
                     var val = dbStorageContents.Get(key);
+                    logger.Message("COUNT: " + count);
                     if (!CompareBA(val, value))
                     {
                         logger.Message($"CONTENTS: NewValue: {Encoding.UTF8.GetString(val)} and oldValue: {Encoding.UTF8.GetString(value)} differ, fail now!");
                         Environment.Exit(-1);
                     }
                 });
-                logger.Message("Finished copying contents...");
+                logger.Message($"Finished copying {count} content items...");
+                count = 0;
 
-                //logger.Message("Starting copying root...");
-                //fileStorageRoot.Visit((key, value) =>
-                //{
-                //    StorageKey stKey = new StorageKey(key);
-                //    dbStorageRoot.Put(stKey, value);
-                //    var val = dbStorageRoot.Get(stKey);
-                //    if (!CompareBA(val, value))
-                //    {
-                //        logger.Message($"ROOT: NewValue: {Encoding.UTF8.GetString(val)} and oldValue: {Encoding.UTF8.GetString(value)} differ, fail now!");
-                //        Environment.Exit(-1);
-                //    }
-                //});
-                //logger.Message("Finished copying root...");
+                logger.Message("Starting copying root...");
+                fileStorageRoot.Visit((key, value) =>
+                {
+                    count++;
+                    StorageKey stKey = new StorageKey(key);
+                    dbStorageRoot.Put(stKey, value);
+                    logger.Message("COUNT: " + count);
+                    var val = dbStorageRoot.Get(stKey);
+                    if (!CompareBA(val, value))
+                    {
+                        logger.Message($"ROOT: NewValue: {Encoding.UTF8.GetString(val)} and oldValue: {Encoding.UTF8.GetString(value)} differ, fail now!");
+                        Environment.Exit(-1);
+                    }
+                });
+                logger.Message($"Finished copying {count} root items...");
+                count = 0;
+
+                logger.Message($"Create verification stores");
+                KeyValueStore<Hash, Archive> fileStorageArchiveVerify = new KeyValueStore<Hash, Archive>(fileStorageFactory("archives.verify"));
+                KeyValueStore<Hash, byte[]> fileStorageContentVerify = new KeyValueStore<Hash, byte[]>(fileStorageFactory("contents.verify"));
+                KeyStoreStorage fileStorageRootVerify = new KeyStoreStorage(fileStorageFactory("chain.main.verify"));
+
+                logger.Message("Start writing verify archives...");
+                dbStorageArchives.Visit((key, value) =>
+                {
+                    count++;
+                    // very ugly and might not always work, but should be ok for now
+                    byte[] bytes = value.Size.ToUnsignedByteArray();
+                    if (BitConverter.IsLittleEndian)
+                        Array.Reverse(bytes);
+                    int size = BitConverter.ToInt32(bytes, 0);
+
+                    var ms = new MemoryStream(new byte[size]);
+                    var bw = new BinaryWriter(ms);
+                    value.SerializeData(bw);
+                    fileStorageContentVerify.Set(key, ms.ToArray());
+                });
+                logger.Message($"Finished writing {count} archives...");
+                count = 0;
+
+                logger.Message("Start writing content items...");
+                dbStorageContents.Visit((key, value) =>
+                {
+                    count++;
+                    fileStorageContentVerify.Set(key, value);
+                });
+                logger.Message($"Finished writing {count} content items...");
+                count = 0;
+
+                logger.Message("Starting copying root...");
+                dbStorageRoot.Visit((key, value) =>
+                {
+                    count++;
+                    StorageKey stKey = new StorageKey(key);
+                    fileStorageRootVerify.Put(stKey, value);
+                });
+                logger.Message($"Finished writing {count} root items...");
+
                 Environment.Exit(0);
             }
 
@@ -601,7 +653,7 @@ namespace Phantasma.Spook
 
                 case "db":
                     nexus = new Nexus(logger,
-                            (name) => new DBPartition(storagePath + name),
+                            (name) => new DBPartition(dbstoragePath + name),
                             (n) => new SpookOracle(this, n, oraclePath)
                             );
                     break;
@@ -733,6 +785,7 @@ namespace Phantasma.Spook
 
                 if (!nexus.HasGenesis)
                 {
+                    Console.WriteLine("isValidator: " + isValidator);
                     if (isValidator)
                     {
                         if (settings.GetBool("nexus.bootstrap"))
@@ -740,11 +793,13 @@ namespace Phantasma.Spook
                             if (!ValidationUtils.IsValidIdentifier(nexusName))
                             {
                                 logger.Error("Invalid nexus name: " + nexusName);
+                                Console.WriteLine("Invalid nexus name: " + nexusName);
                                 this.Terminate();
                                 return;
                             }
 
                             logger.Debug($"Boostraping {nexusName} nexus using {node_keys.Address}...");
+                            Console.WriteLine($"Boostraping {nexusName} nexus using {node_keys.Address}...");
 
                             var genesisTimestamp = new Timestamp(settings.GetUInt("genesis.timestamp", Timestamp.Now.Value));
 
@@ -929,6 +984,7 @@ namespace Phantasma.Spook
                 }).Start();
             }
 
+            Console.WriteLine($" useSim : {useSimulator} bootstrap: {bootstrap}");
             if (useSimulator && bootstrap)
             {
                 new Thread(() =>
