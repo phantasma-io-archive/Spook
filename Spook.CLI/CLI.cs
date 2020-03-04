@@ -510,6 +510,7 @@ namespace Phantasma.Spook
             var defaultDbStoragePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/Storage/db";
             var defaultOraclePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/Oracle";
             var storagePath = FixPath(settings.GetString("storage.path", defaultStoragePath));
+            var verifyStoragePath = FixPath(settings.GetString("verify.path", defaultStoragePath));
             var dbstoragePath = FixPath(settings.GetString("dbstorage.path", defaultDbStoragePath));
             var oraclePath = FixPath(settings.GetString("storage.oracle", defaultOraclePath));
             var storageBackend = settings.GetString("storage.backend", "file");
@@ -522,6 +523,8 @@ namespace Phantasma.Spook
             {
                 Func<string, IKeyValueStoreAdapter> fileStorageFactory  = (name) => new BasicDiskStore(storagePath + name + ".csv");
                 Func<string, IKeyValueStoreAdapter> dbStorageFactory    = (name) => new DBPartition(dbstoragePath + name);
+
+                Func<string, IKeyValueStoreAdapter> verificationStorageFactory  = (name) => new BasicDiskStore(verifyStoragePath + name + ".csv");
 
                 KeyValueStore<Hash, Archive> fileStorageArchives = new KeyValueStore<Hash, Archive>(fileStorageFactory("archives"));
                 KeyValueStore<Hash, byte[]> fileStorageContents = new KeyValueStore<Hash, byte[]>(fileStorageFactory("contents"));
@@ -581,9 +584,9 @@ namespace Phantasma.Spook
                 count = 0;
 
                 logger.Message($"Create verification stores");
-                KeyValueStore<Hash, Archive> fileStorageArchiveVerify = new KeyValueStore<Hash, Archive>(fileStorageFactory("archives.verify"));
-                KeyValueStore<Hash, byte[]> fileStorageContentVerify = new KeyValueStore<Hash, byte[]>(fileStorageFactory("contents.verify"));
-                KeyStoreStorage fileStorageRootVerify = new KeyStoreStorage(fileStorageFactory("chain.main.verify"));
+                KeyValueStore<Hash, Archive> fileStorageArchiveVerify = new KeyValueStore<Hash, Archive>(verificationStorageFactory("archives.verify"));
+                KeyValueStore<Hash, byte[]> fileStorageContentVerify = new KeyValueStore<Hash, byte[]>(verificationStorageFactory("contents.verify"));
+                KeyStoreStorage fileStorageRootVerify = new KeyStoreStorage(verificationStorageFactory("chain.main.verify"));
 
                 logger.Message("Start writing verify archives...");
                 dbStorageArchives.Visit((key, value) =>
@@ -612,12 +615,13 @@ namespace Phantasma.Spook
                 logger.Message($"Finished writing {count} content items...");
                 count = 0;
 
-                logger.Message("Starting copying root...");
+                logger.Message("Starting writing root...");
                 dbStorageRoot.Visit((key, value) =>
                 {
                     count++;
                     StorageKey stKey = new StorageKey(key);
                     fileStorageRootVerify.Put(stKey, value);
+                    logger.Message ($"Wrote: {count}");
                 });
                 logger.Message($"Finished writing {count} root items...");
 
