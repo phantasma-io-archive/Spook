@@ -514,6 +514,7 @@ namespace Phantasma.Spook
             var dbstoragePath = FixPath(settings.GetString("dbstorage.path", defaultDbStoragePath));
             var oraclePath = FixPath(settings.GetString("storage.oracle", defaultOraclePath));
             var storageBackend = settings.GetString("storage.backend", "file");
+            bool randomSwapData = settings.GetBool("random.data", false);
 
             logger.Message("Storage backend: " + storageBackend);
 
@@ -529,13 +530,79 @@ namespace Phantasma.Spook
                 KeyValueStore<Hash, Archive> fileStorageArchives = new KeyValueStore<Hash, Archive>(fileStorageFactory("archives"));
                 KeyValueStore<Hash, byte[]> fileStorageContents = new KeyValueStore<Hash, byte[]>(fileStorageFactory("contents"));
                 KeyStoreStorage fileStorageRoot     = new KeyStoreStorage(fileStorageFactory("chain.main"));
+                KeyStoreStorage fileStorageSwaps    = new KeyStoreStorage(fileStorageFactory("swaps"));
 
                 KeyValueStore<Hash, Archive> dbStorageArchives = new KeyValueStore<Hash, Archive>(dbStorageFactory("archives"));
                 KeyValueStore<Hash, byte[]> dbStorageContents = new KeyValueStore<Hash, byte[]>(dbStorageFactory("contents"));
-                KeyStoreStorage dbStorageRoot     = new KeyStoreStorage(dbStorageFactory("chain.main"));
+                KeyStoreStorage dbStorageRoot    = new KeyStoreStorage(dbStorageFactory("chain.main"));
+                KeyStoreStorage dbStorageSwaps    = new KeyStoreStorage(dbStorageFactory("swaps"));
+
+                KeyValueStore<Hash, Archive> fileStorageArchiveVerify = new KeyValueStore<Hash, Archive>(verificationStorageFactory("archives.verify"));
+                KeyValueStore<Hash, byte[]> fileStorageContentVerify = new KeyValueStore<Hash, byte[]>(verificationStorageFactory("contents.verify"));
+                KeyStoreStorage fileStorageRootVerify = new KeyStoreStorage(verificationStorageFactory("chain.main.verify"));
+                KeyStoreStorage fileStorageSwapVerify = new KeyStoreStorage(verificationStorageFactory("swaps.verify"));
+
+                int count = 0;
+                /////////////////////////////////////////////////////////////////////////////////////////////////////////
+                ///THIS IS FOR TESTING ONLY, needs to get removed after 
+                if (randomSwapData)
+                {
+                    logger.Message("Create random data now");
+                    string SettlementTag = ".settled";
+                    string PendingTag = ".pending";
+
+                    var settlements = new StorageMap(SettlementTag, fileStorageSwaps);
+                    var pendingList = new StorageList(PendingTag, fileStorageSwaps);
+
+                    for (var i = 0; i < 1000; i++)
+                    {
+                        settlements.Set<Hash, Hash>(Hash.FromString("TESTDATA_"+i), Hash.FromString("TESTVALUE_"+i));
+                    }
+
+                    for (var i = 0; i < 1000; i++)
+                    {
+                        var settle = new PendingSettle() { sourceHash = Hash.FromString("TESTDATA_"+i)
+                            , destinationHash = Hash.FromString("TESTVALUE_"+i), settleHash = Hash.Null, time = DateTime.UtcNow, status = SwapStatus.Settle };
+                        pendingList.Add<PendingSettle>(settle);
+                    }
+
+
+                    PendingSettle[] psArray = pendingList.All<PendingSettle>();
+                    for (var i = 0; i < psArray.Length; i++)
+                    {
+                        Console.WriteLine(psArray[i].sourceHash);
+                    }
+
+                    fileStorageSwaps.Visit((key, value) =>
+                    {
+                        count++;
+                        StorageKey stKey = new StorageKey(key);
+                        dbStorageSwaps.Put(stKey, value);
+                        logger.Message("COUNT: " + count);
+                        var val = dbStorageSwaps.Get(stKey);
+                        if (!CompareBA(val, value))
+                        {
+                            logger.Message($"ROOT: NewValue: {Encoding.UTF8.GetString(val)} and oldValue: {Encoding.UTF8.GetString(value)} differ, fail now!");
+                            Environment.Exit(-1);
+                        }
+                    });
+
+                    count = 0;
+
+                    dbStorageSwaps.Visit((key, value) =>
+                    {
+                        count++;
+                        StorageKey stKey = new StorageKey(key);
+                        fileStorageSwapVerify.Put(stKey, value);
+                        logger.Message ($"Swap wrote: {count}");
+                    });
+                    logger.Message("Done creating random data");
+                    Environment.Exit(0);
+                }
+                count = 0;
+                /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
                 logger.Message("Starting copying archives...");
-                int count = 0;
                 fileStorageArchives.Visit((key, value) =>
                 {
                     count++;
@@ -563,8 +630,24 @@ namespace Phantasma.Spook
                         Environment.Exit(-1);
                     }
                 });
+
                 logger.Message($"Finished copying {count} content items...");
                 count = 0;
+                logger.Message("Starting copying swaps...");
+                fileStorageSwaps.Visit((key, value) =>
+                {
+                    count++;
+                    StorageKey stKey = new StorageKey(key);
+                    dbStorageSwaps.Put(stKey, value);
+                    logger.Message("COUNT: " + count);
+                    var val = dbStorageSwaps.Get(stKey);
+                    if (!CompareBA(val, value))
+                    {
+                        logger.Message($"ROOT: NewValue: {Encoding.UTF8.GetString(val)} and oldValue: {Encoding.UTF8.GetString(value)} differ, fail now!");
+                        Environment.Exit(-1);
+                    }
+                });
+                logger.Message($"Finished copying {count} swap items...");
 
                 logger.Message("Starting copying root...");
                 fileStorageRoot.Visit((key, value) =>
@@ -584,9 +667,6 @@ namespace Phantasma.Spook
                 count = 0;
 
                 logger.Message($"Create verification stores");
-                KeyValueStore<Hash, Archive> fileStorageArchiveVerify = new KeyValueStore<Hash, Archive>(verificationStorageFactory("archives.verify"));
-                KeyValueStore<Hash, byte[]> fileStorageContentVerify = new KeyValueStore<Hash, byte[]>(verificationStorageFactory("contents.verify"));
-                KeyStoreStorage fileStorageRootVerify = new KeyStoreStorage(verificationStorageFactory("chain.main.verify"));
 
                 logger.Message("Start writing verify archives...");
                 dbStorageArchives.Visit((key, value) =>
@@ -614,6 +694,16 @@ namespace Phantasma.Spook
                 });
                 logger.Message($"Finished writing {count} content items...");
                 count = 0;
+
+                logger.Message("Starting writing swaps...");
+                dbStorageSwaps.Visit((key, value) =>
+                {
+                    count++;
+                    StorageKey stKey = new StorageKey(key);
+                    fileStorageSwapVerify.Put(stKey, value);
+                    logger.Message ($"Swap wrote: {count}");
+                });
+                logger.Message($"Finished writing {count} swap items...");
 
                 logger.Message("Starting writing root...");
                 dbStorageRoot.Visit((key, value) =>
