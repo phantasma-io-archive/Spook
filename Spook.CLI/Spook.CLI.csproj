@@ -5,8 +5,8 @@
     <AssemblyName>Spook</AssemblyName>
     <RootNamespace>Phantasma.Spook</RootNamespace>
     <FileUpgradeFlags>40</FileUpgradeFlags>
-    <UpgradeBackupLocation>C:\Code\PhantasmaSpook\Backup\Spook.CLI\</UpgradeBackupLocation>
-    <OldToolsVersion>2.0</OldToolsVersion>
+    <UpgradeBackupLocation>C:\code\PhantasmaSpook\Backup\Spook.CLI\</UpgradeBackupLocation>
+    <OldToolsVersion>Current</OldToolsVersion>
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="Publish\**" />
