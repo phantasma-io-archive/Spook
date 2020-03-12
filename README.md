@@ -84,6 +84,29 @@ This section provides instructions on standing up a self-contained node for Phan
 
 Below are instructions needed for the various operating systems supported.
 
+### Storage Conversion 
+
+Converts the backend storage from file to db, after the conversion is finished, Spook will exit.
+
+````
+-convert.storage
+#Options: bool 'true' or 'false'
+#Converts storage
+
+-storage.path
+#Options: string
+#Path to storage relative to the binary
+
+-dbstorage.path
+#Options: string
+#Path to db storage relative to the binary
+
+-verify.path
+#Options: string
+#Path used to create the verification file, on Linux use /dev/shm to speed up the process (make sure you have enough memory to store the file)
+
+````
+
 ### Runtime Paramaters
 
 ````

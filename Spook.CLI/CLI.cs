@@ -2,6 +2,8 @@ using System;
 using System.Net.Sockets;
 using System.Linq;
 using System.Collections.Generic;
+using System.Collections;
+using System.Text;
 using System.Threading;
 using System.Reflection;
 using System.IO;
@@ -28,6 +30,7 @@ using Phantasma.Network.P2P.Messages;
 using Phantasma.RocksDB;
 using Phantasma.Spook.Dapps;
 using Phantasma.Storage;
+using Phantasma.Storage.Context;
 using Phantasma.Spook.Oracles;
 using Phantasma.Spook.Swaps;
 using Phantasma.Domain;
@@ -418,6 +421,16 @@ namespace Phantasma.Spook
             return path;
         }
 
+        static bool CompareArchive(Archive a1, Archive a2)
+        {
+            return a1.Hash.Equals(a2.Hash);
+        }
+
+        static bool CompareBA(byte[] ba1, byte[] ba2)
+        {
+            return StructuralComparisons.StructuralEqualityComparer.Equals(ba1, ba2);
+        }
+
         public CLI(string[] args)
         {
             var culture = new CultureInfo("en-US");
@@ -449,8 +462,6 @@ namespace Phantasma.Spook
             bool apiLog = settings.GetBool("api.log", true);
 
             string apiProxyURL = settings.GetString("api.proxy", "");
-            if (string.IsNullOrEmpty(apiProxyURL))
-                apiProxyURL = null;
 
             bool hasSync = settings.GetBool("sync.enabled", true);
             bool hasMempool = settings.GetBool("mempool.enabled", true);
@@ -467,6 +478,8 @@ namespace Phantasma.Spook
                 profilePath = null;
 
             bool isValidator = false;
+
+            bool convertStorage = settings.GetBool("convert.storage", false);
 
             switch (mode)
             {
@@ -494,14 +507,216 @@ namespace Phantasma.Spook
 
             int port = settings.GetInt("node.port", 7073);
             var defaultStoragePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/Storage";
+            var defaultDbStoragePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/Storage/db";
             var defaultOraclePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/Oracle";
             var storagePath = FixPath(settings.GetString("storage.path", defaultStoragePath));
+            var verifyStoragePath = FixPath(settings.GetString("verify.path", defaultStoragePath));
+            var dbstoragePath = FixPath(settings.GetString("dbstorage.path", defaultDbStoragePath));
             var oraclePath = FixPath(settings.GetString("storage.oracle", defaultOraclePath));
             var storageBackend = settings.GetString("storage.backend", "file");
+            bool randomSwapData = settings.GetBool("random.data", false);
 
             logger.Message("Storage backend: " + storageBackend);
 
             var storageFix = settings.GetBool("storage.fix", false);
+
+            if (convertStorage)
+            {
+                Func<string, IKeyValueStoreAdapter> fileStorageFactory  = (name) => new BasicDiskStore(storagePath + name + ".csv");
+                Func<string, IKeyValueStoreAdapter> dbStorageFactory    = (name) => new DBPartition(dbstoragePath + name);
+
+                Func<string, IKeyValueStoreAdapter> verificationStorageFactory  = (name) => new BasicDiskStore(verifyStoragePath + name + ".csv");
+
+                KeyValueStore<Hash, Archive> fileStorageArchives = new KeyValueStore<Hash, Archive>(fileStorageFactory("archives"));
+                KeyValueStore<Hash, byte[]> fileStorageContents = new KeyValueStore<Hash, byte[]>(fileStorageFactory("contents"));
+                KeyStoreStorage fileStorageRoot     = new KeyStoreStorage(fileStorageFactory("chain.main"));
+                KeyStoreStorage fileStorageSwaps    = new KeyStoreStorage(fileStorageFactory("swaps"));
+
+                KeyValueStore<Hash, Archive> dbStorageArchives = new KeyValueStore<Hash, Archive>(dbStorageFactory("archives"));
+                KeyValueStore<Hash, byte[]> dbStorageContents = new KeyValueStore<Hash, byte[]>(dbStorageFactory("contents"));
+                KeyStoreStorage dbStorageRoot    = new KeyStoreStorage(dbStorageFactory("chain.main"));
+                KeyStoreStorage dbStorageSwaps    = new KeyStoreStorage(dbStorageFactory("swaps"));
+
+                KeyValueStore<Hash, Archive> fileStorageArchiveVerify = new KeyValueStore<Hash, Archive>(verificationStorageFactory("archives.verify"));
+                KeyValueStore<Hash, byte[]> fileStorageContentVerify = new KeyValueStore<Hash, byte[]>(verificationStorageFactory("contents.verify"));
+                KeyStoreStorage fileStorageRootVerify = new KeyStoreStorage(verificationStorageFactory("chain.main.verify"));
+                KeyStoreStorage fileStorageSwapVerify = new KeyStoreStorage(verificationStorageFactory("swaps.verify"));
+
+                int count = 0;
+                /////////////////////////////////////////////////////////////////////////////////////////////////////////
+                ///THIS IS FOR TESTING ONLY, needs to get removed after 
+                if (randomSwapData)
+                {
+                    logger.Message("Create random data now");
+                    string SettlementTag = ".settled";
+                    string PendingTag = ".pending";
+
+                    var settlements = new StorageMap(SettlementTag, fileStorageSwaps);
+                    var pendingList = new StorageList(PendingTag, fileStorageSwaps);
+
+                    for (var i = 0; i < 1000; i++)
+                    {
+                        settlements.Set<Hash, Hash>(Hash.FromString("TESTDATA_"+i), Hash.FromString("TESTVALUE_"+i));
+                    }
+
+                    for (var i = 0; i < 1000; i++)
+                    {
+                        var settle = new PendingSettle() { sourceHash = Hash.FromString("TESTDATA_"+i)
+                            , destinationHash = Hash.FromString("TESTVALUE_"+i), settleHash = Hash.Null, time = DateTime.UtcNow, status = SwapStatus.Settle };
+                        pendingList.Add<PendingSettle>(settle);
+                    }
+
+
+                    PendingSettle[] psArray = pendingList.All<PendingSettle>();
+                    for (var i = 0; i < psArray.Length; i++)
+                    {
+                        Console.WriteLine(psArray[i].sourceHash);
+                    }
+
+                    fileStorageSwaps.Visit((key, value) =>
+                    {
+                        count++;
+                        StorageKey stKey = new StorageKey(key);
+                        dbStorageSwaps.Put(stKey, value);
+                        logger.Message("COUNT: " + count);
+                        var val = dbStorageSwaps.Get(stKey);
+                        if (!CompareBA(val, value))
+                        {
+                            logger.Message($"ROOT: NewValue: {Encoding.UTF8.GetString(val)} and oldValue: {Encoding.UTF8.GetString(value)} differ, fail now!");
+                            Environment.Exit(-1);
+                        }
+                    });
+
+                    count = 0;
+
+                    dbStorageSwaps.Visit((key, value) =>
+                    {
+                        count++;
+                        StorageKey stKey = new StorageKey(key);
+                        fileStorageSwapVerify.Put(stKey, value);
+                        logger.Message ($"Swap wrote: {count}");
+                    });
+                    logger.Message("Done creating random data");
+                    Environment.Exit(0);
+                }
+                count = 0;
+                /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+                logger.Message("Starting copying archives...");
+                fileStorageArchives.Visit((key, value) =>
+                {
+                    count++;
+                    dbStorageArchives.Set(key, value);
+                    var val = dbStorageArchives.Get(key);
+                    if (!CompareArchive(val, value))
+                    {
+                        logger.Message($"Archives: NewValue: {value.Hash} and oldValue: {val.Hash} differ, fail now!");
+                        Environment.Exit(-1);
+                    }
+                });
+                logger.Message($"Finished copying {count} archives...");
+                count = 0;
+
+                logger.Message("Starting copying content items...");
+                fileStorageContents.Visit((key, value) =>
+                {
+                    count++;
+                    dbStorageContents.Set(key, value);
+                    var val = dbStorageContents.Get(key);
+                    logger.Message("COUNT: " + count);
+                    if (!CompareBA(val, value))
+                    {
+                        logger.Message($"CONTENTS: NewValue: {Encoding.UTF8.GetString(val)} and oldValue: {Encoding.UTF8.GetString(value)} differ, fail now!");
+                        Environment.Exit(-1);
+                    }
+                });
+
+                logger.Message($"Finished copying {count} content items...");
+                count = 0;
+                logger.Message("Starting copying swaps...");
+                fileStorageSwaps.Visit((key, value) =>
+                {
+                    count++;
+                    StorageKey stKey = new StorageKey(key);
+                    dbStorageSwaps.Put(stKey, value);
+                    logger.Message("COUNT: " + count);
+                    var val = dbStorageSwaps.Get(stKey);
+                    if (!CompareBA(val, value))
+                    {
+                        logger.Message($"ROOT: NewValue: {Encoding.UTF8.GetString(val)} and oldValue: {Encoding.UTF8.GetString(value)} differ, fail now!");
+                        Environment.Exit(-1);
+                    }
+                });
+                logger.Message($"Finished copying {count} swap items...");
+
+                logger.Message("Starting copying root...");
+                fileStorageRoot.Visit((key, value) =>
+                {
+                    count++;
+                    StorageKey stKey = new StorageKey(key);
+                    dbStorageRoot.Put(stKey, value);
+                    logger.Message("COUNT: " + count);
+                    var val = dbStorageRoot.Get(stKey);
+                    if (!CompareBA(val, value))
+                    {
+                        logger.Message($"ROOT: NewValue: {Encoding.UTF8.GetString(val)} and oldValue: {Encoding.UTF8.GetString(value)} differ, fail now!");
+                        Environment.Exit(-1);
+                    }
+                });
+                logger.Message($"Finished copying {count} root items...");
+                count = 0;
+
+                logger.Message($"Create verification stores");
+
+                logger.Message("Start writing verify archives...");
+                dbStorageArchives.Visit((key, value) =>
+                {
+                    count++;
+                    // very ugly and might not always work, but should be ok for now
+                    byte[] bytes = value.Size.ToUnsignedByteArray();
+                    if (BitConverter.IsLittleEndian)
+                        Array.Reverse(bytes);
+                    int size = BitConverter.ToInt32(bytes, 0);
+
+                    var ms = new MemoryStream(new byte[size]);
+                    var bw = new BinaryWriter(ms);
+                    value.SerializeData(bw);
+                    fileStorageContentVerify.Set(key, ms.ToArray());
+                });
+                logger.Message($"Finished writing {count} archives...");
+                count = 0;
+
+                logger.Message("Start writing content items...");
+                dbStorageContents.Visit((key, value) =>
+                {
+                    count++;
+                    fileStorageContentVerify.Set(key, value);
+                });
+                logger.Message($"Finished writing {count} content items...");
+                count = 0;
+
+                logger.Message("Starting writing swaps...");
+                dbStorageSwaps.Visit((key, value) =>
+                {
+                    count++;
+                    StorageKey stKey = new StorageKey(key);
+                    fileStorageSwapVerify.Put(stKey, value);
+                    logger.Message ($"Swap wrote: {count}");
+                });
+                logger.Message($"Finished writing {count} swap items...");
+
+                logger.Message("Starting writing root...");
+                dbStorageRoot.Visit((key, value) =>
+                {
+                    count++;
+                    StorageKey stKey = new StorageKey(key);
+                    fileStorageRootVerify.Put(stKey, value);
+                    logger.Message ($"Wrote: {count}");
+                });
+                logger.Message($"Finished writing {count} root items...");
+
+                Environment.Exit(0);
+            }
 
             // TODO remove this later
             if (storageFix)
@@ -532,11 +747,10 @@ namespace Phantasma.Spook
 
                 case "db":
                     nexus = new Nexus(logger,
-                            (name) => new DBPartition(storagePath + name),
+                            (name) => new DBPartition(dbstoragePath + name),
                             (n) => new SpookOracle(this, n, oraclePath)
                             );
                     break;
-
                 default:
                     throw new Exception("Backend has to be set to either \"db\" or \"file\"");
             }
@@ -578,7 +792,7 @@ namespace Phantasma.Spook
                 return;
             }
 
-            if (apiProxyURL != null)
+            if (!string.IsNullOrEmpty(apiProxyURL))
             {
                 hasMempool = false;
                 isValidator = false;
@@ -614,7 +828,7 @@ namespace Phantasma.Spook
                 this.mempool = null;
             }
 
-            if (!isValidator && !hasSync && apiProxyURL == null)
+            if (!isValidator && !hasSync && string.IsNullOrEmpty(apiProxyURL))
             {
                 logger.Warning("Non-validator nodes require sync feature to be enabled, auto enabled now");
                 hasSync = true;
@@ -641,16 +855,20 @@ namespace Phantasma.Spook
             PhantasmaKeys node_keys = null;
             bool bootstrap = false;
 
+
+            string nodeWif = settings.GetString("node.wif");
+            node_keys = PhantasmaKeys.FromWIF(nodeWif);
+            WalletModule.Keys = PhantasmaKeys.FromWIF(nodeWif);
+
             if (hasSync)
             {
-                string wif = settings.GetString("node.wif");
-                node_keys = PhantasmaKeys.FromWIF(wif);
-                WalletModule.Keys = PhantasmaKeys.FromWIF(wif);
-
                 try
                 {
-                    if(this.mempool!=null)
+                    if (this.mempool != null)
+                    {
                         this.mempool.SetKeys(node_keys);
+                    }
+
                     this.node = new Node("Spook v" + SpookVersion, nexus, mempool, node_keys, port, caps, seeds, logger);
                 }
                 catch (Exception e)
@@ -661,6 +879,7 @@ namespace Phantasma.Spook
 
                 if (!nexus.HasGenesis)
                 {
+                    Console.WriteLine("isValidator: " + isValidator);
                     if (isValidator)
                     {
                         if (settings.GetBool("nexus.bootstrap"))
@@ -668,11 +887,13 @@ namespace Phantasma.Spook
                             if (!ValidationUtils.IsValidIdentifier(nexusName))
                             {
                                 logger.Error("Invalid nexus name: " + nexusName);
+                                Console.WriteLine("Invalid nexus name: " + nexusName);
                                 this.Terminate();
                                 return;
                             }
 
                             logger.Debug($"Boostraping {nexusName} nexus using {node_keys.Address}...");
+                            Console.WriteLine($"Boostraping {nexusName} nexus using {node_keys.Address}...");
 
                             var genesisTimestamp = new Timestamp(settings.GetUInt("genesis.timestamp", Timestamp.Now.Value));
 
@@ -729,7 +950,7 @@ namespace Phantasma.Spook
 
             var useAPICache = settings.GetBool("api.cache", true);
 
-            if (apiProxyURL != null)
+            if (!string.IsNullOrEmpty(apiProxyURL))
             {
                 useAPICache = true;
             }
@@ -750,7 +971,7 @@ namespace Phantasma.Spook
 
             var readOnlyMode = settings.GetBool("readonly", false);
 
-            if (apiProxyURL != null)
+            if (!string.IsNullOrEmpty(apiProxyURL))
             {
                 readOnlyMode = true;
             }
@@ -857,6 +1078,7 @@ namespace Phantasma.Spook
                 }).Start();
             }
 
+            Console.WriteLine($" useSim : {useSimulator} bootstrap: {bootstrap}");
             if (useSimulator && bootstrap)
             {
                 new Thread(() =>
