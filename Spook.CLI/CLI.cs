@@ -794,8 +794,13 @@ namespace Phantasma.Spook
 
             if (!string.IsNullOrEmpty(apiProxyURL))
             {
+                if (isValidator)
+                {
+                    logger.Error("A validator node cannot have a proxy url specified.");
+                    return;
+                }
+
                 hasMempool = false;
-                isValidator = false;
                 hasSync = false;
                 hasEvents = false;
                 hasRelay = false;
@@ -854,8 +859,6 @@ namespace Phantasma.Spook
 
             PhantasmaKeys node_keys = null;
             bool bootstrap = false;
-
-
             string nodeWif = settings.GetString("node.wif");
             node_keys = PhantasmaKeys.FromWIF(nodeWif);
             WalletModule.Keys = PhantasmaKeys.FromWIF(nodeWif);
