@@ -73,6 +73,8 @@ namespace Phantasma.Spook
         private bool running = false;
         private bool nodeReady = false;
 
+        private string nodeMode = null;
+
         public NeoScanAPI neoScanAPI { get; private set; }
         public Neo.Core.NeoAPI neoAPI { get; private set; }
 
@@ -454,7 +456,7 @@ namespace Phantasma.Spook
                 logger = new ConsoleLogger();
             }
 
-            string mode = settings.GetString("node.mode", "default");
+            nodeMode = settings.GetString("node.mode", "default");
 
             restartTime = settings.GetInt("node.reboot", 0);
 
@@ -481,7 +483,7 @@ namespace Phantasma.Spook
 
             bool convertStorage = settings.GetBool("convert.storage", false);
 
-            switch (mode)
+            switch (nodeMode)
             {
                 case "sender":
                     {
@@ -500,7 +502,7 @@ namespace Phantasma.Spook
 
                 default:
                     {
-                        logger.Error("Unknown mode: " + mode);
+                        logger.Error("Unknown mode: " + nodeMode);
                         return;
                     }
             }
@@ -882,7 +884,6 @@ namespace Phantasma.Spook
 
                 if (!nexus.HasGenesis)
                 {
-                    Console.WriteLine("isValidator: " + isValidator);
                     if (isValidator)
                     {
                         if (settings.GetBool("nexus.bootstrap"))
@@ -1081,7 +1082,7 @@ namespace Phantasma.Spook
                 }).Start();
             }
 
-            Console.WriteLine($" useSim : {useSimulator} bootstrap: {bootstrap}");
+            logger.Warning($"Debug => useSim : {useSimulator} bootstrap: {bootstrap}");
             if (useSimulator && bootstrap)
             {
                 new Thread(() =>
@@ -1139,7 +1140,7 @@ namespace Phantasma.Spook
 
         private void MakeReady(CommandDispatcher dispatcher)
         {
-            logger.Success("Node is ready");
+            logger.Success($"Node is now running in {nodeMode} mode!");
             nodeReady = true;
             gui?.MakeReady(dispatcher);
         }
