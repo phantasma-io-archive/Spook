@@ -10,6 +10,7 @@ using Phantasma.Core.Log;
 using Phantasma.Domain;
 using Phantasma.Neo.Core;
 using System.Text;
+using Newtonsoft.Json;
 
 namespace Phantasma.Spook.Oracles
 {
@@ -43,12 +44,14 @@ namespace Phantasma.Spook.Oracles
             Throw.If(request.StartsWith("/"), "request malformed");
             var url = $"{URL}/api/main_net/v1/{request}";
 
+            logger.Message($"[Neoscan] ExecuteRequest: {request} url: {url}");
             try
             {
                 string json;
                 using (var wc = new System.Net.WebClient())
                 {
                     json = wc.DownloadString(url);
+                    logger.Message($"[Neoscan] json: {JsonConvert.SerializeObject(json, Formatting.Indented)}");
                     return json;
                 }
             }

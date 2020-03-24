@@ -34,6 +34,7 @@ namespace Phantasma.Spook.Swaps
 
         public override IEnumerable<PendingSwap> Update()
         {
+            logger.Message($"Update NeoInterop.");
             var result = new List<PendingSwap>();
 
             int maxPages = 1;
@@ -41,6 +42,7 @@ namespace Phantasma.Spook.Swaps
                 var json = neoscanAPI.ExecuteRequest($"get_address_abstracts/{LocalAddress}/1");
                 if (json == null)
                 {
+                    logger.Message($"maxPages {maxPages}, null result through request {LocalAddress}");
                     return result; // it will try again later
                 }
 
@@ -48,8 +50,12 @@ namespace Phantasma.Spook.Swaps
                 maxPages = root.GetInt32("total_pages");
             }
 
+            logger.Message($"maxPages {maxPages}, got result through request {LocalAddress}");
+
             for (int page = maxPages; page >= 1; page--)
             {
+                logger.Message($"fetching page {page} now");
+
                 var json = neoscanAPI.ExecuteRequest($"get_address_abstracts/{LocalAddress}/{page}");
                 if (json == null)
                 {
@@ -61,12 +67,14 @@ namespace Phantasma.Spook.Swaps
 
                 var entries = root.GetNode("entries");
 
+                logger.Message($"entries: {entries.ChildCount}");
                 for (int i = entries.ChildCount - 1; i >= 0; i--)
                 {
                     var entry = entries.GetNodeByIndex(i);
 
                     var temp = entry.GetString("block_height");
                     var height = BigInteger.Parse(temp);
+                    logger.Message($"block_height: {_blockHeight.ToString()} height: {height}");
 
                     if (height >= _blockHeight)
                     {
