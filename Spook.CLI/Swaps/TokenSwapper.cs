@@ -327,10 +327,12 @@ namespace Phantasma.Spook.Swaps
                 {
                     if (_pendingSwaps.ContainsKey(swap.hash))
                     {
+
+                        logger.Message($"Already known swap, ignore {finder.PlatformName} swap: {swap.source} => {swap.destination}");
                         continue;
                     }
 
-                    logger.Message($"Detected {finder.PlatformName} swap: {swap.source} => {swap.destination}");
+                    logger.Message($"Detected {finder.PlatformName} swap: {swap.source} => {swap.destination} hash: {swap.hash}");
                     _pendingSwaps[swap.hash] = swap;
                     MapSwap(swap.source, swap.hash);
                     MapSwap(swap.destination, swap.hash);
@@ -419,16 +421,20 @@ namespace Phantasma.Spook.Swaps
 
         public IEnumerable<ChainSwap> GetPendingSwaps(Address address)
         {
+            logger.Message($"Getting pending swaps for {address} now.");
             var dict = new Dictionary<Hash, ChainSwap>();
 
             if (_swapAddressMap.ContainsKey(address))
             {
+                logger.Message($"Address  exists in swap address map");
+
                 var swaps = _swapAddressMap[address].
                     Select(x => _pendingSwaps[x]).
                     Select(x => new ChainSwap(x.platform, x.platform, x.hash, DomainSettings.PlatformName, DomainSettings.RootChainName, Hash.Null));
 
                 foreach (var entry in swaps)
                 {
+                    logger.Message($"Adding hash {entry.sourceHash} to dict.");
                     dict[entry.sourceHash] = entry;
                 }
 
@@ -439,6 +445,7 @@ namespace Phantasma.Spook.Swaps
                     if (entry.destinationHash == Hash.Null)
                     {
                         var settleHash = GetSettleHash(entry.sourcePlatform, hash);
+                        logger.Message($"settleHash: {settleHash}.");
                         if (settleHash != Hash.Null)
                         {
                             entry.destinationHash = settleHash;
@@ -450,28 +457,33 @@ namespace Phantasma.Spook.Swaps
             }
 
             var hashes = Nexus.RootChain.GetSwapHashesForAddress(Nexus.RootChain.Storage, address);
+            logger.Message($"Have {hashes.Length} for address {address}.");
             foreach (var hash in hashes)
             {
                 if (dict.ContainsKey(hash))
                 {
+                    logger.Message($"Ignoring hash {hash}");
                     continue;
                 }
 
                 var swap = Nexus.RootChain.GetSwap(Nexus.RootChain.Storage, hash);
                 if (swap.destinationHash != Hash.Null)
                 {
+                    logger.Message($"Ignoring swap with hash {swap.sourceHash}");
                     continue;
                 }
 
                 var settleHash = GetSettleHash(DomainSettings.PlatformName, hash);
                 if (settleHash != Hash.Null)
                 {
+                    logger.Message($"settleHash null");
                     continue;
                 }
 
                 dict[hash] = swap;
             }
 
+            logger.Message($"Getting pending swaps for {address} done, found {dict.Count()} swaps.");
             return dict.Values;
         }
 
