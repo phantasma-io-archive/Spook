@@ -8,6 +8,7 @@ using Phantasma.Domain;
 using Phantasma.Cryptography;
 using Phantasma.Spook.Oracles;
 using Phantasma.Core.Log;
+using System.Linq;
 
 namespace Phantasma.Spook.Swaps
 {
@@ -17,6 +18,7 @@ namespace Phantasma.Spook.Swaps
         private NeoScanAPI neoscanAPI;
         private BigInteger _blockHeight;
         private int maxPageAllowed;
+        private DateTime lastScan;
 
         public NeoInterop(TokenSwapper swapper, string wif, BigInteger blockHeight, NeoScanAPI neoscanAPI, Logger logger) : base(swapper, wif, "neo")
         {
@@ -24,6 +26,8 @@ namespace Phantasma.Spook.Swaps
 
             this.neoscanAPI = neoscanAPI;
             this.maxPageAllowed = 9999;
+
+            this.lastScan = DateTime.UtcNow.Subtract(TimeSpan.FromHours(1));
 
             this.logger = logger;
         }
@@ -36,6 +40,12 @@ namespace Phantasma.Spook.Swaps
 
         public override IEnumerable<PendingSwap> Update()
         {
+            var delta = DateTime.Now - lastScan;
+            if (delta.TotalSeconds < 10)
+            {
+                return Enumerable.Empty<PendingSwap>();
+            }
+
             logger.Message($"Update NeoInterop.");
             var result = new List<PendingSwap>();
 
@@ -94,6 +104,7 @@ namespace Phantasma.Spook.Swaps
             }
 
             maxPageAllowed = 1;
+            lastScan = DateTime.UtcNow;
 
             return result;
         }
