@@ -16,12 +16,14 @@ namespace Phantasma.Spook.Swaps
         private Logger logger;
         private NeoScanAPI neoscanAPI;
         private BigInteger _blockHeight;
+        private int maxPageAllowed;
 
         public NeoInterop(TokenSwapper swapper, string wif, BigInteger blockHeight, NeoScanAPI neoscanAPI, Logger logger) : base(swapper, wif, "neo")
         {
             this._blockHeight = blockHeight;
 
             this.neoscanAPI = neoscanAPI;
+            this.maxPageAllowed = 9999;
 
             this.logger = logger;
         }
@@ -90,6 +92,8 @@ namespace Phantasma.Spook.Swaps
                     }
                 }
             }
+
+            maxPageAllowed = 1;
 
             return result;
         }
