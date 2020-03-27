@@ -16,18 +16,20 @@ namespace Phantasma.Spook.Swaps
     {
         private Logger logger;
         private NeoScanAPI neoscanAPI;
+        private NeoAPI neoAPI;
         private BigInteger _blockHeight;
         private int maxPageAllowed;
         private DateTime lastScan;
 
-        public NeoInterop(TokenSwapper swapper, string wif, BigInteger blockHeight, NeoScanAPI neoscanAPI, Logger logger) : base(swapper, wif, "neo")
+        public NeoInterop(TokenSwapper swapper, string wif, BigInteger blockHeight, NeoScanAPI neoscanAPI, NeoAPI neoAPI, Logger logger) : base(swapper, wif, "neo")
         {
             this._blockHeight = blockHeight;
 
             this.neoscanAPI = neoscanAPI;
+            this.neoAPI = neoAPI;
             this.maxPageAllowed = 9999;
 
-            this.lastScan = DateTime.UtcNow.Subtract(TimeSpan.FromHours(1));
+            this.lastScan = DateTime.UtcNow.AddYears(-1);;
 
             this.logger = logger;
         }
@@ -40,65 +42,53 @@ namespace Phantasma.Spook.Swaps
 
         public override IEnumerable<PendingSwap> Update()
         {
-            var delta = DateTime.Now - lastScan;
+            var result = new List<PendingSwap>();
+
+            var delta = DateTime.UtcNow - lastScan;
             if (delta.TotalSeconds < 10)
             {
                 return Enumerable.Empty<PendingSwap>();
             }
 
-            logger.Message($"Update NeoInterop.");
-            var result = new List<PendingSwap>();
-
-            int maxPages = 1;
+            logger.Message($"Update NeoInterop." + lastScan);
+            var json = neoAPI.GetNep5Transfers(LocalAddress, lastScan);
+            if (json == null)
             {
-                var json = neoscanAPI.ExecuteRequest($"get_address_abstracts/{LocalAddress}/1");
-                if (json == null)
-                {
-                    logger.Message($"maxPages {maxPages}, null result through request {LocalAddress}");
-                    return result; // it will try again later
-                }
-
-                var root = JSONReader.ReadFromString(json);
-                maxPages = root.GetInt32("total_pages");
+                logger.Warning("failed to fetch address page");
+                return Enumerable.Empty<PendingSwap>();
             }
 
-            logger.Message($"maxPages {maxPages}, got result through request {LocalAddress}");
+            var root = JSONReader.ReadFromString(json);
 
-            for (int page = maxPages; page >= 1; page--)
+            var all = root.GetNode("result");
+            var allTx = all.GetNode("sent");
+            var received = all.GetNode("received");
+            var address = all.GetString("address");
+
+            for (int i = received.ChildCount - 1; i >= 0; i--)
             {
-                logger.Message($"fetching page {page} now");
+                allTx.AddNode(received.GetNodeByIndex(i));
+            }
 
-                var json = neoscanAPI.ExecuteRequest($"get_address_abstracts/{LocalAddress}/{page}");
-                if (json == null)
+            logger.Message($"entries: {allTx.ChildCount}");
+            for (int i = allTx.ChildCount - 1; i >= 0; i--)
+            {
+                var entry = allTx.GetNodeByIndex(i);
+
+                var temp = entry.GetString("block_index");
+                var height = BigInteger.Parse(temp);
+                //logger.Message($"block_height: {_blockHeight.ToString()} height: {height}");
+
+                if (height >= _blockHeight)
                 {
-                    logger.Warning("failed to fetch address page");
-                    break;
-                }
-
-                var root = JSONReader.ReadFromString(json);
-
-                var entries = root.GetNode("entries");
-
-                logger.Message($"entries: {entries.ChildCount}");
-                for (int i = entries.ChildCount - 1; i >= 0; i--)
-                {
-                    var entry = entries.GetNodeByIndex(i);
-
-                    var temp = entry.GetString("block_height");
-                    var height = BigInteger.Parse(temp);
-                    logger.Message($"block_height: {_blockHeight.ToString()} height: {height}");
-
-                    if (height >= _blockHeight)
+                    try
                     {
-                        try
-                        {
-                            ProcessTransaction(entry, result);
-                            _blockHeight = height;
-                        }
-                        catch (Exception e)
-                        {
-                            logger.Error("error: " + e.ToString());
-                        }
+                        ProcessTransaction(entry, result, address);
+                        _blockHeight = height;
+                    }
+                    catch (Exception e)
+                    {
+                        logger.Error("error: " + e.ToString());
                     }
                 }
             }
@@ -109,16 +99,16 @@ namespace Phantasma.Spook.Swaps
             return result;
         }
 
-        private void ProcessTransaction(DataNode entry, List<PendingSwap> result)
+        private void ProcessTransaction(DataNode entry, List<PendingSwap> result, string address)
         {
-            var destinationAddress = entry.GetString("address_to");
+            var destinationAddress = address;
             if (destinationAddress != this.LocalAddress)
             {
                 return;
             }
 
-            var asset = entry.GetString("asset");
-            var hash = entry.GetString("txid");
+            var asset = entry.GetString("asset_hash");
+            var hash = entry.GetString("tx_hash");
 
             var token = Swapper.FindTokenByHash(asset, "neo");
             if (token == null)
@@ -145,44 +135,44 @@ namespace Phantasma.Spook.Swaps
         }
 
         /*
-                      public override Hash ReceiveFunds(ChainSwap swap)
-             {
-                 throw new System.NotImplementedException();
-                 Transaction tx;
+           public override Hash ReceiveFunds(ChainSwap swap)
+           {
+           throw new System.NotImplementedException();
+           Transaction tx;
 
-                 TokenInfo token;
-                 if (!Swapper.FindTokenBySymbol(swap.symbol, out token))
-                 {
-                     return Hash.Null;
-                 }
+           TokenInfo token;
+           if (!Swapper.FindTokenBySymbol(swap.symbol, out token))
+           {
+           return Hash.Null;
+           }
 
-                 byte platID;
-                 byte[] publicKey;
+           byte platID;
+           byte[] publicKey;
 
-                 swap.destinationAddress.DecodeInterop(out platID, out publicKey);
+           swap.destinationAddress.DecodeInterop(out platID, out publicKey);
 
-                 var destAddress = NeoKeys.PublicKeyToAddress(publicKey);
-                 var amount = UnitConversion.ToDecimal(swap.amount, token.Decimals);
+           var destAddress = NeoKeys.PublicKeyToAddress(publicKey);
+           var amount = UnitConversion.ToDecimal(swap.amount, token.Decimals);
 
-                 if (swap.symbol == "NEO" || swap.symbol == "GAS")
-                 {
-                     tx = neoAPI.SendAsset(neoKeys, destAddress, swap.symbol, amount);
-                 }
-                 else
-                 {
-                     var scriptHash = token.Hash.ToString().Substring(0, 40);
+           if (swap.symbol == "NEO" || swap.symbol == "GAS")
+           {
+           tx = neoAPI.SendAsset(neoKeys, destAddress, swap.symbol, amount);
+           }
+           else
+           {
+           var scriptHash = token.Hash.ToString().Substring(0, 40);
 
-                     var nep5 = new NEP5(neoAPI, scriptHash);
-                     tx = nep5.Transfer(neoKeys, destAddress, amount);
-                 }
+           var nep5 = new NEP5(neoAPI, scriptHash);
+           tx = nep5.Transfer(neoKeys, destAddress, amount);
+           }
 
-                 if (tx == null)
-                 {
-                     throw new InteropException(this.Name + " transfer failed", ChainSwapStatus.Receive);
-                 }
+           if (tx == null)
+           {
+           throw new InteropException(this.Name + " transfer failed", ChainSwapStatus.Receive);
+           }
 
-                 var hashText = tx.Hash.ToString();
-                 return Hash.Parse(hashText);
-    }*/
+           var hashText = tx.Hash.ToString();
+           return Hash.Parse(hashText);
+           }*/
     }
 }

@@ -294,7 +294,7 @@ namespace Phantasma.Spook.Swaps
                     return;
                 }
 
-                _finders["neo"] = new NeoInterop(this, wifs["neo"], interopBlocks["neo"], neoscanAPI, logger);
+                _finders["neo"] = new NeoInterop(this, wifs["neo"], interopBlocks["neo"], neoscanAPI, neoAPI, logger);
             }
 
             if (this.platforms.Length == 0)

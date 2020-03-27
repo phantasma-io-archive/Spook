@@ -1016,7 +1016,7 @@ namespace Phantasma.Spook
             {
                 var neoScanURL = settings.GetString("neoscan.url", "https://api.neoscan.io");
 
-                var rpcList = settings.GetString("neo.rpc", "http://seed6.ngd.network:10332,http://seed.neoeconomy.io:10332");
+                var rpcList = settings.GetString("neo.rpc", "http://seed1.ngd.network:10332, http://seed6.ngd.network:10332, http://seed7.ngd.network:10332, http://seed8.ngd.network:10332");
                 var neoRpcURLs = rpcList.Split(',');
                 this.neoAPI = new Neo.Core.RemoteRPCNode(neoScanURL, neoRpcURLs);
                 this.neoAPI.SetLogger((s) => logger.Message(s));
