@@ -62,6 +62,11 @@ namespace Phantasma.Spook.Swaps
                 maxPages = root.GetInt32("total_pages");
             }
 
+            if (maxPages > maxPageAllowed)
+            {
+                maxPages = maxPageAllowed;
+            }
+
             logger.Message($"maxPages {maxPages}, got result through request {LocalAddress}");
 
             for (int page = maxPages; page >= 1; page--)
