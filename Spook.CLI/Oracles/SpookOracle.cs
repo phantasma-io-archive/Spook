@@ -17,6 +17,11 @@ namespace Phantasma.Spook.Oracles
         {
             this.CLI = cli;
             this.cachePath = cachePath;
+
+            if (!Directory.Exists(cachePath))
+            {
+                Directory.CreateDirectory(cachePath);
+            }
         }
 
         protected override decimal PullPrice(Timestamp time, string symbol)
