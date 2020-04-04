@@ -750,7 +750,8 @@ namespace Phantasma.Spook
                 case "db":
                     nexus = new Nexus(logger,
                             (name) => new DBPartition(dbstoragePath + name),
-                            (n) => new SpookOracle(this, n, oraclePath)
+                            (n) => new SpookOracle(this, n, 
+                                    (oraclePath) => new DBPartition(oraclePath + name))
                             );
                     break;
                 default:

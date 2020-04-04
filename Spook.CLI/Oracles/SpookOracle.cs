@@ -12,11 +12,85 @@ namespace Phantasma.Spook.Oracles
     {
         public readonly CLI CLI;
 
-        public readonly string cachePath;
-        public SpookOracle(CLI cli, Nexus nexus, string cachePath) : base(nexus)
+        private Func<string, IKeyValueStoreAdapter> _adapterFactory = null;
+        private Dictionary<string, IKeyValueStoreAdapter> _keystoreCache =
+                new Dictionary<string, IKeyValueStoreAdapter>();
+
+        enum StorageConst
+        {
+            LastBlockHeight,
+            Block,
+            Transaction
+        }
+
+        public SpookOracle(CLI cli, Nexus nexus, Func<string, IKeyValueStoreAdapter> adapterFactory = null,) : base(nexus)
         {
             this.CLI = cli;
-            this.cachePath = cachePath;
+            this._adapterFactory = adapterFactory;
+
+            var platforms = nexus.GetPlatforms(nexus.RootStorage);                                                                                                                                                                            
+            foreach (var platform in platforms) 
+            {
+                _keystoreCache.Add(platform, new KeyValueStore<Hash, InteropBlock>(CreateKeyStoreAdapter(platform + StorageConst.Block)));
+                _keystoreCache.Add(platform, new KeyValueStore<Hash, InteropTransaction>(CreateKeyStoreAdapter(platform + StorageConst.Transaction)));
+            }
+        }
+
+        public IKeyValueStoreAdapter CreateKeyStoreAdapter(string name)
+        {
+            if (_keystoreCache.ContainsKey(name))
+            {
+                return _keystoreCache[name];
+            }
+
+            IKeyValueStoreAdapter result;
+
+            if (_adapterFactory != null)
+            {
+                result = _adapterFactory(name);
+                Throw.If(result == null, "keystore adapter factory failed");
+             }
+            else
+            {
+                    result = new MemoryStore();
+            }
+
+            if (!_keystoreCache.ContainsKey(name))
+            {
+                _keystoreCache[name] = result;
+            }
+
+            return result;
+        }
+
+        private Nullable<T> Read(string platformName, string chainName, Hash hash, StorageConst type)
+        {
+            var storageKey = type + chainName + hash.ToString();
+            IKeyValueStoreAdapter keyStore = _keystoreCache[platformName + type];
+
+            try
+            {
+                T data = keyStore.Get(storageKey);
+                return data;
+            }
+            catch (Exception e)
+            {
+                return null;
+            }
+        }
+
+        private bool Persist<T>(string platformName, string chainName, Hash hash, StorageConst type, T data)
+        {
+            var storageKey = type + chainName + hash.ToString();
+            IKeyValueStoreAdapter keyStore = _keystoreCache[platformName + type];
+
+            if(!keyStore.ContainsKey(storageKey))
+            {
+                keyStore.Set(storageKey, data);
+                return true;
+            }
+
+            return false;
         }
 
         protected override decimal PullPrice(Timestamp time, string symbol)
@@ -28,7 +102,7 @@ namespace Phantasma.Spook.Oracles
                     var result = PullPrice(time, DomainSettings.StakingTokenSymbol);
                     return result / 5;
                 }
-             
+
                 var price = CryptoCompareUtils.GetCoinRate(symbol, DomainSettings.FiatTokenSymbol, CLI.cryptoCompareAPIKey);
                 return price;
             }
@@ -39,28 +113,27 @@ namespace Phantasma.Spook.Oracles
         protected override InteropBlock PullPlatformBlock(string platformName, string chainName, Hash hash)
         {
             InteropBlock block;
-            byte[] bytes;
 
-            var fileName = GetCacheFileName(platformName, chainName, hash.ToString(), "blk");
-            if (File.Exists(fileName))
+            if ((block = Read(platformName, chainName, hash, StorageConst.Block)) != null)
             {
-                bytes = File.ReadAllBytes(fileName);
-                block = Serialization.Unserialize<InteropBlock>(bytes);
                 return block;
             }
 
             switch (platformName)
             {
                 case NeoWallet.NeoPlatform:
-                    block = CLI.neoScanAPI.ReadBlock(hash);
+                    //todo use neoAPI
+                    block = CLI.neoAPI.ReadBlock(hash);
                     break;
 
                 default:
                     throw new OracleException("Uknown oracle platform: " + platformName);
             }
-
-            bytes = Serialization.Serialize(block);
-            File.WriteAllBytes(fileName, bytes);
+            
+            if (!PersistBlock(platformName, chainName, hash, block, StorageConst.Block))
+            {
+                throw new OracleException($"Persisting oracle block { hash } on platform { platformName } failed!");
+            }
 
             return block;
         }
@@ -68,28 +141,27 @@ namespace Phantasma.Spook.Oracles
         protected override InteropTransaction PullPlatformTransaction(string platformName, string chainName, Hash hash)
         {
             InteropTransaction tx;
-            byte[] bytes;
 
-            var fileName = GetCacheFileName(platformName, chainName, hash.ToString(), "tx");
-            if (File.Exists(fileName))
+            if ((tx= Read(platformName, chainName, hash, StorageConst.Transaction)) != null)
             {
-                bytes = File.ReadAllBytes(fileName);
-                tx = Serialization.Unserialize<InteropTransaction>(bytes);
                 return tx;
             }
 
             switch (platformName)
             {
                 case NeoWallet.NeoPlatform:
-                    tx = CLI.neoScanAPI.ReadTransaction(hash);
+                    //todo use neoAPI
+                    tx = CLI.neoAPI.ReadTransaction(hash);
                     break;
 
                 default:
                     throw new OracleException("Uknown oracle platform: " + platformName);
             }
 
-            bytes = Serialization.Serialize(tx);
-            File.WriteAllBytes(fileName, bytes);
+            if (!PersistBlock(platformName, chainName, hash, tx, StorageConst.Transaction))
+            {
+                throw new OracleException($"Persisting oracle block { hash } on platform { platformName } failed!");
+            }
 
             return tx;
         }
@@ -99,10 +171,5 @@ namespace Phantasma.Spook.Oracles
             throw new OracleException("unknown oracle url");
         }
 
-        private string GetCacheFileName(string platform, string chain, string hash, string extension)
-        {
-            var fileName = $"{cachePath}/{platform}_{chain}_{hash}.{extension}";
-            return fileName;
-        }
     }
 }
