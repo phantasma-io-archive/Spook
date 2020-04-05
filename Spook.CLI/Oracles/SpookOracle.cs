@@ -18,7 +18,7 @@ namespace Phantasma.Spook.Oracles
 
         enum StorageConst
         {
-            LastBlockHeight,
+            CurrentBlock,
             Block,
             Transaction
         }
@@ -36,7 +36,7 @@ namespace Phantasma.Spook.Oracles
             }
         }
 
-        public IKeyValueStoreAdapter CreateKeyStoreAdapter(string name)
+        private IKeyValueStoreAdapter CreateKeyStoreAdapter(string name)
         {
             if (_keystoreCache.ContainsKey(name))
             {
@@ -79,6 +79,22 @@ namespace Phantasma.Spook.Oracles
             }
         }
 
+        public InteropBlock GetCurrentBlock(string platformName, string chainName)
+        {
+            var storageKey = StorageConst.CurrentBlock + chainName + hash.ToString();
+            IKeyValueStoreAdapter keyStore = _keystoreCache[platformName + StorageConst.Block];
+
+            return keyStore.Get(storageKey);
+        }
+
+        public void SetCurrentBlock(string platformName, string chainName, InteropBlock block)
+        {
+            var storageKey = StorageConst.CurrentBlock + chainName + hash.ToString();
+            IKeyValueStoreAdapter keyStore = _keystoreCache[platformName + StorageConst.Block];
+
+            keyStore.Set(storageKey, block);
+        }
+
         private bool Persist<T>(string platformName, string chainName, Hash hash, StorageConst type, T data)
         {
             var storageKey = type + chainName + hash.ToString();
@@ -110,11 +126,16 @@ namespace Phantasma.Spook.Oracles
             throw new OracleException("No support for oracle prices in this node");
         }
 
-        protected override InteropBlock PullPlatformBlock(string platformName, string chainName, Hash hash)
+        protected override InteropBlock PullPlatformBlock(string platformName, string chainName, Hash hash, BigInteger height = null)
         {
             InteropBlock block;
 
-            if ((block = Read(platformName, chainName, hash, StorageConst.Block)) != null)
+            if (hash == null && height == null)
+            {
+                throw new OracleException($"Fetching block not possible without hash or height");
+            }
+
+            if (height == null && (block = Read(platformName, chainName, hash, StorageConst.Block)) != null)
             {
                 return block;
             }
@@ -122,15 +143,16 @@ namespace Phantasma.Spook.Oracles
             switch (platformName)
             {
                 case NeoWallet.NeoPlatform:
-                    //todo use neoAPI
-                    block = CLI.neoAPI.ReadBlock(hash);
+                    block = CLI.neoAPI.GetBlock((height == null) ? hash : height);
                     break;
 
                 default:
                     throw new OracleException("Uknown oracle platform: " + platformName);
             }
+            // TODO, maybe check if block is of interest (contains swaps)
+            // Otherwise we would store all blocks, which is not what we might want.
             
-            if (!PersistBlock(platformName, chainName, hash, block, StorageConst.Block))
+            if (!Persist<InteropBlock>(platformName, chainName, hash, block, StorageConst.Block))
             {
                 throw new OracleException($"Persisting oracle block { hash } on platform { platformName } failed!");
             }
@@ -150,17 +172,16 @@ namespace Phantasma.Spook.Oracles
             switch (platformName)
             {
                 case NeoWallet.NeoPlatform:
-                    //todo use neoAPI
-                    tx = CLI.neoAPI.ReadTransaction(hash);
+                    tx = CLI.neoAPI.GetTransaction(hash);
                     break;
 
                 default:
                     throw new OracleException("Uknown oracle platform: " + platformName);
             }
 
-            if (!PersistBlock(platformName, chainName, hash, tx, StorageConst.Transaction))
+            if (!Persist<InteropTransaction>(platformName, chainName, hash, tx, StorageConst.Transaction))
             {
-                throw new OracleException($"Persisting oracle block { hash } on platform { platformName } failed!");
+                throw new OracleException($"Persisting oracle transaction { hash } on platform { platformName } failed!");
             }
 
             return tx;

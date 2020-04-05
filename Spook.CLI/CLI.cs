@@ -1065,7 +1065,7 @@ namespace Phantasma.Spook
 
             if (settings.GetBool("swaps.enabled"))
             {
-                var tokenSwapper = new TokenSwapper(node_keys, nexusApi, neoScanAPI, neoAPI, minimumFee, logger, settings);
+                var tokenSwapper = new TokenSwapper(node_keys, nexusApi, minimumFee, logger, settings);
                 nexusApi.TokenSwapper = tokenSwapper;
 
                 new Thread(() =>
