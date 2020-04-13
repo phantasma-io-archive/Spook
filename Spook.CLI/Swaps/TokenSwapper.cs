@@ -2,7 +2,6 @@
 using System.Linq;
 using Phantasma.Numerics;
 using Phantasma.Cryptography;
-using Phantasma.Spook.Oracles;
 using Phantasma.Core.Log;
 using Phantasma.Core.Utils;
 using Phantasma.Neo.Core;
@@ -18,6 +17,7 @@ using Phantasma.API;
 using Phantasma.Storage.Context;
 using Phantasma.Storage;
 using Phantasma.Storage.Utils;
+using Phantasma.Spook.Interop;
 using System.IO;
 
 namespace Phantasma.Spook.Swaps
@@ -132,6 +132,7 @@ namespace Phantasma.Spook.Swaps
         private readonly BigInteger MinimumFee;
         private readonly NeoAPI neoAPI;
         private OracleReader OracleReader;
+        public string swapAddress;
 
         private readonly Dictionary<string, BigInteger> interopBlocks;
         private PlatformInfo[] platforms;
@@ -140,12 +141,13 @@ namespace Phantasma.Spook.Swaps
 
         private Dictionary<string, ChainWatcher> _finders = new Dictionary<string, ChainWatcher>();
 
-        public TokenSwapper(PhantasmaKeys swapKey, NexusAPI nexusAPI, BigInteger minFee, Logger logger, Arguments arguments)
+        public TokenSwapper(PhantasmaKeys swapKey, NexusAPI nexusAPI, NeoAPI neoAPI, BigInteger minFee, Logger logger, Arguments arguments)
         {
             this.SwapKeys = swapKey;
             this.NexusAPI = nexusAPI;
-            this.OracleReader = Nexus.CreateOracleReader();
+            this.OracleReader = Nexus.GetOracleReader();
             this.MinimumFee = minFee;
+            this.neoAPI = neoAPI;
 
             this.logger = logger;
 
@@ -236,7 +238,9 @@ namespace Phantasma.Spook.Swaps
                     return;
                 }
 
-                _finders["neo"] = new NeoInterop(this, wifs["neo"], interopBlocks["neo"], OracleReader, logger);
+                var neoInterop = new NeoInterop(this, neoAPI,  wifs["neo"], interopBlocks["neo"], OracleReader, logger);
+                swapAddress = neoInterop.LocalAddress;
+                _finders["neo"] = neoInterop;
             }
 
             if (this.platforms.Length == 0)
