@@ -7,9 +7,11 @@ using Phantasma.Cryptography;
 using Phantasma.Domain;
 using Phantasma.Pay.Chains;
 using Phantasma.Storage;
+using Phantasma.Storage.Context;
 using Phantasma.Neo.Cryptography;
 using Phantasma.Neo.Utils;
 using Phantasma.Spook.Interop;
+using Logger = Phantasma.Core.Log.Logger;
 using NeoBlock = Phantasma.Neo.Core.Block;
 using NeoTx = Phantasma.Neo.Core.Transaction;
 
@@ -22,46 +24,67 @@ namespace Phantasma.Spook.Oracles
         private Func<string, IKeyValueStoreAdapter> _adapterFactory = null;
 
         private Dictionary<string, IKeyValueStoreAdapter> _keystoreCache =
-                new Dictionary<string, IKeyValueStoreAdapter>();
+           new Dictionary<string, IKeyValueStoreAdapter>();
 
         private Dictionary<string, object> _keyValueStore =
-                new Dictionary<string, object>();
+           new Dictionary<string, object>();
+
+        private KeyValueStore<string, string> platforms;
+
+        private Logger logger;
+
         private bool storageInitialized;
 
         enum StorageConst
         {
-            CurrentBlock,
+            CurrentHeight,
             Block,
-            Transaction
+            Transaction,
+            Platform
         }
 
-        public SpookOracle(CLI cli, Nexus nexus, Func<string, IKeyValueStoreAdapter> adapterFactory = null) : base(nexus)
+        public SpookOracle(CLI cli, Nexus nexus, Logger logger, Func<string, IKeyValueStoreAdapter> adapterFactory = null) : base(nexus)
         {
             this.CLI = cli;
             this._adapterFactory = adapterFactory;
+            nexus.Attach(this);
+            platforms = new KeyValueStore<string, string>(CreateKeyStoreAdapter(StorageConst.Platform.ToString()));
 
-            //var platforms = nexus.GetPlatforms(nexus.RootStorage);
-            //Console.WriteLine("platform count:" + platforms.Length);
-            //Console.WriteLine("STACK: " + new System.Diagnostics.StackTrace(true).ToString());
-            //foreach (var platform in platforms)
-            //{
-            //    Console.WriteLine("Adding: " + platform + StorageConst.Block);
-            //    Console.WriteLine("Adding: " + platform + StorageConst.Transaction);
-            //    _keyValueStore.Add(platform + StorageConst.Block, new KeyValueStore<string, InteropBlock>(CreateKeyStoreAdapter(platform + StorageConst.Block)));
-            //    _keyValueStore.Add(platform + StorageConst.Transaction, new KeyValueStore<string, InteropTransaction>(CreateKeyStoreAdapter(platform + StorageConst.Transaction)));
-            //}
-            //Console.WriteLine("AFTER COUNT: " + _keyValueStore.Count);
+            logger.Message("Platform count: " + platforms.Count);
+            platforms.Visit((key, _) =>
+    		{
+                logger.Message("Adding: " + key);
+                _keyValueStore.Add(key + StorageConst.Block, new KeyValueStore<string, InteropBlock>(
+                                                    CreateKeyStoreAdapter(key + StorageConst.Block)
+                                                )
+                                            );
+
+                _keyValueStore.Add(key + StorageConst.Transaction, new KeyValueStore<string, InteropTransaction>(
+                                                    CreateKeyStoreAdapter(key + StorageConst.Transaction)
+                                                )
+                                            );
+
+                _keyValueStore.Add(key + StorageConst.CurrentHeight, new KeyValueStore<string, string>(
+                                                    CreateKeyStoreAdapter(key + StorageConst.CurrentHeight)
+                                                )
+                                            );
+    		});
         }
 
-        public void Update(INexus nexus)
+        public void Update(INexus nexus, StorageContext storage)
         {
-            var platforms = (nexus as Nexus).GetPlatforms((nexus as Nexus).RootStorage);
-            foreach (var platform in platforms)
+            var nexusPlatforms = (nexus as Nexus).GetPlatforms(storage);
+            foreach (var platform in nexusPlatforms)
             {
-                Console.WriteLine("Adding: " + platform + StorageConst.Block);
-                Console.WriteLine("Adding: " + platform + StorageConst.Transaction);
+                if (_keyValueStore.ContainsKey(platform + StorageConst.Block) || _keyValueStore.ContainsKey(platform + StorageConst.Transaction))
+                {
+                    continue;
+                }
+                platforms.Set(platform, platform);
+
                 _keyValueStore.Add(platform + StorageConst.Block, new KeyValueStore<string, InteropBlock>(CreateKeyStoreAdapter(platform + StorageConst.Block)));
                 _keyValueStore.Add(platform + StorageConst.Transaction, new KeyValueStore<string, InteropTransaction>(CreateKeyStoreAdapter(platform + StorageConst.Transaction)));
+                _keyValueStore.Add(platform + StorageConst.CurrentHeight, new KeyValueStore<string, string>(CreateKeyStoreAdapter(platform + StorageConst.CurrentHeight)));
             }
         }
 
@@ -76,7 +99,6 @@ namespace Phantasma.Spook.Oracles
 
             if (_adapterFactory != null)
             {
-                Console.WriteLine("NAME:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: " + name);
                 result = _adapterFactory(name);
 
                 if (result == null)
@@ -99,43 +121,65 @@ namespace Phantasma.Spook.Oracles
 
         private T Read<T>(string platform, string chainName, Hash hash, StorageConst type)
         {
-            Console.WriteLine("COUNT: " + _keyValueStore.Count);
-            var keyStore = _keyValueStore[platform + type] as KeyValueStore<string, T>;
             var storageKey = type + chainName + hash.ToString();
+            var keyStore = _keyValueStore[platform + type] as KeyValueStore<string, T>;
 
             try
             {
-                T data = keyStore.Get(storageKey);
-                return data;
+                if(keyStore.TryGet(storageKey, out T data))
+                {
+                    return data;
+                }
+                else
+                {
+                    logger.Message($"no data found for key { storageKey }");
+                }
             }
-            catch
+            catch (Exception e)
             {
+                Console.WriteLine(e);
                 return default(T);
             }
+            return default(T);
         }
 
-        public InteropBlock GetCurrentBlock(string platformName, string chainName)
+        public override List<InteropBlock> ReadAllBlocks(string platformName, string chainName)
         {
-            var storageKey = StorageConst.CurrentBlock + chainName;
+            var blockList = new List<InteropBlock>();
             var keyStore = _keyValueStore[platformName + StorageConst.Block] as KeyValueStore<string, InteropBlock>;
 
-            return keyStore.Get(storageKey);
+            keyStore.Visit((key, value) =>
+    		{
+                blockList.Add(value);
+    		});
+
+    		return blockList;
         }
 
-        public void SetCurrentBlock(string platformName, string chainName, InteropBlock block)
+        public override string GetCurrentHeight(string platformName, string chainName)
         {
-            var storageKey = StorageConst.CurrentBlock + chainName;
-            var keyStore = _keyValueStore[platformName + StorageConst.Block] as KeyValueStore<string, InteropBlock>;
+            var storageKey = StorageConst.CurrentHeight + platformName + chainName;
+            var keyStore = _keyValueStore[platformName + StorageConst.CurrentHeight] as KeyValueStore<string, string>;
+            if (keyStore.TryGet(storageKey, out string height))
+            {
+                return height; 
+            }
 
-            keyStore.Set(storageKey, block);
+            return "";
         }
 
-        private bool Persist<T>(string platformName, string chainName, Hash hash, StorageConst type, T data)
+        public override void SetCurrentHeight(string platformName, string chainName, string height)
+        {
+            var storageKey = StorageConst.CurrentHeight + platformName + chainName;
+            var keyStore = _keyValueStore[platformName + StorageConst.CurrentHeight] as KeyValueStore<string, string>;
+
+            keyStore.Set(storageKey, height);
+        }
+
+        private bool Persist<T>(string platform, string chainName, Hash hash, StorageConst type, T data)
         {
             var storageKey = type + chainName + hash.ToString();
-            Console.WriteLine("storageKey: " + storageKey);
-            var keyStore = _keyValueStore[platformName + type] as KeyValueStore<string, T>;
-            Console.WriteLine("storageKey: " + platformName + type);
+            var keyStore = _keyValueStore[platform + type] as KeyValueStore<string, T>;
 
             if(!keyStore.ContainsKey(storageKey))
             {
@@ -172,7 +216,7 @@ namespace Phantasma.Spook.Oracles
 
             InteropBlock block = Read<InteropBlock>(platformName, chainName, hash, StorageConst.Block);
 
-            if (height == null && block.Hash != null)
+            if (height == null && block.Hash != null && block.Hash != Hash.Null)
             {
                 return block;
             }
@@ -192,9 +236,6 @@ namespace Phantasma.Spook.Oracles
                     {
                         neoBlock = CLI.neoAPI.GetBlock(height);
                     }
-                    //block = CLI.neoAPI.GetBlock((height == 0)
-                    //        ? new UInt256(LuxUtils.ReverseHex(hash.ToString()).HexToBytes())
-                    //        : height);
 
                     interopTuple = NeoInterop.MakeInteropBlock(neoBlock, CLI.neoAPI, CLI.tokenSwapper.swapAddress);
                     break;
@@ -203,23 +244,34 @@ namespace Phantasma.Spook.Oracles
                     throw new OracleException("Uknown oracle platform: " + platformName);
             }
 
-
-            //TODO store transactions --> interopTuple.Item2
-            Console.WriteLine("Store: " + interopTuple.Item1.Hash);
-
-            if (interopTuple.Item1.Hash != null && !Persist<InteropBlock>(platformName, chainName, hash, StorageConst.Block, interopTuple.Item1))
+            if (interopTuple.Item1.Hash != Hash.Null)
             {
-                throw new OracleException($"Persisting oracle block { hash } on platform { platformName } failed!");
+
+                var persisted = Persist<InteropBlock>(platformName, chainName, interopTuple.Item1.Hash, StorageConst.Block, interopTuple.Item1);
+
+                if (persisted)
+                {
+                    var transactions = interopTuple.Item2;
+
+                    foreach (var tx in transactions)
+                    {
+                        var txPersisted = Persist<InteropTransaction>(platformName, chainName, tx.Hash, StorageConst.Transaction, tx);
+                    }
+                }
+                else 
+                {
+                    logger.Error($"Persisting oracle block { interopTuple.Item1.Hash } on platform { platformName } failed!");
+                }
             }
 
-            return block;
+            return interopTuple.Item1;
         }
 
         protected override InteropTransaction PullPlatformTransaction(string platformName, string chainName, Hash hash)
         {
             InteropTransaction tx = Read<InteropTransaction>(platformName, chainName, hash, StorageConst.Transaction);
 
-            if (tx.Hash != null)
+            if (tx != null && tx.Hash != null)
             {
                 return tx;
             }
@@ -237,15 +289,15 @@ namespace Phantasma.Spook.Oracles
                     throw new OracleException("Uknown oracle platform: " + platformName);
             }
 
-            if (!Persist<InteropTransaction>(platformName, chainName, hash, StorageConst.Transaction, tx))
+            if (!Persist<InteropTransaction>(platformName, chainName, tx.Hash, StorageConst.Transaction, tx))
             {
-                throw new OracleException($"Persisting oracle transaction { hash } on platform { platformName } failed!");
+                logger.Error($"Persisting oracle transaction { hash } on platform { platformName } failed!");
             }
 
             return tx;
         }
 
-        protected override byte[] PullData(Timestamp time, string url)
+        protected override T PullData<T>(Timestamp time, string url)
         {
             throw new OracleException("unknown oracle url");
         }

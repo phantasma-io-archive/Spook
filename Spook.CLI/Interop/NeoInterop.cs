@@ -15,7 +15,9 @@ using Phantasma.Pay.Chains;
 using Phantasma.Cryptography;
 using Phantasma.Spook.Swaps;
 using Phantasma.Core.Log;
+using Phantasma.Storage;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Threading;
 
 namespace Phantasma.Spook.Interop
@@ -25,9 +27,9 @@ namespace Phantasma.Spook.Interop
         private Logger logger;
         private NeoAPI neoAPI;
         private BigInteger _interopBlockHeight;
-        private BigInteger _currentBlockHeight;
         private OracleReader oracleReader;
         private DateTime lastScan;
+        private static bool initialStart = true;
 
         public static Dictionary<string, CryptoCurrencyInfo> NeoTokenInfo = new Dictionary<string, CryptoCurrencyInfo>()
         {
@@ -40,11 +42,16 @@ namespace Phantasma.Spook.Interop
         public NeoInterop(TokenSwapper swapper, NeoAPI neoAPI, string wif, PBigInteger interopBlockHeight
             ,OracleReader oracleReader, Logger logger)
                 : base(swapper, wif, "neo")
-        { 
-            BigInteger currentBlockHeight = 0;
+        {
+            string lastBlockHeight = oracleReader.GetCurrentHeight("neo", "neo");
 
-            this._interopBlockHeight = new BigInteger(interopBlockHeight.ToUnsignedByteArray()); // currently necessary, neo uses native C# bigint
-            this._currentBlockHeight = currentBlockHeight;
+            //TODO
+            this._interopBlockHeight = 18008779;
+            //this._interopBlockHeight= (!string.IsNullOrEmpty(lastBlockHeight)) 
+            //                           ? BigInteger.Parse(lastBlockHeight) 
+            //                           : new BigInteger(interopBlockHeight.ToUnsignedByteArray());
+
+            Console.WriteLine($"interopHeight: {_interopBlockHeight}");
             this.neoAPI = neoAPI;
 
             this.oracleReader = oracleReader;
@@ -64,81 +71,108 @@ namespace Phantasma.Spook.Interop
         {
             var result = new List<PendingSwap>();
 
-            var delta = DateTime.UtcNow - lastScan;
-            if (delta.TotalSeconds < 10)
+            // initial start, we have to verify all processed swaps
+            if (initialStart)
             {
-                return Enumerable.Empty<PendingSwap>();
+                // we need to find a better solution for that though
+                var allInteropBlocks = oracleReader.ReadAllBlocks("neo", "neo");
+
+                Console.WriteLine($"Found {allInteropBlocks.Count} blocks");
+                //Thread.Sleep(1000000000);
+
+                foreach (var block in allInteropBlocks)
+                {
+                    ProcessBlock(block, result);
+                }
+
+                initialStart = false;
+
+                // return after the initial start to be able to process all swaps that happend in the mean time.
+                return result;
             }
-
-            logger.Message($"Update NeoInterop." + lastScan);
-            //////////////////////////////////////////////////////////////////////////////////
-
 
             var blockIterator = new BlockIterator(neoAPI);
-            Console.WriteLine($"Need to get { blockIterator.currentBlock - _interopBlockHeight } blocks");
+            var blockDifference = blockIterator.currentBlock - _interopBlockHeight;
+            var batchCount = (blockDifference > 8) ? 8 : blockDifference; //TODO make it a constant, should be no more than 8
+
             while (blockIterator.currentBlock > _interopBlockHeight)
             {
-                Console.WriteLine("Getting block: " + _interopBlockHeight);
-                //var url = DomainExtensions.GetOracleBlockURL("neo", "neo", PBigInteger.FromUnsignedArray(_interopBlockHeight.ToByteArray(), true));
-                //var url = DomainExtensions.GetOracleBlockURL("neo", "neo", PBigInteger.Parse("5377712"));
-                var url = DomainExtensions.GetOracleBlockURL("neo", "neo", PBigInteger.Parse("5377704"));
-                Console.WriteLine(url);
-                var bytesBlock = oracleReader.Read(DateTime.Now, url);
-                Console.Write("got block");
-                Thread.Sleep(100000);
-                //Console.WriteLine("Get block: " + _interopBlockHeight);
-                //TODO get block from chain
-                //InteropBlock block = SpookOracle.PullBlock(oracleReader,
-                //        NeoWallet.NeoPlatform, NeoWallet.NeoPlatform, null, _interopBlockHeight
-                //        );
-                _interopBlockHeight++;
+                Console.WriteLine("============================================================= current: " + blockIterator.currentBlock + " interop: " + _interopBlockHeight);
+                //Console.WriteLine("start======================= " + DateTime.Now.ToString("yyyy’-‘MM’-‘dd’ ’HH’:’mm’:’ss.fff"));
+                if (batchCount > 1)
+                {
+                    List<Task<InteropBlock>> taskList = new List<Task<InteropBlock>>();
+                    var nextCurrentBlockHeight = _interopBlockHeight + batchCount;
+                    
+                    for (var i = _interopBlockHeight; i < nextCurrentBlockHeight; i++)
+                    {
+                        var url = DomainExtensions.GetOracleBlockURL(
+                                "neo", "neo", PBigInteger.FromUnsignedArray(i.ToByteArray(), true));
+                    
+                        taskList.Add(
+                                new Task<InteropBlock>(() =>
+                                {
+                                    return oracleReader.Read<InteropBlock>(DateTime.Now, url);
+                                })
+                        );
+                    }
+                    
+                    foreach (var task in taskList)
+                    {
+                        task.Start();
+                    }
+                    
+                    Task.WaitAll(taskList.ToArray());
+                    
+                    foreach (var task in taskList)
+                    {
+                        var block = task.Result;
+
+                        ProcessBlock(block, result);
+                    }
+
+                    oracleReader.SetCurrentHeight("neo", "neo", _interopBlockHeight.ToString());
+                    _interopBlockHeight += batchCount;
+                }
+                else
+                {
+                    var url = DomainExtensions.GetOracleBlockURL(
+                            "neo", "neo", PBigInteger.FromUnsignedArray(_interopBlockHeight.ToByteArray(), true));
+
+                    var interopBlock = oracleReader.Read<InteropBlock>(DateTime.Now, url);
+
+                    ProcessBlock(interopBlock, result);
+
+                    oracleReader.SetCurrentHeight("neo", "neo", _interopBlockHeight.ToString());
+                    _interopBlockHeight++;
+                }
             }
-
-            //////////////////////////////////////////////////////////////////////////////////
-            //if (json == null)
-            //{
-            //    logger.Warning("failed to fetch address page");
-            //    return Enumerable.Empty<PendingSwap>();
-            //}
-
-            //var root = JSONReader.ReadFromString(json);
-
-            //var all = root.GetNode("result");
-            //var allTx = all.GetNode("sent");
-            //var received = all.GetNode("received");
-            //var address = all.GetString("address");
-
-            //for (int i = received.ChildCount - 1; i >= 0; i--)
-            //{
-            //    allTx.AddNode(received.GetNodeByIndex(i));
-            //}
-
-            //logger.Message($"entries: {allTx.ChildCount}");
-            //for (int i = allTx.ChildCount - 1; i >= 0; i--)
-            //{
-            //    var entry = allTx.GetNodeByIndex(i);
-
-            //    var temp = entry.GetString("block_index");
-            //    var height = BigInteger.Parse(temp);
-            //    //logger.Message($"block_height: {_blockHeight.ToString()} height: {height}");
-
-            //    if (height >= _blockHeight)
-            //    {
-            //        try
-            //        {
-            //            ProcessTransaction(entry, result, address);
-            //            _blockHeight = height;
-            //        }
-            //        catch (Exception e)
-            //        {
-            //            logger.Error("error: " + e.ToString());
-            //        }
-            //    }
-            //}
-
-            //lastScan = DateTime.UtcNow;
-
             return result;
+        }
+
+        private void ProcessBlock(InteropBlock block, List<PendingSwap> result)
+        {
+            foreach (var txHash in block.Transactions)
+            {
+                var interopTx = oracleReader.ReadTransaction("neo", "neo", txHash);
+
+                // TODO check why
+                if (interopTx.Transfers.Length != 1)
+                {
+                    throw new OracleException("neo transfers with multiple sources or tokens not supported yet");
+                }
+
+                foreach (var interopTransfer in interopTx.Transfers)
+                {
+                    result.Add(
+                                new PendingSwap(
+                                                 this.PlatformName
+                                                ,txHash
+                                                ,interopTransfer.sourceAddress
+                                                ,interopTransfer.interopAddress)
+                            );
+                }
+            }
         }
 
         private static string FindSymbolFromAsset(string assetID)
@@ -147,48 +181,15 @@ namespace Phantasma.Spook.Interop
             {
                 assetID = assetID.Remove(0,2) ;
             }
+            //Console.WriteLine("asset.... " + assetID);
             switch (assetID)
             {
-                case "ed07cffad18f1308db51920d99a2af60ac66a7b3": return "SOUL";
+                case "b3a766ac60afa2990d9251db08138fd1facf07ed": return "SOUL";
+                case "ed07cffad18f1308db51920d99a2af60ac66a7b3": return "SOUL"; // ugly needs change
                 case "c56f33fc6ecfcd0c225c4ab356fee59390af8560be0e930faebe74a6daff7c9b": return "NEO";
                 case "602c79718b16e442de58778e148d0b1084e3b2dffd5de6b7b16cee7969282de7": return "GAS";
                 default: return null;
             }
-        }
-
-        private void ProcessTransaction(DataNode entry, List<PendingSwap> result, string address)
-        {
-            var destinationAddress = address;
-            if (destinationAddress != this.LocalAddress)
-            {
-                return;
-            }
-
-            var asset = entry.GetString("asset_hash");
-            var hash = entry.GetString("tx_hash");
-
-            var token = Swapper.FindTokenByHash(asset, "neo");
-            if (token == null)
-            {
-                logger.Warning("Someone tried to swap unsupported asset: " + asset);
-                return;
-            }
-
-            var reader = Swapper.Nexus.GetOracleReader();
-            var interopTx = reader.ReadTransaction("neo", "neo", Hash.Parse(hash));
-
-            if (interopTx.Transfers.Length != 1)
-            {
-                throw new OracleException("neo transfers with multiple sources or tokens not supported yet");
-            }
-
-            var transfer = interopTx.Transfers[0];
-
-            var destAddress = transfer.interopAddress;
-            var sourceAddress = transfer.sourceAddress;
-
-            var swap = new PendingSwap(this.PlatformName, Hash.Parse(hash), sourceAddress, destAddress);
-            result.Add(swap);
         }
 
         public static Tuple<InteropBlock, InteropTransaction[]> MakeInteropBlock(NeoBlock block, NeoAPI api, string swapAddress)
@@ -204,7 +205,7 @@ namespace Phantasma.Spook.Interop
                     || tx.type == TransactionType.ContractTransaction)
                 {
                     var interopTx = MakeInteropTx(tx, api, swapAddress);
-                    if (interopTx.Hash != null)
+                    if (interopTx.Hash != Hash.Null)
                     {
                         interopTransactions.Add(interopTx);
                         hashes.Add(Hash.FromBytes(tx.Hash.ToArray()));
@@ -213,7 +214,8 @@ namespace Phantasma.Spook.Interop
                 }
             }
 
-            InteropBlock iBlock = (blockOfInterest) 
+            //Console.WriteLine("blockOfInterest " + block.Height + " :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::  " + blockOfInterest);
+            InteropBlock iBlock = (blockOfInterest)
                 ? new InteropBlock("neo", "neo", Hash.FromBytes(block.Hash.ToArray()), hashes.ToArray())
                 : new InteropBlock("neo", "neo", Hash.Null, hashes.ToArray());
 
@@ -222,18 +224,28 @@ namespace Phantasma.Spook.Interop
 
         public static InteropTransaction MakeInteropTx(NeoTx tx, NeoAPI api, string swapAddress)
         {
+            Console.WriteLine("checking tx: " + tx.Hash);
+
             List<InteropTransfer> interopTransfers = new List<InteropTransfer>();
-            Console.WriteLine("##### " + tx.Hash);
-            //if (tx.Hash.ToString() == "0x9fe68e6c3adac42d53832c76d714fc2c8e5eb96a7edc59ec345c80e03718a019"
-            //        || tx.Hash.ToString() == "0x62fdebb396c596c1451df99b0f7d14e809ed686455eeeec73dfce656a0bf39bc")
-            //{
-            Console.WriteLine("##### 11   " + tx.Hash);
+
+            var emptyTx = new InteropTransaction(Hash.Null, interopTransfers.ToArray());
 
             PBigInteger amount;
-            var sourceScriptHash = CryptoUtils.Hash160(tx.witnesses[0].verificationScript);
+
+            if (tx.witnesses.Length != 1)
+            {
+                //currently only one witness allowed
+                return emptyTx;
+            }
+
+            var sourceScriptHash = tx.witnesses[0].verificationScript.Sha256().RIPEMD160();
             var sourceAddress = NeoWallet.EncodeByteArray(sourceScriptHash);
-            Console.WriteLine("interop sourceAddress: " + sourceAddress);
-            Console.WriteLine("neo sourceAddress: " + NeoWallet.DecodeAddress(sourceAddress));
+            var interopAddress = tx.witnesses[0].ExtractAddress();
+            var interopSwapAddress = NeoWallet.EncodeAddress(swapAddress);
+            //Console.WriteLine("INTEROPADDRESS: " + interopAddress);
+            //Console.WriteLine("xswapAddress: " + swapAddress);
+            //Console.WriteLine("interop sourceAddress: " + sourceAddress);
+            //Console.WriteLine("neo sourceAddress: " + NeoWallet.DecodeAddress(sourceAddress));
 
             if (sourceAddress.ToString() == swapAddress)
             {
@@ -242,17 +254,18 @@ namespace Phantasma.Spook.Interop
 
             if (tx.outputs.Length > 0)
             {
-                Console.WriteLine("UTXO Transaction!!!!!!!!!!!!!!!!");
                 foreach (var output in tx.outputs)
                 {
+                    //Console.WriteLine("have outputs");
                     var targetAddress = NeoWallet.EncodeByteArray(output.scriptHash.ToArray());
-                    Console.WriteLine("interop targetAddress : " + targetAddress);
-                    Console.WriteLine("neo targetAddress: " + NeoWallet.DecodeAddress(targetAddress));
+                    //Console.WriteLine("interop targetAddress : " + targetAddress);
+                    //Console.WriteLine("neo targetAddress: " + NeoWallet.DecodeAddress(targetAddress));
 
                     var swpAddress = NeoWallet.EncodeAddress(swapAddress);
-                    Console.WriteLine("interop swpAddress: " + swpAddress);
-                    Console.WriteLine("neo swpAddress: " + NeoWallet.DecodeAddress(swpAddress));
-                    if (targetAddress.ToString() == swapAddress)
+                    //Console.WriteLine("interop swpAddress: " + swpAddress);
+                    //Console.WriteLine("neo swpAddress: " + NeoWallet.DecodeAddress(swpAddress));
+                    //if (targetAddress.ToString() == swapAddress)
+                    if (interopSwapAddress == targetAddress)
                     {
                         var token = FindSymbolFromAsset(new UInt256(output.assetID).ToString());
                         CryptoCurrencyInfo tokenInfo;
@@ -264,10 +277,11 @@ namespace Phantasma.Spook.Interop
                         else
                         {
                             // asset not swapable at the moment...
-                            return default(InteropTransaction);
+                            Console.WriteLine("Asset not swapable");
+                            return emptyTx;
                         }
 
-                        Console.WriteLine(amount);
+                        Console.WriteLine("UTXO " + amount);
                         interopTransfers.Add
                         (
                             new InteropTransfer
@@ -276,7 +290,7 @@ namespace Phantasma.Spook.Interop
                                 sourceAddress,
                                 DomainSettings.PlatformName,
                                 targetAddress,
-                                Address.Null, // interop address
+                                interopAddress, // interop address
                                 token.ToString(),
                                 amount
                             )
@@ -284,65 +298,129 @@ namespace Phantasma.Spook.Interop
                     }
                 }
             }
-            //}
 
-            //var script = NeoDisassembler.Disassemble(tx.script);
-            //int pos = 0;
+            if (tx.script != null && tx.script.Length > 0) // NEP5 transfers
+            {
+                var script = NeoDisassembler.Disassemble(tx.script, true);
 
-            //foreach (var entry in script.lines)
-            //{
-            //    pos++;
-            //    if (pos > 3)
-            //    {
-            //        // we are only interested in the first three elements
-            //        break;
-            //    }
+                Console.WriteLine("SCRIPT ====================");
+                foreach (var entry in script.lines)
+                {
+                    Console.WriteLine($"{entry.name} : { entry.opcode }");
+                }
+                Console.WriteLine("SCRIPT ====================");
 
-            //    if (pos == 1)
-            //    {
-            //        amount = new BigInteger(entry.data);
-            //        Console.WriteLine("Amount: " + amount/new BigInteger(100000000));
-            //    }
-            //    if (pos == 2 || pos == 3)
-            //    {
-            //        if (pos ==2)
-            //        {
-            //            var targetScriptHash = new UInt160(entry.data);
-            //            Console.WriteLine("targetScriptHash: " + targetScriptHash);
-            //            var targetAddress = NeoWallet.EncodeByteArray(entry.data);
-            //            Console.WriteLine("targetAddress: " + targetAddress);
-            //            Console.WriteLine("SwapAddress: " + swapAddress);
-            //            if (targetScriptHash.ToString() == swapAddress)
-            //            {
-            //                // found a swap, call getapplicationlog now to get transaction details and verify the tx was actually processed.
-            //                ApplicationLog[] appLogs = api.GetApplicationLog(tx.Hash);
-            //                for (var i = 0; i < appLogs.Length; i++)
-            //                {
-            //                    var token = FindSymbolFromAsset(appLogs[i].contract);
-            //                    interopTransfers.Add
-            //                    (
-            //                        new InteropTransfer
-            //                        (
-            //                            "neo", // todo Pay.Chains.NeoWallet.NeoPlatform
-            //                            NeoWallet.EncodeByteArray(appLogs[i].sourceAddress.ToArray()),
-            //                            DomainSettings.PlatformName,
-            //                            NeoWallet.EncodeByteArray(appLogs[i].targetAddress.ToArray()),
-            //                            Address.Null, // interop address
-            //                            token.ToString(),
-            //                            appLogs[i].amount
-            //                        )
-            //                    );
-            //                }
-            //            }
-            //        }
-            //        else
-            //        {
-            //            //TODO reverse swap
-            //            var sourceScriptHash = new UInt160(entry.data);
-            //            var sourceAddress = NeoWallet.EncodeByteArray(sourceScriptHash.ToArray());
-            //        }
-            //    }
-            //}
+                if (script.lines.Count() < 7)
+                {
+                    Console.WriteLine("NO SCRIPT!!!!");
+                    return emptyTx;
+                }
+
+                var disasmEntry = script.lines.ElementAtOrDefault(6);
+
+                //if ( disasmEntry == null )
+                //{
+                //    Console.WriteLine("disasmEntry is null");
+                //}
+                //if ( disasmEntry != null )
+                //{
+                //    if ( disasmEntry.data == null)
+                //        Console.WriteLine("disasmEntry.data is 0");
+                //}
+
+                if (disasmEntry.name != "APPCALL" || disasmEntry.data == null ||  disasmEntry.data.Length == 0)
+                {
+                    Console.WriteLine("NO APPCALL");
+                    return emptyTx;
+                }
+                else
+                {
+                    
+                    var assetString = new UInt160(disasmEntry.data).ToString();
+                    Console.WriteLine("ASSET::::::::::::: " + assetString);
+                    if (string.IsNullOrEmpty(assetString) || FindSymbolFromAsset(assetString) == null)
+                    {
+                        Console.WriteLine("Ignore TX due to non swapable token.");
+                        return emptyTx;
+                    }
+                }
+
+
+                int pos = 0;
+                foreach (var entry in script.lines)
+                {
+                    pos++;
+                    if (pos > 3)
+                    {
+                        // we are only interested in the first three elements
+                        break;
+                    }
+
+                    if (pos == 1)
+                    {
+                        amount = PBigInteger.FromUnsignedArray(entry.data, true);
+                    }
+                    if (pos == 2 || pos == 3)
+                    {
+                        if (pos ==2)
+                        {
+                            var targetScriptHash = new UInt160(entry.data);
+                            Console.WriteLine("neo targetAddress: " + targetScriptHash.ToAddress());
+                            var targetAddress = NeoWallet.EncodeByteArray(entry.data);
+                            Console.WriteLine("targetAddress : " + targetAddress);
+                            Console.WriteLine("targetAddress2: " + interopSwapAddress);
+                            Console.WriteLine("ySwapAddress: " + swapAddress);
+                            if (interopSwapAddress == targetAddress)
+                            {
+                                // found a swap, call getapplicationlog now to get transaction details and verify the tx was actually processed.
+                                ApplicationLog[] appLogs = api.GetApplicationLog(tx.Hash);
+                                for (var i = 0; i < appLogs.Length; i++)
+                                {
+                                    Console.WriteLine("appLogs[i].contract" + appLogs[i].contract);
+                                    var token = FindSymbolFromAsset(appLogs[i].contract);
+                                    Console.WriteLine("TOKEN::::::::::::::::::: " + token);
+                                    //CryptoCurrencyInfo tokenInfo;
+                                    //if (NeoTokenInfo.TryGetValue(token, out tokenInfo))
+                                    //{
+                                    //    amount = Phantasma.Numerics.UnitConversion.ToBigInteger(
+                                    //            appLogs[i].amount, tokenInfo.Decimals);
+                                    //}
+                                    //else
+                                    //{
+                                    //    // asset not swapable at the moment...
+                                    //    return new InteropTransaction(Hash.Null, interopTransfers.ToArray());
+                                    //}
+                                    Console.WriteLine("amou7nt: " + appLogs[i].amount + " " + token);
+                                    var sadd = NeoWallet.EncodeByteArray(appLogs[i].sourceAddress.ToArray());
+                                    var tadd = NeoWallet.EncodeByteArray(appLogs[i].targetAddress.ToArray());
+
+
+                                    interopTransfers.Add
+                                    (
+                                        new InteropTransfer
+                                        (
+                                            "neo", // todo Pay.Chains.NeoWallet.NeoPlatform
+                                            //NeoWallet.EncodeByteArray(appLogs[i].sourceAddress.ToArray()),
+                                            sourceAddress,
+                                            DomainSettings.PlatformName,
+                                            targetAddress,
+                                            interopAddress, // interop address
+                                            token,
+                                            appLogs[i].amount
+                                        )
+                                    );
+                                }
+                            }
+                        }
+                        else
+                        {
+                            //TODO reverse swap
+                            sourceScriptHash = new UInt160(entry.data).ToArray();
+                            sourceAddress = NeoWallet.EncodeByteArray(sourceScriptHash.ToArray());
+                        }
+                    }
+                }
+            }
 
             return ((interopTransfers.Count() > 0)
                 ? new InteropTransaction(Hash.FromBytes(tx.Hash.ToArray()), interopTransfers.ToArray())

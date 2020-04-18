@@ -781,7 +781,7 @@ namespace Phantasma.Spook
                 case "file":
                     nexus = new Nexus(logger,
                             (name) => new BasicDiskStore(storagePath + name + ".csv"),
-                            (n) => new SpookOracle(this, n, 
+                            (n) => new SpookOracle(this, n, logger,
                                     (name) => new BasicDiskStore(oraclePath + name + ".csv"))
                             );
                     break;
@@ -789,7 +789,7 @@ namespace Phantasma.Spook
                 case "db":
                     nexus = new Nexus(logger,
                             (name) => new DBPartition(dbstoragePath + name),
-                            (n) => new SpookOracle(this, n, 
+                            (n) => new SpookOracle(this, n, logger,
                                     (name) => new DBPartition(oraclePath + name))
                             );
                     break;
@@ -1023,7 +1023,6 @@ namespace Phantasma.Spook
                 var neoRpcURLs = rpcList.Split(',');
                 this.neoAPI = new Neo.Core.RemoteRPCNode(neoScanURL, neoRpcURLs);
                 this.neoAPI.SetLogger((s) => logger.Message(s));
-
                 this.neoScanAPI = new NeoScanAPI(neoScanURL, logger, nexus, node_keys);
 
                 cryptoCompareAPIKey = settings.GetString("cryptocompare.apikey", "");
@@ -1064,27 +1063,6 @@ namespace Phantasma.Spook
 
             var dispatcher = new CommandDispatcher();
             SetupCommands(dispatcher);
-
-            if (settings.GetBool("swaps.enabled"))
-            {
-                tokenSwapper = new TokenSwapper(node_keys, nexusApi, neoAPI, minimumFee, logger, settings);
-                nexusApi.TokenSwapper = tokenSwapper;
-
-                new Thread(() =>
-                {
-                    logger.Message("Running token swapping service...");
-                    while (running)
-                    {
-                        if (nodeReady)
-                        {
-                            tokenSwapper.Update();
-                        }
-
-                        Thread.Sleep(5000);
-                    }
-                }).Start();
-            }
-
             logger.Warning($"Debug => useSim : {useSimulator} bootstrap: {bootstrap}");
             if (useSimulator && bootstrap)
             {
@@ -1137,6 +1115,28 @@ namespace Phantasma.Spook
             {
                 MakeReady(dispatcher);
             }
+
+            if (settings.GetBool("swaps.enabled"))
+            {
+                tokenSwapper = new TokenSwapper(node_keys, nexusApi, neoAPI, minimumFee, logger, settings);
+                nexusApi.TokenSwapper = tokenSwapper;
+
+                new Thread(() =>
+                {
+                    logger.Message("Running token swapping service...");
+                    while (running)
+                    {
+                        //Thread.Sleep(5000);
+                        Thread.Sleep(1000); //test
+                        if (nodeReady)
+                        {
+                            tokenSwapper.Update();
+                        }
+
+                    }
+                }).Start();
+            }
+
 
             this.Run();
         }
