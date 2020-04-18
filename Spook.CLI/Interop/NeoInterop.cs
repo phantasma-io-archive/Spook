@@ -45,11 +45,9 @@ namespace Phantasma.Spook.Interop
         {
             string lastBlockHeight = oracleReader.GetCurrentHeight("neo", "neo");
 
-            //TODO
-            this._interopBlockHeight = 18008779;
-            //this._interopBlockHeight= (!string.IsNullOrEmpty(lastBlockHeight)) 
-            //                           ? BigInteger.Parse(lastBlockHeight) 
-            //                           : new BigInteger(interopBlockHeight.ToUnsignedByteArray());
+            this._interopBlockHeight= (!string.IsNullOrEmpty(lastBlockHeight)) 
+                                       ? BigInteger.Parse(lastBlockHeight) 
+                                       : new BigInteger(interopBlockHeight.ToUnsignedByteArray());
 
             Console.WriteLine($"interopHeight: {_interopBlockHeight}");
             this.neoAPI = neoAPI;

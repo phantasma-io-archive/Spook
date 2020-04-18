@@ -49,6 +49,7 @@ namespace Phantasma.Spook.Oracles
             this._adapterFactory = adapterFactory;
             nexus.Attach(this);
             platforms = new KeyValueStore<string, string>(CreateKeyStoreAdapter(StorageConst.Platform.ToString()));
+            this.logger = logger;
 
             logger.Message("Platform count: " + platforms.Count);
             platforms.Visit((key, _) =>
@@ -129,10 +130,6 @@ namespace Phantasma.Spook.Oracles
                 if(keyStore.TryGet(storageKey, out T data))
                 {
                     return data;
-                }
-                else
-                {
-                    logger.Message($"no data found for key { storageKey }");
                 }
             }
             catch (Exception e)
