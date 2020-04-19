@@ -83,6 +83,7 @@ namespace Phantasma.Spook
 
         private Nexus nexus;
         private NexusAPI nexusApi;
+        public TokenSwapper tokenSwapper;
 
         private int restartTime;
 
@@ -734,35 +735,7 @@ namespace Phantasma.Spook
                 }
             }
 
-            logger.Message("Storage path: " + storagePath);
-            logger.Message("Oracle path: " + oraclePath);
-
-            switch (storageBackend)
-            {
-
-                case "file":
-                    nexus = new Nexus(logger,
-                            (name) => new BasicDiskStore(storagePath + name + ".csv"),
-                            (n) => new SpookOracle(this, n, oraclePath)
-                            );
-                    break;
-
-                case "db":
-                    nexus = new Nexus(logger,
-                            (name) => new DBPartition(dbstoragePath + name),
-                            (n) => new SpookOracle(this, n, oraclePath)
-                            );
-                    break;
-                default:
-                    throw new Exception("Backend has to be set to either \"db\" or \"file\"");
-            }
-
-
-            running = true;
-
-            // mempool setup
             int blockTime = settings.GetInt("node.blocktime", Mempool.MinimumBlockTime);
-
             int minimumFee;
             try
             {
@@ -793,6 +766,41 @@ namespace Phantasma.Spook
                 logger.Error("Invalid mempool fee value. Expected something in fixed point format.");
                 return;
             }
+
+            logger.Message("Storage path: " + storagePath);
+            logger.Message("Oracle path: " + oraclePath);
+            PhantasmaKeys node_keys = null;
+            bool bootstrap = false;
+            string nodeWif = settings.GetString("node.wif");
+            node_keys = PhantasmaKeys.FromWIF(nodeWif);
+            WalletModule.Keys = PhantasmaKeys.FromWIF(nodeWif);
+
+            switch (storageBackend)
+            {
+
+                case "file":
+                    nexus = new Nexus(logger,
+                            (name) => new BasicDiskStore(storagePath + name + ".csv"),
+                            (n) => new SpookOracle(this, n, logger,
+                                    (name) => new BasicDiskStore(oraclePath + name + ".csv"))
+                            );
+                    break;
+
+                case "db":
+                    nexus = new Nexus(logger,
+                            (name) => new DBPartition(dbstoragePath + name),
+                            (n) => new SpookOracle(this, n, logger,
+                                    (name) => new DBPartition(oraclePath + name))
+                            );
+                    break;
+                default:
+                    throw new Exception("Backend has to be set to either \"db\" or \"file\"");
+            }
+
+
+            running = true;
+
+            // mempool setup
 
             if (!string.IsNullOrEmpty(apiProxyURL))
             {
@@ -859,11 +867,6 @@ namespace Phantasma.Spook
                 }
             }
 
-            PhantasmaKeys node_keys = null;
-            bool bootstrap = false;
-            string nodeWif = settings.GetString("node.wif");
-            node_keys = PhantasmaKeys.FromWIF(nodeWif);
-            WalletModule.Keys = PhantasmaKeys.FromWIF(nodeWif);
 
             if (hasSync)
             {
@@ -1016,11 +1019,10 @@ namespace Phantasma.Spook
             {
                 var neoScanURL = settings.GetString("neoscan.url", "https://api.neoscan.io");
 
-                var rpcList = settings.GetString("neo.rpc", "http://seed6.ngd.network:10332,http://seed.neoeconomy.io:10332");
+                var rpcList = settings.GetString("neo.rpc", "http://seed1.ngd.network:10332, http://seed6.ngd.network:10332, http://seed7.ngd.network:10332, http://seed8.ngd.network:10332");
                 var neoRpcURLs = rpcList.Split(',');
                 this.neoAPI = new Neo.Core.RemoteRPCNode(neoScanURL, neoRpcURLs);
                 this.neoAPI.SetLogger((s) => logger.Message(s));
-
                 this.neoScanAPI = new NeoScanAPI(neoScanURL, logger, nexus, node_keys);
 
                 cryptoCompareAPIKey = settings.GetString("cryptocompare.apikey", "");
@@ -1061,27 +1063,6 @@ namespace Phantasma.Spook
 
             var dispatcher = new CommandDispatcher();
             SetupCommands(dispatcher);
-
-            if (settings.GetBool("swaps.enabled"))
-            {
-                var tokenSwapper = new TokenSwapper(node_keys, nexusApi, neoScanAPI, neoAPI, minimumFee, logger, settings);
-                nexusApi.TokenSwapper = tokenSwapper;
-
-                new Thread(() =>
-                {
-                    logger.Message("Running token swapping service...");
-                    while (running)
-                    {
-                        Thread.Sleep(5000);
-
-                        if (nodeReady)
-                        {
-                            tokenSwapper.Update();
-                        }
-                    }
-                }).Start();
-            }
-
             logger.Warning($"Debug => useSim : {useSimulator} bootstrap: {bootstrap}");
             if (useSimulator && bootstrap)
             {
@@ -1134,6 +1115,28 @@ namespace Phantasma.Spook
             {
                 MakeReady(dispatcher);
             }
+
+            if (settings.GetBool("swaps.enabled"))
+            {
+                tokenSwapper = new TokenSwapper(node_keys, nexusApi, neoAPI, minimumFee, logger, settings);
+                nexusApi.TokenSwapper = tokenSwapper;
+
+                new Thread(() =>
+                {
+                    logger.Message("Running token swapping service...");
+                    while (running)
+                    {
+                        //Thread.Sleep(5000);
+                        Thread.Sleep(1000); //test
+                        if (nodeReady)
+                        {
+                            tokenSwapper.Update();
+                        }
+
+                    }
+                }).Start();
+            }
+
 
             this.Run();
         }
@@ -1312,7 +1315,7 @@ namespace Phantasma.Spook
             (args) =>
             {
                 var hash = Hash.Parse(args[0]);
-                var reader = nexus.CreateOracleReader();
+                var reader = nexus.GetOracleReader();
                 var tx = reader.ReadTransaction("neo", "neo", hash);
                 logger.Message(tx.Transfers[0].interopAddress.Text);
             });

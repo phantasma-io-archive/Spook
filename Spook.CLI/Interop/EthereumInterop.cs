@@ -6,8 +6,9 @@ using Phantasma.Cryptography;
 using Phantasma.Ethereum;
 using Phantasma.Numerics;
 using Phantasma.Pay.Chains;
+using Phantasma.Spook.Swaps;
 
-namespace Phantasma.Spook.Swaps
+namespace Phantasma.Spook.Interop
 {
     public class EthereumInterop : ChainWatcher
     {

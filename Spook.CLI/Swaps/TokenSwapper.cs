@@ -2,7 +2,6 @@
 using System.Linq;
 using Phantasma.Numerics;
 using Phantasma.Cryptography;
-using Phantasma.Spook.Oracles;
 using Phantasma.Core.Log;
 using Phantasma.Core.Utils;
 using Phantasma.Neo.Core;
@@ -18,6 +17,7 @@ using Phantasma.API;
 using Phantasma.Storage.Context;
 using Phantasma.Storage;
 using Phantasma.Storage.Utils;
+using Phantasma.Spook.Interop;
 using System.IO;
 
 namespace Phantasma.Spook.Swaps
@@ -131,7 +131,8 @@ namespace Phantasma.Spook.Swaps
         internal readonly PhantasmaKeys SwapKeys;
         private readonly BigInteger MinimumFee;
         private readonly NeoAPI neoAPI;
-        private readonly NeoScanAPI neoscanAPI;
+        private OracleReader OracleReader;
+        public string swapAddress;
 
         private readonly Dictionary<string, BigInteger> interopBlocks;
         private PlatformInfo[] platforms;
@@ -140,14 +141,14 @@ namespace Phantasma.Spook.Swaps
 
         private Dictionary<string, ChainWatcher> _finders = new Dictionary<string, ChainWatcher>();
 
-        public TokenSwapper(PhantasmaKeys swapKey, NexusAPI nexusAPI, NeoScanAPI neoscanAPI, NeoAPI neoAPI, BigInteger minFee, Logger logger, Arguments arguments)
+        public TokenSwapper(PhantasmaKeys swapKey, NexusAPI nexusAPI, NeoAPI neoAPI, BigInteger minFee, Logger logger, Arguments arguments)
         {
             this.SwapKeys = swapKey;
             this.NexusAPI = nexusAPI;
+            this.OracleReader = Nexus.GetOracleReader();
             this.MinimumFee = minFee;
-
             this.neoAPI = neoAPI;
-            this.neoscanAPI = neoscanAPI;
+
             this.logger = logger;
 
             this.Storage = new KeyStoreStorage(Nexus.CreateKeyStoreAdapter("swaps"));
@@ -159,63 +160,6 @@ namespace Phantasma.Spook.Swaps
             //interopBlocks["ethereum"] = BigInteger.Parse(arguments.GetString("interop.ethereum.height", "4261049"));
 
             InitWIF("neo", arguments);
-
-            /*
-            foreach (var entry in interopBlocks)
-            {
-                BigInteger blockHeight = entry.Value;
-
-                ChainInterop interop;
-
-                switch (entry.Key)
-                {
-                    case "phantasma":
-                        interop = new PhantasmaInterop(this, swapKey, blockHeight, nexusAPI);
-                        break;
-
-                    case "neo":
-                        interop = new NeoInterop(this, swapKey, blockHeight, neoAPI, neoscanAPI);
-                        break;
-
-                    case "ethereum":
-                        interop = new EthereumInterop(this, swapKey, blockHeight);
-                        break;
-
-                    default:
-                        interop = null;
-                        break;
-                }
-
-                if (interop != null)
-                {
-                    bool shouldAdd = true;
-
-                    if (!(interop is PhantasmaInterop))
-                    {
-                        logger.Message($"{interop.Name}.Swap.Private: {interop.PrivateKey}");
-                        logger.Message($"{interop.Name}.Swap.{interop.Name}: {interop.LocalAddress}");
-                        logger.Message($"{interop.Name}.Swap.Phantasma: {interop.ExternalAddress}");
-
-                        for (int i = 0; i < platforms.Length; i++)
-                        {
-                            var temp = platforms[i];
-                            if (temp.platform == interop.Name)
-                            {
-                                if (temp.address != interop.LocalAddress)
-                                {
-                                    logger.Error($"{interop.Name} address mismatch, should be {temp.address}. Make sure you are using the proper swap seed.");
-                                    shouldAdd = false;
-                                }
-                            }
-                        }
-                    }
-
-                    if (shouldAdd)
-                    {
-                        AddInterop(interop);
-                    }
-                }
-            }*/
         }
 
         private void InitWIF(string platformName, Arguments arguments)
@@ -294,7 +238,9 @@ namespace Phantasma.Spook.Swaps
                     return;
                 }
 
-                _finders["neo"] = new NeoInterop(this, wifs["neo"], interopBlocks["neo"], neoscanAPI, logger);
+                var neoInterop = new NeoInterop(this, neoAPI,  wifs["neo"], interopBlocks["neo"], OracleReader, logger);
+                swapAddress = neoInterop.LocalAddress;
+                _finders["neo"] = neoInterop;
             }
 
             if (this.platforms.Length == 0)
@@ -524,8 +470,7 @@ namespace Phantasma.Spook.Swaps
 
         private Hash SettleSwapToExternal(string destinationPlatform, Hash sourceHash, Func<Address, IToken, BigInteger, Hash> generator)
         {
-            var oracleReader = Nexus.CreateOracleReader();
-            var swap = oracleReader.ReadTransaction(DomainSettings.PlatformName, DomainSettings.RootChainName, sourceHash);
+            var swap = OracleReader.ReadTransaction(DomainSettings.PlatformName, DomainSettings.RootChainName, sourceHash);
 
             var transfers = swap.Transfers.Where(x => x.destinationAddress.IsInterop).ToArray();
 
