@@ -1308,6 +1308,25 @@ namespace Phantasma.Spook
                     }
                 });
 
+            dispatcher.RegisterCommand("wallet.relay", "Signs a script using current wallet and relays a transaction to the network",
+                (args) =>
+                {
+                    var script = Base16.Decode(args[0]);
+                    var expire = Timestamp.Now + TimeSpan.FromMinutes(2);
+                    var tx = new Transaction(nexus.Name, nexus.RootChain.Name, script, expire, Identifier);
+                    tx.Sign(WalletModule.Keys);
+
+                    if (mempool != null)
+                    {
+                        mempool.Submit(tx);
+                    }
+                    else 
+                    {
+                        throw new CommandException("no mempool available");
+                    }
+
+                });
+
             dispatcher.RegisterCommand("file.upload", "Uploads a file into Phantasma",
                 (args) => FileModule.Upload(WalletModule.Keys, nexusApi, args));
 
