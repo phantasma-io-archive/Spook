@@ -59,7 +59,7 @@ namespace Phantasma.Spook
 
     public class CLI
     {
-        public const string SpookVersion = "1.1.2";
+        public const string SpookVersion = "1.1.3";
         public static readonly string Identifier = "SPK" + SpookVersion;
 
         static void Main(string[] args)
