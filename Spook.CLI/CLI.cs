@@ -1268,7 +1268,7 @@ namespace Phantasma.Spook
 
             foreach (var method in nexusApi.Methods)
             {
-                dispatcher.RegisterCommand("api." + method.Name, "API CALL", (args) => ExecuteAPI(method.Name, args));
+                dispatcher.RegisterCommand("api." + method.Name, method.Description, (args) => ExecuteAPI(method.Name, args));
             }
 
             dispatcher.RegisterCommand("script.assemble", "Assembles a .asm file into Phantasma VM script format",
