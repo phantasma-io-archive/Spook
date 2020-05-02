@@ -118,7 +118,7 @@ namespace Phantasma.Spook.Dapps
             int sextant;
             float fract, vsf, mid1, mid2;
 
-            Color result;
+            Color result = default(Color);
             //result.R = input.l;   // default to gray
             //result.G = input.l;
             //result.B = input.l;

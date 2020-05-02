@@ -41,6 +41,11 @@ namespace Phantasma.Spook.Dapps
 
             foreach (var dapp in dapps)
             {
+                if (string.IsNullOrEmpty(dapp))
+                {
+                    continue;
+                }
+
                 logger.Message("Initializing dapp: " + dapp);
 
                 switch (dapp)

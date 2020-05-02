@@ -1,7 +1,7 @@
-﻿using Phantasma.Blockchain;
+﻿using System;
+using Phantasma.Blockchain;
 using Phantasma.Core.Log;
 using Phantasma.Spook.GUI;
-using System;
 
 namespace Phantasma.Spook.Plugins
 {

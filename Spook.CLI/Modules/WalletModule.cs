@@ -11,10 +11,11 @@ using Phantasma.Pay.Chains;
 using Phantasma.Pay;
 using Phantasma.Neo.Core;
 using Phantasma.Spook.Oracles;
+using Phantasma.Spook.Command;
 using Phantasma.Blockchain.Contracts;
 using Phantasma.Domain;
-using Phantasma.Spook.GUI;
 using System.IO;
+using System.Reflection;
 
 namespace Phantasma.Spook.Modules
 {
@@ -24,8 +25,8 @@ namespace Phantasma.Spook.Modules
         public static PhantasmaKeys Keys;
 
         private static Logger logger => ModuleLogger.Instance;
-        private static ConsoleGUI gui;
 
+        [ConsoleCommand("wallet open", "Wallet", "Open a wallet, requires WIF")]
         public static void Open(string[] args)
         {
             if (args.Length != 1)
@@ -40,13 +41,14 @@ namespace Phantasma.Spook.Modules
                 Keys = PhantasmaKeys.FromWIF(wif);
                 logger.Success($"Opened wallet with address: {Keys.Address}");
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 logger.Error($"Failed to open wallet. Make sure you valid a correct WIF key.");
             }
 
         }
 
+        [ConsoleCommand("wallet create", "Wallet", "Create a new wallet")]
         public static void Create(string[] args)
         {
             if (args.Length != 0)
@@ -61,7 +63,7 @@ namespace Phantasma.Spook.Modules
                 logger.Success($"WIF: {Keys.ToWIF()}");
                 logger.Warning($"Save this wallet WIF, it won't be displayed again and it is necessary to access the wallet!");
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 logger.Error($"Failed to create a new wallet.");
             }
@@ -163,7 +165,8 @@ namespace Phantasma.Spook.Modules
 
         public static Hash ExecuteTransaction(NexusAPI api, byte[] script, ProofOfWork proofOfWork, params IKeyPair[] keys)
         {
-            var tx = new Blockchain.Transaction(api.Nexus.Name, DomainSettings.RootChainName, script, Timestamp.Now + TimeSpan.FromMinutes(5), CLI.Identifier);
+            var identifier = "SPK" + Assembly.GetAssembly(typeof(CLI)).GetVersion();
+            var tx = new Blockchain.Transaction(api.Nexus.Name, DomainSettings.RootChainName, script, Timestamp.Now + TimeSpan.FromMinutes(5), identifier);
 
             if (proofOfWork != ProofOfWork.None)
             {

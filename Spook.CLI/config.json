@@ -1,0 +1,80 @@
+{
+    "ApplicationConfiguration": {
+        "Node": {
+            "web.logs": false,
+            "block.time": 2,
+            "minimum.fee": 100000,
+            "minimum.pow": 0,
+            "api.proxy.url": "",
+            "nexus.name": "simnet",
+            "node.mode": "validator",
+            "node.wif": "L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25",
+            "api.log": false,
+            "node.port": 7777,
+            "profiler.path": "",
+            "has.sync": true,
+            "has.mempool": true,
+            "mempool.log": false,
+            "has.events": false,
+            "has.relay": false,
+            "has.archive": false,
+            "has.rpc": true,
+            "has.rest": true,
+            "rpc.port": 7081,
+            "rest.port": 7078,
+            "nexus.bootstrap": true,
+            "genesis.timestamp": 0,
+            "api.cache": true,
+            "readonly": false,
+            "sender.host": "",
+            "sender.threads": 8,
+            "sender.address.count": 100,
+            "storage.path": "",
+            "verify.storage.path": "",
+            "db.storage.path": "",
+            "oracle.path": "",
+            "storage.backend": "db",
+            "convert.storage": false,
+            "random.swap.data": false
+        },
+
+        "Oracle": {
+            "neoscan.api": "mankinighost.phantasma.io:4000",
+            "neo.rpc.nodes": ["http://mankinighost.phantasma.io:30333"],
+            "crypto.compare.key": "4e6ffe0dedfd49d2e182b706b72e736fa027844181d179dc5310f115deeb29be",
+            "swaps.enabled": true,
+            "phantasma.interop.height": "0",
+            "neo.interop.height": "4261049",
+            "eth.interop.height": "0",
+            "neo.wif": ""
+        },
+
+        "Plugins": {
+            "plugin.refresh.interval": 1,
+            "tps.plugin": true,
+            "ram.plugin": true,
+            "mempool.plugin": true
+        },
+
+        "Simulator": {
+            "simulator.enabled": true,
+            "simulator.dapps": [""],
+            "simulator.generate.blocks": true
+        },
+
+        "App": {
+            "gui.enabled": false, 
+            "shell.enabled": true, 
+            "node.start": false, 
+            "app.name": "SPK",
+            "config": "",
+            "prompt": "[{0}] spook> ",
+            "history": "/tmp/.history" 
+        },
+
+        "RPC": {
+            "rpc.address": "localhost",
+            "rpc.port": 7654 
+        }
+    }
+}

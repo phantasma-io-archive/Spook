@@ -49,7 +49,7 @@ namespace Phantasma.Spook.Interop
                                        ? BigInteger.Parse(lastBlockHeight) 
                                        : new BigInteger(interopBlockHeight.ToUnsignedByteArray());
 
-            Console.WriteLine($"interopHeight: {_interopBlockHeight}");
+            logger.Message($"interopHeight: {_interopBlockHeight}");
             this.neoAPI = neoAPI;
 
             this.oracleReader = oracleReader;
@@ -75,7 +75,7 @@ namespace Phantasma.Spook.Interop
                 // we need to find a better solution for that though
                 var allInteropBlocks = oracleReader.ReadAllBlocks("neo", "neo");
 
-                Console.WriteLine($"Found {allInteropBlocks.Count} blocks");
+                logger.Message($"Found {allInteropBlocks.Count} blocks");
                 //Thread.Sleep(1000000000);
 
                 foreach (var block in allInteropBlocks)
@@ -95,8 +95,8 @@ namespace Phantasma.Spook.Interop
 
             while (blockIterator.currentBlock > _interopBlockHeight)
             {
-                Console.WriteLine("============================================================= current: " + blockIterator.currentBlock + " interop: " + _interopBlockHeight);
-                //Console.WriteLine("start======================= " + DateTime.Now.ToString("yyyy’-‘MM’-‘dd’ ’HH’:’mm’:’ss.fff"));
+                logger.Message("============================================================= current: " + blockIterator.currentBlock + " interop: " + _interopBlockHeight);
+                //logger.Message("start======================= " + DateTime.Now.ToString("yyyy’-‘MM’-‘dd’ ’HH’:’mm’:’ss.fff"));
                 if (batchCount > 1)
                 {
                     List<Task<InteropBlock>> taskList = new List<Task<InteropBlock>>();
@@ -179,7 +179,7 @@ namespace Phantasma.Spook.Interop
             {
                 assetID = assetID.Remove(0,2) ;
             }
-            //Console.WriteLine("asset.... " + assetID);
+            //logger.Message("asset.... " + assetID);
             switch (assetID)
             {
                 case "b3a766ac60afa2990d9251db08138fd1facf07ed": return "SOUL";
@@ -190,7 +190,7 @@ namespace Phantasma.Spook.Interop
             }
         }
 
-        public static Tuple<InteropBlock, InteropTransaction[]> MakeInteropBlock(NeoBlock block, NeoAPI api, string swapAddress)
+        public static Tuple<InteropBlock, InteropTransaction[]> MakeInteropBlock(Logger logger, NeoBlock block, NeoAPI api, string swapAddress)
         {
             List<Hash> hashes = new List<Hash>();
 
@@ -202,7 +202,7 @@ namespace Phantasma.Spook.Interop
                 if (tx.type == TransactionType.InvocationTransaction
                     || tx.type == TransactionType.ContractTransaction)
                 {
-                    var interopTx = MakeInteropTx(tx, api, swapAddress);
+                    var interopTx = MakeInteropTx(logger, tx, api, swapAddress);
                     if (interopTx.Hash != Hash.Null)
                     {
                         interopTransactions.Add(interopTx);
@@ -212,7 +212,7 @@ namespace Phantasma.Spook.Interop
                 }
             }
 
-            //Console.WriteLine("blockOfInterest " + block.Height + " :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::  " + blockOfInterest);
+            //logger.Message("blockOfInterest " + block.Height + " :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::  " + blockOfInterest);
             InteropBlock iBlock = (blockOfInterest)
                 ? new InteropBlock("neo", "neo", Hash.FromBytes(block.Hash.ToArray()), hashes.ToArray())
                 : new InteropBlock("neo", "neo", Hash.Null, hashes.ToArray());
@@ -220,9 +220,9 @@ namespace Phantasma.Spook.Interop
             return Tuple.Create(iBlock, interopTransactions.ToArray());
         }
 
-        public static InteropTransaction MakeInteropTx(NeoTx tx, NeoAPI api, string swapAddress)
+        public static InteropTransaction MakeInteropTx(Logger logger, NeoTx tx, NeoAPI api, string swapAddress)
         {
-            Console.WriteLine("checking tx: " + tx.Hash);
+            logger.Message("checking tx: " + tx.Hash);
 
             List<InteropTransfer> interopTransfers = new List<InteropTransfer>();
 
@@ -240,10 +240,10 @@ namespace Phantasma.Spook.Interop
             var sourceAddress = NeoWallet.EncodeByteArray(sourceScriptHash);
             var interopAddress = tx.witnesses[0].ExtractAddress();
             var interopSwapAddress = NeoWallet.EncodeAddress(swapAddress);
-            //Console.WriteLine("INTEROPADDRESS: " + interopAddress);
-            //Console.WriteLine("xswapAddress: " + swapAddress);
-            //Console.WriteLine("interop sourceAddress: " + sourceAddress);
-            //Console.WriteLine("neo sourceAddress: " + NeoWallet.DecodeAddress(sourceAddress));
+            //logger.Message("INTEROPADDRESS: " + interopAddress);
+            //logger.Message("xswapAddress: " + swapAddress);
+            //logger.Message("interop sourceAddress: " + sourceAddress);
+            //logger.Message("neo sourceAddress: " + NeoWallet.DecodeAddress(sourceAddress));
 
             if (sourceAddress.ToString() == swapAddress)
             {
@@ -254,14 +254,14 @@ namespace Phantasma.Spook.Interop
             {
                 foreach (var output in tx.outputs)
                 {
-                    //Console.WriteLine("have outputs");
+                    //logger.Message("have outputs");
                     var targetAddress = NeoWallet.EncodeByteArray(output.scriptHash.ToArray());
-                    //Console.WriteLine("interop targetAddress : " + targetAddress);
-                    //Console.WriteLine("neo targetAddress: " + NeoWallet.DecodeAddress(targetAddress));
+                    //logger.Message("interop targetAddress : " + targetAddress);
+                    //logger.Message("neo targetAddress: " + NeoWallet.DecodeAddress(targetAddress));
 
                     var swpAddress = NeoWallet.EncodeAddress(swapAddress);
-                    //Console.WriteLine("interop swpAddress: " + swpAddress);
-                    //Console.WriteLine("neo swpAddress: " + NeoWallet.DecodeAddress(swpAddress));
+                    //logger.Message("interop swpAddress: " + swpAddress);
+                    //logger.Message("neo swpAddress: " + NeoWallet.DecodeAddress(swpAddress));
                     //if (targetAddress.ToString() == swapAddress)
                     if (interopSwapAddress == targetAddress)
                     {
@@ -275,11 +275,11 @@ namespace Phantasma.Spook.Interop
                         else
                         {
                             // asset not swapable at the moment...
-                            Console.WriteLine("Asset not swapable");
+                            logger.Message("Asset not swapable");
                             return emptyTx;
                         }
 
-                        Console.WriteLine("UTXO " + amount);
+                        logger.Message("UTXO " + amount);
                         interopTransfers.Add
                         (
                             new InteropTransfer
@@ -301,16 +301,16 @@ namespace Phantasma.Spook.Interop
             {
                 var script = NeoDisassembler.Disassemble(tx.script, true);
 
-                Console.WriteLine("SCRIPT ====================");
+                logger.Message("SCRIPT ====================");
                 foreach (var entry in script.lines)
                 {
-                    Console.WriteLine($"{entry.name} : { entry.opcode }");
+                    logger.Message($"{entry.name} : { entry.opcode }");
                 }
-                Console.WriteLine("SCRIPT ====================");
+                logger.Message("SCRIPT ====================");
 
                 if (script.lines.Count() < 7)
                 {
-                    Console.WriteLine("NO SCRIPT!!!!");
+                    logger.Message("NO SCRIPT!!!!");
                     return emptyTx;
                 }
 
@@ -318,27 +318,27 @@ namespace Phantasma.Spook.Interop
 
                 //if ( disasmEntry == null )
                 //{
-                //    Console.WriteLine("disasmEntry is null");
+                //    logger.Message("disasmEntry is null");
                 //}
                 //if ( disasmEntry != null )
                 //{
                 //    if ( disasmEntry.data == null)
-                //        Console.WriteLine("disasmEntry.data is 0");
+                //        logger.Message("disasmEntry.data is 0");
                 //}
 
                 if (disasmEntry.name != "APPCALL" || disasmEntry.data == null ||  disasmEntry.data.Length == 0)
                 {
-                    Console.WriteLine("NO APPCALL");
+                    logger.Message("NO APPCALL");
                     return emptyTx;
                 }
                 else
                 {
                     
                     var assetString = new UInt160(disasmEntry.data).ToString();
-                    Console.WriteLine("ASSET::::::::::::: " + assetString);
+                    logger.Message("ASSET::::::::::::: " + assetString);
                     if (string.IsNullOrEmpty(assetString) || FindSymbolFromAsset(assetString) == null)
                     {
-                        Console.WriteLine("Ignore TX due to non swapable token.");
+                        logger.Message("Ignore TX due to non swapable token.");
                         return emptyTx;
                     }
                 }
@@ -363,20 +363,20 @@ namespace Phantasma.Spook.Interop
                         if (pos ==2)
                         {
                             var targetScriptHash = new UInt160(entry.data);
-                            Console.WriteLine("neo targetAddress: " + targetScriptHash.ToAddress());
+                            logger.Message("neo targetAddress: " + targetScriptHash.ToAddress());
                             var targetAddress = NeoWallet.EncodeByteArray(entry.data);
-                            Console.WriteLine("targetAddress : " + targetAddress);
-                            Console.WriteLine("targetAddress2: " + interopSwapAddress);
-                            Console.WriteLine("ySwapAddress: " + swapAddress);
+                            logger.Message("targetAddress : " + targetAddress);
+                            logger.Message("targetAddress2: " + interopSwapAddress);
+                            logger.Message("ySwapAddress: " + swapAddress);
                             if (interopSwapAddress == targetAddress)
                             {
                                 // found a swap, call getapplicationlog now to get transaction details and verify the tx was actually processed.
                                 ApplicationLog[] appLogs = api.GetApplicationLog(tx.Hash);
                                 for (var i = 0; i < appLogs.Length; i++)
                                 {
-                                    Console.WriteLine("appLogs[i].contract" + appLogs[i].contract);
+                                    logger.Message("appLogs[i].contract" + appLogs[i].contract);
                                     var token = FindSymbolFromAsset(appLogs[i].contract);
-                                    Console.WriteLine("TOKEN::::::::::::::::::: " + token);
+                                    logger.Message("TOKEN::::::::::::::::::: " + token);
                                     //CryptoCurrencyInfo tokenInfo;
                                     //if (NeoTokenInfo.TryGetValue(token, out tokenInfo))
                                     //{
@@ -388,7 +388,7 @@ namespace Phantasma.Spook.Interop
                                     //    // asset not swapable at the moment...
                                     //    return new InteropTransaction(Hash.Null, interopTransfers.ToArray());
                                     //}
-                                    Console.WriteLine("amou7nt: " + appLogs[i].amount + " " + token);
+                                    logger.Message("amou7nt: " + appLogs[i].amount + " " + token);
                                     var sadd = NeoWallet.EncodeByteArray(appLogs[i].sourceAddress.ToArray());
                                     var tadd = NeoWallet.EncodeByteArray(appLogs[i].targetAddress.ToArray());
 

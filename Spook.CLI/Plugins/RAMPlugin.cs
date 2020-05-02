@@ -1,6 +1,6 @@
-﻿using Phantasma.Core.Log;
+﻿using System;
+using Phantasma.Core.Log;
 using Phantasma.Spook.GUI;
-using System;
 
 namespace Phantasma.Spook.Plugins
 {
