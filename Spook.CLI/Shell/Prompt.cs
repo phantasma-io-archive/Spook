@@ -458,7 +458,7 @@ namespace Phantasma.Spook.Shell
                     continue;
 
                 inputHistory.Add(input);
-                PersistHistory();
+                PersistHistory(history);
 
                 lambda(cmd, input, completionList);
 

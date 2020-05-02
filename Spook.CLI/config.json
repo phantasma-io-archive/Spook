@@ -59,17 +59,18 @@
         "Simulator": {
             "simulator.enabled": true,
             "simulator.dapps": [""],
-            "simulator.generate.blocks": true
+            "simulator.generate.blocks": false
         },
 
         "App": {
             "gui.enabled": false, 
             "shell.enabled": true, 
-            "node.start": false, 
+            "node.start": true, 
             "app.name": "SPK",
             "config": "",
             "prompt": "[{0}] spook> ",
-            "history": "/tmp/.history" 
+            "history": "/tmp/.history", 
+            "log.file": "/tmp/spook.log" 
         },
 
         "RPC": {

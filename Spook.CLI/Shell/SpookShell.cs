@@ -32,6 +32,8 @@ namespace Phantasma.Spook.Shell
 
             var startupMsg =  "Spook shell" + version;
 
+            // TODO autocompletion needs to be reworked, not everything can be completed with anything, 
+            // completion source could be built like a B-tree index to search for possible candidates.
             Prompt.Run(
                 ((command, listCmd, list) =>
                 {

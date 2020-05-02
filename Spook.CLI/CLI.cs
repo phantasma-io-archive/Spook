@@ -34,13 +34,13 @@ using Phantasma.Spook.Swaps;
 using Phantasma.Domain;
 using Logger = Phantasma.Core.Log.Logger;
 using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
-using FileLogger = Phantasma.Core.Log.FileLogger;
 using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using NeoAPI = Phantasma.Neo.Core.NeoAPI;
 using System.Reflection;
 using Phantasma.Spook.Shell;
 using Phantasma.Spook.Command;
+using Phantasma.Core.Log;
 
 namespace Phantasma.Spook
 {
@@ -980,7 +980,7 @@ namespace Phantasma.Spook
 
             if (_settings.App.UseShell)
             {
-                logger = new FileLogger("/tmp/spook.log");
+                logger = new ShellLogger(_settings.App.LogFile);
             }
             else
             if (_settings.App.UseGui)
@@ -1104,8 +1104,7 @@ namespace Phantasma.Spook
                 return;
             }
 
-            Console.WriteLine(result);
-            logger.Message(result);
+            logger.Shell(result);
         }
     }
 }

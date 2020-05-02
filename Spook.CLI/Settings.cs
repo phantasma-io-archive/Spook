@@ -253,6 +253,7 @@ namespace Phantasma.Spook
         public string History { get; }
         public string Config { get; }
         public string Prompt { get; }
+        public string LogFile { get; }
 
         public AppSettings(Arguments settings, IConfigurationSection section)
         {
@@ -263,6 +264,7 @@ namespace Phantasma.Spook
             this.History = settings.GetString("history", section.GetValue<string>("history"));
             this.Config = settings.GetString("config", section.GetValue<string>("config"));
             this.Prompt = settings.GetString("prompt", section.GetValue<string>("prompt"));
+            this.LogFile = settings.GetString("log.file", section.GetValue<string>("log.file"));
         }
     }
 

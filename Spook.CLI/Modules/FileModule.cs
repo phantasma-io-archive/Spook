@@ -1,10 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using Phantasma.CodeGen.Core;
 using Phantasma.VM.Utils;
-using Phantasma.VM;
-using Phantasma.CodeGen.Assembler;
 using Phantasma.Cryptography;
 using Phantasma.Blockchain;
 using Phantasma.API;
@@ -52,7 +48,7 @@ namespace Phantasma.Spook.Modules
             tx.Sign(source);
             var rawTx = tx.ToByteArray(true);
 
-            logger.Message($"Uploading {fileName}...");
+            logger.Shell($"Uploading {fileName}...");
             try
             {
                 api.SendRawTransaction(Base16.Encode(rawTx));
@@ -103,7 +99,7 @@ namespace Phantasma.Spook.Modules
                 api.WriteArchive(archiveHash, i, Base16.Encode(blockContent));
             }
 
-            logger.Success($"File uploaded successfully!");
+            logger.Shell($"File uploaded successfully!");
         }
     }
 }
