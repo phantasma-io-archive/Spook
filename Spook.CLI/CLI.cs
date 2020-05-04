@@ -1271,6 +1271,9 @@ namespace Phantasma.Spook
                 dispatcher.RegisterCommand("api." + method.Name, method.Description, (args) => ExecuteAPI(method.Name, args));
             }
 
+            dispatcher.RegisterCommand("nexus.rescan", "Rescans the full nexus",
+            (args) => NexusModule.Rescan(nexus, WalletModule.Keys, args));
+
             dispatcher.RegisterCommand("script.assemble", "Assembles a .asm file into Phantasma VM script format",
                 (args) => ScriptModule.AssembleFile(args));
 
