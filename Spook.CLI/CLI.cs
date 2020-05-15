@@ -526,7 +526,7 @@ namespace Phantasma.Spook
             if (convertStorage)
             {
                 Func<string, IKeyValueStoreAdapter> fileStorageFactory  = (name) => new BasicDiskStore(storagePath + name + ".csv");
-                Func<string, IKeyValueStoreAdapter> dbStorageFactory    = (name) => new DBPartition(dbstoragePath + name);
+                Func<string, IKeyValueStoreAdapter> dbStorageFactory    = (name) => new DBPartition(logger, dbstoragePath + name);
 
                 Func<string, IKeyValueStoreAdapter> verificationStorageFactory  = (name) => new BasicDiskStore(verifyStoragePath + name + ".csv");
 
@@ -788,9 +788,9 @@ namespace Phantasma.Spook
 
                 case "db":
                     nexus = new Nexus(logger,
-                            (name) => new DBPartition(dbstoragePath + name),
+                            (name) => new DBPartition(logger, dbstoragePath + name),
                             (n) => new SpookOracle(this, n, logger,
-                                    (name) => new DBPartition(oraclePath + name))
+                                    (name) => new DBPartition(logger, oraclePath + name))
                             );
                     break;
                 default:
