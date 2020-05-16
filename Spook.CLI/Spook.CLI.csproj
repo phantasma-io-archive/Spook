@@ -14,8 +14,8 @@
     <None Remove="Publish\**" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="LunarLabs.Parser" Version="1.2.7" />
-    <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
+    <PackageReference Include="LunarLabs.Parser" Version="1.2.8" />
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.API\Phantasma.API.csproj" />
