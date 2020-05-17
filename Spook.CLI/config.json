@@ -64,13 +64,13 @@
 
         "App": {
             "gui.enabled": false, 
-            "shell.enabled": true, 
+            "shell.enabled": false, 
             "node.start": true, 
             "app.name": "SPK",
             "config": "",
             "prompt": "[{0}] spook> ",
-            "history": "/tmp/.history", 
-            "log.file": "/tmp/spook.log" 
+            "history": ".history", 
+            "log.file": "spook.log" 
         },
 
         "RPC": {

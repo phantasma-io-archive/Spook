@@ -391,6 +391,7 @@ namespace Phantasma.Spook
             }
 
             _commandDispatcher = SetupCommandDispatcher();
+
             if (_settings.Simulator.Enabled)
             {
                 StartSimulator(_commandDispatcher);
@@ -980,7 +981,7 @@ namespace Phantasma.Spook
 
             if (_settings.App.UseShell)
             {
-                logger = new ShellLogger(_settings.App.LogFile);
+                logger = new ShellLogger(Path.GetTempPath() + settings.App.LogFile);
             }
             else
             if (_settings.App.UseGui)

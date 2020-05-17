@@ -104,7 +104,23 @@ namespace Phantasma.Spook.Command
             methodInfo = typeof(ScriptModule).GetMethods(BindingFlags.Public | BindingFlags.Static);
             foreach (var method in methodInfo)
             {
-                var attribute = new ConsoleCommandAttribute(method.Name.ToLower(), "Script", "script command");
+                var attribute = new ConsoleCommandAttribute(method.Name.ToLower(), "Script", "Script commands");
+
+                var command = new ConsoleCommandMethod(instance, method, attribute);
+                if (!_verbs.TryGetValue(command.Key, out var commands))
+                {
+                    _verbs.Add(command.Key, new List<ConsoleCommandMethod>(new[] { command }));
+                }
+                else
+                {
+                    commands.Add(command);
+                }
+            }
+
+            methodInfo = typeof(NexusModule).GetMethods(BindingFlags.Public | BindingFlags.Static);
+            foreach (var method in methodInfo)
+            {
+                var attribute = new ConsoleCommandAttribute(method.Name.ToLower(), "Nexus", "Nexus commands");
 
                 var command = new ConsoleCommandMethod(instance, method, attribute);
                 if (!_verbs.TryGetValue(command.Key, out var commands))

@@ -4,6 +4,7 @@ using Phantasma.Cryptography;
 using System.Reflection;
 using System.Collections.Generic;
 using Phantasma.Spook.Command;
+using System.IO;
 
 namespace Phantasma.Spook.Shell
 {
@@ -30,10 +31,9 @@ namespace Phantasma.Spook.Shell
                 prompt = _cli.Settings.App.Prompt;
             }
 
-            var startupMsg =  "Spook shell" + version;
+            var startupMsg =  "Spook shell " + version + "\nLogs are stored in " 
+                + Path.GetTempPath() + conf.App.LogFile + "\nTo exit use <ctrl-c> or \"exit\"!\n";
 
-            // TODO autocompletion needs to be reworked, not everything can be completed with anything, 
-            // completion source could be built like a B-tree index to search for possible candidates.
             Prompt.Run(
                 ((command, listCmd, list) =>
                 {
@@ -45,7 +45,7 @@ namespace Phantasma.Spook.Shell
                     }
 
                     return "";
-                }), prompt, PromptGenerator,  startupMsg, _cli.Settings.App.History, _dispatcher.Verbs);
+                }), prompt, PromptGenerator,  startupMsg, Path.GetTempPath() + conf.App.History, _dispatcher.Verbs);
         }
 
         private string PromptGenerator()
