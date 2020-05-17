@@ -11,15 +11,15 @@ using Phantasma.Storage.Context;
 using Phantasma.Neo.Cryptography;
 using Phantasma.Neo.Utils;
 using Phantasma.Spook.Interop;
-using Logger = Phantasma.Core.Log.Logger;
 using NeoBlock = Phantasma.Neo.Core.Block;
 using NeoTx = Phantasma.Neo.Core.Transaction;
+using Logger = Phantasma.Core.Log.Logger;
 
 namespace Phantasma.Spook.Oracles
 {
     public class SpookOracle : OracleReader, IOracleObserver
     {
-        public readonly CLI CLI;
+        private readonly CLI _cli;
 
         private Func<string, IKeyValueStoreAdapter> _adapterFactory = null;
 
@@ -33,8 +33,6 @@ namespace Phantasma.Spook.Oracles
 
         private Logger logger;
 
-        private bool storageInitialized;
-
         enum StorageConst
         {
             CurrentHeight,
@@ -45,7 +43,7 @@ namespace Phantasma.Spook.Oracles
 
         public SpookOracle(CLI cli, Nexus nexus, Logger logger, Func<string, IKeyValueStoreAdapter> adapterFactory = null) : base(nexus)
         {
-            this.CLI = cli;
+            this._cli = cli;
             this._adapterFactory = adapterFactory;
             nexus.Attach(this);
             platforms = new KeyValueStore<string, string>(CreateKeyStoreAdapter(StorageConst.Platform.ToString()));
@@ -189,7 +187,8 @@ namespace Phantasma.Spook.Oracles
 
         protected override decimal PullPrice(Timestamp time, string symbol)
         {
-            if (!string.IsNullOrEmpty(CLI.cryptoCompareAPIKey))
+            var apiKey = _cli.CryptoCompareAPIKey;
+            if (!string.IsNullOrEmpty(apiKey))
             {
                 if (symbol == DomainSettings.FuelTokenSymbol)
                 {
@@ -197,7 +196,7 @@ namespace Phantasma.Spook.Oracles
                     return result / 5;
                 }
 
-                var price = CryptoCompareUtils.GetCoinRate(symbol, DomainSettings.FiatTokenSymbol, CLI.cryptoCompareAPIKey);
+                var price = CryptoCompareUtils.GetCoinRate(symbol, DomainSettings.FiatTokenSymbol, apiKey);
                 return price;
             }
 
@@ -227,14 +226,14 @@ namespace Phantasma.Spook.Oracles
 
                     if (height == 0)
                     {
-                        neoBlock = CLI.neoAPI.GetBlock(new UInt256(LuxUtils.ReverseHex(hash.ToString()).HexToBytes()));
+                        neoBlock = _cli.NeoAPI.GetBlock(new UInt256(LuxUtils.ReverseHex(hash.ToString()).HexToBytes()));
                     }
                     else
                     {
-                        neoBlock = CLI.neoAPI.GetBlock(height);
+                        neoBlock = _cli.NeoAPI.GetBlock(height);
                     }
 
-                    interopTuple = NeoInterop.MakeInteropBlock(neoBlock, CLI.neoAPI, CLI.tokenSwapper.swapAddress);
+                    interopTuple = NeoInterop.MakeInteropBlock(logger, neoBlock, _cli.NeoAPI, _cli.TokenSwapper.swapAddress);
                     break;
 
                 default:
@@ -278,8 +277,8 @@ namespace Phantasma.Spook.Oracles
                 case NeoWallet.NeoPlatform:
                     NeoTx neoTx;
                     UInt256 uHash = new UInt256(LuxUtils.ReverseHex(hash.ToString()).HexToBytes());
-                    neoTx = CLI.neoAPI.GetTransaction(uHash);
-                    tx = NeoInterop.MakeInteropTx(neoTx, CLI.neoAPI, CLI.tokenSwapper.swapAddress);
+                    neoTx = _cli.NeoAPI.GetTransaction(uHash);
+                    tx = NeoInterop.MakeInteropTx(logger, neoTx, _cli.NeoAPI, _cli.TokenSwapper.swapAddress);
                     break;
 
                 default:

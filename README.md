@@ -31,16 +31,17 @@ To learn more about Phantasma, please read the [White Paper](https://phantasma.i
 
 
 ## Node
-For development of Phantasma applications it is recommended you run a Phantasma node locally. It acts as your own personal blockchain network. The following instructions explain how to do this on Windows. Other operating systems are also supported and instructions can be found in the following section of this document. You can later move to the official test network where multiple nodes are running, in order to test your dapp under a more realistic enviroment.
+For development of Phantasma applications it is recommended you run a Phantasma node locally. It acts as your own personal blockchain network. 
+The following instructions explain how to do this on Windows. Other operating systems are also supported and instructions can be found in the following section of this document. You can later move to the official test network where multiple nodes are running, in order to test your dapp under a more realistic enviroment.
 
 To get started download a pre-compiled build which comes bundled in the official SDK release: https://github.com/phantasma-io/PhantasmaSDK/releases/latest - the files you need reside under Tools\Spook in the .zip file
 
+Note - you will need .NET runtime 3.1 installed on your desktop https://dotnet.microsoft.com/download
+
 To bootstrap your own test net just run a single instance of Phantasma node using the following arguments:
 
-Note - you will need .NET runtime 2.2 or higher installed on your desktop https://dotnet.microsoft.com/download
-
 ```
-dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet
+spook-cli -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet
 #To enable the RPC server add this argument to the line above
 -rpc.enabled=true
 ```
@@ -77,12 +78,109 @@ dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 
 #To enable the RPC server add this argument to the line above
 -rpc.enabled=true
 ```
+## Configuration and startup
 
-## Node OS Support
+There are two different possibilities to configure Spook:
 
-This section provides instructions on standing up a self-contained node for Phantasma on various operating systems. The dependencies installed as part of the below steps however will remain consistent and as such can serve as a basis for anyone who will later switch to running a Test or Main Network Node.
+Every config paramater is usable in the configuration file and as a cli argument.
 
-Below are instructions needed for the various operating systems supported.
+- Config file `config.json`.
+- CLI arguments -> overwrite config file values.
+
+Spook can be run in three different modes:
+
+- no interface (default)
+- shell ("shell.enabled": true)
+- tui ("gui.enabled": true)
+
+Note, you cannot have shell and tui enabled at the same time.
+
+This is what the default configuration looks like:
+
+````
+{
+    "ApplicationConfiguration": {
+        "Node": {
+            "web.logs": false,
+            "block.time": 2,
+            "minimum.fee": 100000,
+            "minimum.pow": 0,
+            "api.proxy.url": "",
+            "nexus.name": "simnet",
+            "node.mode": "validator",
+            "node.wif": "L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25",
+            "api.log": false,
+            "node.port": 7777,
+            "profiler.path": "",
+            "has.sync": true,
+            "has.mempool": true,
+            "mempool.log": false,
+            "has.events": false,
+            "has.relay": false,
+            "has.archive": false,
+            "has.rpc": true,
+            "has.rest": true,
+            "rpc.port": 7081,
+            "rest.port": 7078,
+            "nexus.bootstrap": true,
+            "genesis.timestamp": 0,
+            "api.cache": true,
+            "readonly": false,
+            "sender.host": "",
+            "sender.threads": 8,
+            "sender.address.count": 100,
+            "storage.path": "",
+            "verify.storage.path": "",
+            "db.storage.path": "",
+            "oracle.path": "",
+            "storage.backend": "db",
+            "convert.storage": false,
+            "random.swap.data": false
+        },
+
+        "Oracle": {
+            "neoscan.api": "mankinighost.phantasma.io:4000",
+            "neo.rpc.nodes": ["http://mankinighost.phantasma.io:30333"],
+            "crypto.compare.key": "4e6ffe0dedfd49d2e182b706b72e736fa027844181d179dc5310f115deeb29be",
+            "swaps.enabled": true,
+            "phantasma.interop.height": "0",
+            "neo.interop.height": "4261049",
+            "eth.interop.height": "0",
+            "neo.wif": ""
+        },
+
+        "Plugins": {
+            "plugin.refresh.interval": 1,
+            "tps.plugin": true,
+            "ram.plugin": true,
+            "mempool.plugin": true
+        },
+
+        "Simulator": {
+            "simulator.enabled": true,
+            "simulator.dapps": [""],
+            "simulator.generate.blocks": false
+        },
+
+        "App": {
+            "gui.enabled": false,
+            "shell.enabled": false,
+            "node.start": true,
+            "app.name": "SPK",
+            "config": "",
+            "prompt": "[{0}] spook> ",
+            "history": ".history",
+            "log.file": "spook.log"
+        },
+
+        "RPC": {
+            "rpc.address": "localhost",
+            "rpc.port": 7654
+        }
+    }
+}
+
+````
 
 ### Storage Conversion 
 
@@ -198,6 +296,12 @@ Converts the backend storage from file to db, after the conversion is finished, 
 #Default: false
 #Enables the mempool usage plugin. View the graph with comand "gui.graph mempool". Note, this is not the same as enabling the mempool.
 ```` 
+## Node OS Support
+
+This section provides instructions on standing up a self-contained node for Phantasma on various operating systems. The dependencies installed as part of the below steps however will remain consistent and as such can serve as a basis for anyone who will later switch to running a Test or Main Network Node.
+
+Below are instructions needed for the various operating systems supported.
+
 ### Debian 10 (Buster)
 
 ##### Register the Microsoft key:

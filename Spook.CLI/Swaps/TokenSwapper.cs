@@ -3,7 +3,6 @@ using System.Linq;
 using Phantasma.Numerics;
 using Phantasma.Cryptography;
 using Phantasma.Core.Log;
-using Phantasma.Core.Utils;
 using Phantasma.Neo.Core;
 using Phantasma.Blockchain;
 using Phantasma.Domain;
@@ -19,6 +18,7 @@ using Phantasma.Storage;
 using Phantasma.Storage.Utils;
 using Phantasma.Spook.Interop;
 using System.IO;
+using System.Reflection;
 
 namespace Phantasma.Spook.Swaps
 {
@@ -94,8 +94,6 @@ namespace Phantasma.Spook.Swaps
         public readonly TokenSwapper Swapper;
         public readonly string LocalAddress;
 
-        private readonly string wif;
-
         protected ChainWatcher(TokenSwapper swapper, string wif, string platformName)
         {
             Swapper = swapper;
@@ -124,6 +122,7 @@ namespace Phantasma.Spook.Swaps
 
     public class TokenSwapper : ITokenSwapper
     {
+        private readonly SpookSettings _settings;
         public readonly NexusAPI NexusAPI;
         public Nexus Nexus => NexusAPI.Nexus;
         public readonly Logger logger;
@@ -133,6 +132,7 @@ namespace Phantasma.Spook.Swaps
         private readonly NeoAPI neoAPI;
         private OracleReader OracleReader;
         public string swapAddress;
+        private readonly string _txIdentifier;
 
         private readonly Dictionary<string, BigInteger> interopBlocks;
         private PlatformInfo[] platforms;
@@ -141,13 +141,15 @@ namespace Phantasma.Spook.Swaps
 
         private Dictionary<string, ChainWatcher> _finders = new Dictionary<string, ChainWatcher>();
 
-        public TokenSwapper(PhantasmaKeys swapKey, NexusAPI nexusAPI, NeoAPI neoAPI, BigInteger minFee, Logger logger, Arguments arguments)
+        public TokenSwapper(SpookSettings settings, PhantasmaKeys swapKey, NexusAPI nexusAPI, NeoAPI neoAPI, BigInteger minFee, Logger logger)
         {
+            this._settings = settings;
             this.SwapKeys = swapKey;
             this.NexusAPI = nexusAPI;
             this.OracleReader = Nexus.GetOracleReader();
             this.MinimumFee = minFee;
             this.neoAPI = neoAPI;
+            this._txIdentifier = "SPK" + Assembly.GetAssembly(typeof(CLI)).GetVersion();
 
             this.logger = logger;
 
@@ -155,22 +157,29 @@ namespace Phantasma.Spook.Swaps
 
             this.interopBlocks = new Dictionary<string, BigInteger>();
 
-            interopBlocks["phantasma"] = BigInteger.Parse(arguments.GetString("interop.phantasma.height", "0"));
-            interopBlocks["neo"] = BigInteger.Parse(arguments.GetString("interop.neo.height", "4261049"));
+            interopBlocks["phantasma"] = BigInteger.Parse(_settings.Oracle.PhantasmaInteropHeight);
+            interopBlocks["neo"] = BigInteger.Parse(_settings.Oracle.NeoInteropHeight);
             //interopBlocks["ethereum"] = BigInteger.Parse(arguments.GetString("interop.ethereum.height", "4261049"));
 
-            InitWIF("neo", arguments);
+            InitWIF("neo");
         }
 
-        private void InitWIF(string platformName, Arguments arguments)
+        private void InitWIF(string platformName)
         {
             var genesisHash = Nexus.GetGenesisHash(Nexus.RootStorage);
             var interopKeys = InteropUtils.GenerateInteropKeys(SwapKeys, genesisHash, platformName);
             var defaultWif = interopKeys.ToWIF();
 
-            var wif = arguments.GetString($"{platformName}.wif", defaultWif);
+            var wif = _settings.Oracle.NeoWif;
 
-            wifs[platformName] = wif;
+            switch (platformName)
+            {
+                case "neo":
+                    wifs[platformName] = (wif == null) ? defaultWif : wif;
+                        break;
+                default:
+                    break;
+            }
         }
 
         internal IToken FindTokenByHash(string asset, string platform)
@@ -350,7 +359,7 @@ namespace Phantasma.Spook.Swaps
                 SpendGas(SwapKeys.Address).
                 EndScript();
 
-            var tx = new Blockchain.Transaction(Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5), CLI.Identifier);
+            var tx = new Blockchain.Transaction(Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5), _txIdentifier);
             tx.Sign(SwapKeys);
 
             var bytes = tx.ToByteArray(true);

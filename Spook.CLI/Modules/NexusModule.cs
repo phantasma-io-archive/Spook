@@ -1,21 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using Phantasma.CodeGen.Core;
-using Phantasma.VM.Utils;
-using Phantasma.VM;
-using Phantasma.CodeGen.Assembler;
+using System;
 using Phantasma.Cryptography;
 using Phantasma.Blockchain;
-using Phantasma.API;
 using System.Linq;
 using Phantasma.Core.Log;
 using Phantasma.Numerics;
-using Phantasma.Core.Types;
-using System.Threading;
-using Phantasma.Blockchain.Contracts;
-using Phantasma.Domain;
-
+using Phantasma.Spook.Command;
 namespace Phantasma.Spook.Modules
 {
     [Module("nexus")]

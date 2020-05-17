@@ -1,7 +1,7 @@
 ﻿using Phantasma.Core.Log;
+using Phantasma.Spook.Command;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.InteropServices;
 
 namespace Phantasma.Spook.GUI
@@ -51,7 +51,7 @@ namespace Phantasma.Spook.GUI
 
         private string prompt = "";
 
-        public ConsoleGUI()
+        public ConsoleGUI(bool update = true)
         {
             Console.ResetColor();
             Console.Clear();
@@ -74,7 +74,10 @@ namespace Phantasma.Spook.GUI
                 ColorMapper.SetBatchBufferColors(colors);
             }
 
-            Update();
+            if (update)
+            {
+                Update();
+            }
         }
 
         public void MakeReady(CommandDispatcher dispatcher)
@@ -199,7 +202,7 @@ namespace Phantasma.Spook.GUI
             }
 
             Console.BackgroundColor = defaultBG;
-            Console.ForegroundColor = ConsoleColor.DarkGray;
+            Console.ForegroundColor = ConsoleColor.Green;
 
             if (redrawFlags.HasFlag(RedrawFlags.Prompt))
             {
@@ -476,7 +479,7 @@ namespace Phantasma.Spook.GUI
                                 {
                                     try
                                     {
-                                        dispatcher.ExecuteCommand(prompt);
+                                        dispatcher.OnCommand(prompt);
                                     }
                                     catch (CommandException e)
                                     {
@@ -550,10 +553,10 @@ namespace Phantasma.Spook.GUI
 
         public void Update()
         {
-            if (!initializing)
-            {
-                CheckKeys();
-            }
+            //if (!initializing)
+            //{
+            //    CheckKeys();
+            //}
 
             var diff = DateTime.UtcNow - lastRedraw;
             if (diff.TotalSeconds >= 1)

@@ -11,10 +11,11 @@ using Phantasma.Pay.Chains;
 using Phantasma.Pay;
 using Phantasma.Neo.Core;
 using Phantasma.Spook.Oracles;
+using Phantasma.Spook.Command;
 using Phantasma.Blockchain.Contracts;
 using Phantasma.Domain;
-using Phantasma.Spook.GUI;
 using System.IO;
+using System.Reflection;
 
 namespace Phantasma.Spook.Modules
 {
@@ -24,8 +25,8 @@ namespace Phantasma.Spook.Modules
         public static PhantasmaKeys Keys;
 
         private static Logger logger => ModuleLogger.Instance;
-        private static ConsoleGUI gui;
 
+        [ConsoleCommand("wallet open", "Wallet", "Open a wallet, requires WIF")]
         public static void Open(string[] args)
         {
             if (args.Length != 1)
@@ -38,15 +39,16 @@ namespace Phantasma.Spook.Modules
             try
             {
                 Keys = PhantasmaKeys.FromWIF(wif);
-                logger.Success($"Opened wallet with address: {Keys.Address}");
+                logger.Shell($"Opened wallet with address: {Keys.Address}");
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 logger.Error($"Failed to open wallet. Make sure you valid a correct WIF key.");
             }
 
         }
 
+        [ConsoleCommand("wallet create", "Wallet", "Create a new wallet")]
         public static void Create(string[] args)
         {
             if (args.Length != 0)
@@ -57,11 +59,11 @@ namespace Phantasma.Spook.Modules
             try
             {
                 Keys = PhantasmaKeys.Generate();
-                logger.Success($"Generate wallet with address: {Keys.Address}");
-                logger.Success($"WIF: {Keys.ToWIF()}");
+                logger.Shell($"Generate wallet with address: {Keys.Address}");
+                logger.Shell($"WIF: {Keys.ToWIF()}");
                 logger.Warning($"Save this wallet WIF, it won't be displayed again and it is necessary to access the wallet!");
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 logger.Error($"Failed to create a new wallet.");
             }
@@ -86,7 +88,7 @@ namespace Phantasma.Spook.Modules
                 address = Keys.Address;
             }
 
-            logger.Message("Fetching balances...");
+            logger.Shell("Fetching balances...");
             var wallets = new List<CryptoWallet>();
             wallets.Add(new PhantasmaWallet(Keys, $"http://localhost:{phantasmaRestPort}/api"));
             wallets.Add(new NeoWallet(Keys, neoScanAPI.URL));
@@ -103,16 +105,16 @@ namespace Phantasma.Spook.Modules
                         foreach (var entry in wallet.Balances)
                         {
                             empty = false;
-                            logger.Message($"{entry.Amount} {entry.Symbol} @ {entry.Chain}");
+                            logger.Shell($"{entry.Amount} {entry.Symbol} @ {entry.Chain}");
                         }
                         if (empty)
                         {
-                            logger.Warning("Empty wallet.");
+                            logger.Shell("Empty wallet.");
                         }
                     }
                     else
                     {
-                        logger.Warning("Failed to fetch balances!");
+                        logger.Shell("Failed to fetch balances!");
                     }
                 });
             }
@@ -163,7 +165,8 @@ namespace Phantasma.Spook.Modules
 
         public static Hash ExecuteTransaction(NexusAPI api, byte[] script, ProofOfWork proofOfWork, params IKeyPair[] keys)
         {
-            var tx = new Blockchain.Transaction(api.Nexus.Name, DomainSettings.RootChainName, script, Timestamp.Now + TimeSpan.FromMinutes(5), CLI.Identifier);
+            var identifier = "SPK" + Assembly.GetAssembly(typeof(CLI)).GetVersion();
+            var tx = new Blockchain.Transaction(api.Nexus.Name, DomainSettings.RootChainName, script, Timestamp.Now + TimeSpan.FromMinutes(5), identifier);
 
             if (proofOfWork != ProofOfWork.None)
             {
@@ -463,7 +466,7 @@ namespace Phantasma.Spook.Modules
             tx.Sign(Keys);
             var rawTx = tx.ToByteArray(true);
 
-            logger.Message($"Staking {tempAmount} {tokenSymbol} with {dest.Text}...");
+            logger.Shell($"Staking {tempAmount} {tokenSymbol} with {dest.Text}...");
             try
             {
                 api.SendRawTransaction(Base16.Encode(rawTx));
@@ -502,7 +505,7 @@ namespace Phantasma.Spook.Modules
                     break;
                 }
             } while (true);
-            logger.Success($"Sent transaction with hash {hash}!");
+            logger.Shell($"Sent transaction with hash {hash}!");
         }
 
         public static void Airdrop(string[] args, NexusAPI api, BigInteger minFee)
@@ -524,7 +527,7 @@ namespace Phantasma.Spook.Modules
             var expectedLimit = 100 + 600 * lines.Length;
 
             var expectedGas = UnitConversion.ToDecimal(expectedLimit * minFee, DomainSettings.FuelTokenDecimals);
-            logger.Message($"This airdrop will require at least {expectedGas} {DomainSettings.FuelTokenSymbol}");
+            logger.Shell($"This airdrop will require at least {expectedGas} {DomainSettings.FuelTokenSymbol}");
 
             sb.AllowGas(Keys.Address, Address.Null, minFee, expectedLimit);
 
@@ -550,7 +553,7 @@ namespace Phantasma.Spook.Modules
             sb.SpendGas(Keys.Address);
             var script = sb.EndScript();
 
-            logger.Message($"Sending airdrop to {addressCount} addresses...");
+            logger.Shell($"Sending airdrop to {addressCount} addresses...");
             ExecuteTransaction(api, script, ProofOfWork.None, Keys);
         }
 
@@ -576,7 +579,7 @@ namespace Phantasma.Spook.Modules
             var hash = ExecuteTransaction(api, script, ProofOfWork.None, Keys/*, newKeys*/);
             if (hash != Hash.Null)
             {
-                logger.Success($"Migrated to " + newKeys.Address);
+                logger.Shell($"Migrated to " + newKeys.Address);
                 Keys = newKeys;
             }
         }
