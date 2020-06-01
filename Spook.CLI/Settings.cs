@@ -20,11 +20,14 @@ namespace Phantasma.Spook
         public string PluginURL { get; }
         public SimulatorSettings Simulator { get; }
         private Arguments _settings { get; }
+        private string configFile;
 
         public SpookSettings(string[] args)
         {
             _settings = new Arguments(args);
-            var section = new ConfigurationBuilder().AddJsonFile("config.json")
+
+            this.configFile = _settings.GetString("conf", "config.json");
+            var section = new ConfigurationBuilder().AddJsonFile(configFile)
                 .Build().GetSection("ApplicationConfiguration");
 
             this.Node = new NodeSettings(_settings, section.GetSection("Node"));
@@ -65,6 +68,7 @@ namespace Phantasma.Spook
         public bool HasArchive { get; }
         public bool HasRpc { get; }
         public int RpcPort { get; } = 7077;
+        public List<string> Seeds { get; }
 
         public bool HasRest { get; }
         public int RestPort { get; } = 7078;
@@ -106,6 +110,12 @@ namespace Phantasma.Spook
             {
                 this.ApiProxyUrl = null;
             }
+
+            this.Seeds = section.GetSection("seeds").AsEnumerable()
+                                            .Where(p => p.Value != null)
+                                            .Select(p => p.Value)
+                                            .ToList();
+
 
             this.NexusName = settings.GetString("nexus.name", section.GetValue<string>("nexus.name"));
             this.NodeMode = settings.GetString("node.mode", section.GetValue<string>("node.mode"));

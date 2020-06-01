@@ -528,7 +528,7 @@ namespace Phantasma.Spook
                         , _nodeKeys
                         , _settings.Node.NodePort
                         , _peerCaps
-                        , _seeds
+                        , _settings.Node.Seeds
                         , logger);
 
                 if (!nexus.HasGenesis)
@@ -548,7 +548,7 @@ namespace Phantasma.Spook
 
                             var genesisTimestamp = _settings.Node.GenesisTimestamp;
 
-                            if (!nexus.CreateGenesisBlock(nexusName, _nodeKeys, genesisTimestamp))
+                            if (!nexus.CreateGenesisBlock(_nodeKeys, genesisTimestamp))
                             {
                                 throw new ChainException("Genesis block failure");
                             }
@@ -618,17 +618,17 @@ namespace Phantasma.Spook
             return caps;
         }
 
-        //TODO no need to pass this!
         private bool SetupNexus()
         {
             var storagePath = _settings.Node.StoragePath;
             var oraclePath = _settings.Node.OraclePath;
             var dbstoragePath = _settings.Node.StoragePath; // maybe we can get rid of dbstoragepath?
+            var nexusName = _settings.Node.NexusName;
 
             switch (_settings.Node.StorageBackend)
             {
                 case "file":
-                    nexus = new Nexus(logger,
+                    nexus = new Nexus(nexusName, logger,
                             (name) => new BasicDiskStore(storagePath + name + ".csv"),
                             (n) => new SpookOracle(this, n, logger,
                                 (name) => new BasicDiskStore(oraclePath + name + ".csv"))
@@ -636,7 +636,7 @@ namespace Phantasma.Spook
                     break;
 
                 case "db":
-                    nexus = new Nexus(logger,
+                    nexus = new Nexus(nexusName, logger,
                             (name) => new DBPartition(logger, dbstoragePath + name),
                             (n) => new SpookOracle(this, n, logger,
                                 (name) => new DBPartition(logger, oraclePath + name))
@@ -761,6 +761,12 @@ namespace Phantasma.Spook
                     throw new Exception("Non-validator nodes require sync to be enabled");
                 }
             }
+
+            if (!_settings.Node.Validator && _settings.Oracle.Swaps) 
+            {
+                    throw new Exception("Non-validator nodes cannot have swaps enabled");
+            }
+
 
             // TODO to be continued...
         }

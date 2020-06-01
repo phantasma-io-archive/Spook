@@ -35,6 +35,8 @@ namespace Phantasma.Spook.Plugins
             Interlocked.Increment(ref txCount);
         }
 
+        public override void OnBlock(Chain chain, Block block) {}
+
         public void Update()
         {
             var currentTime = DateTime.UtcNow;

@@ -27,8 +27,8 @@ namespace Phantasma.Spook.Modules
 
             var oldGenesisBlock = oldNexus.GetGenesisBlock();
 
-            var newNexus = new Nexus();
-            newNexus.CreateGenesisBlock(oldNexus.Name, owner, oldGenesisBlock.Timestamp);
+            var newNexus = new Nexus(oldNexus.Name);
+            newNexus.CreateGenesisBlock(owner, oldGenesisBlock.Timestamp);
 
             var oldRootChain = oldNexus.RootChain;
             var newRootChain = newNexus.RootChain;
