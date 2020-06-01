@@ -26,7 +26,6 @@ using Phantasma.VM.Utils;
 using Phantasma.Core;
 using Phantasma.Network.P2P.Messages;
 using Phantasma.RocksDB;
-using Phantasma.Spook.Dapps;
 using Phantasma.Storage;
 using Phantasma.Storage.Context;
 using Phantasma.Spook.Oracles;
@@ -453,7 +452,7 @@ namespace Phantasma.Spook
 
                 string[] dapps = _settings.Simulator.Dapps.ToArray();
 
-                DappServer.InitDapps(nexus, _simulator, _nodeKeys, dapps, _settings.Node.MinimumFee, logger);
+                //DappServer.InitDapps(nexus, _simulator, _nodeKeys, dapps, _settings.Node.MinimumFee, logger);
 
                 bool genBlocks = _settings.Simulator.Blocks;
                 if (genBlocks)
