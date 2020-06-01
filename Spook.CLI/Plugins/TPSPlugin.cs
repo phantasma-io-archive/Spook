@@ -58,5 +58,10 @@ namespace Phantasma.Spook.Plugins
                 }
             }
         }
+
+        public override void OnBlock(Chain chain, Block block)
+        {
+            // do nothing
+        }
     }
 }
