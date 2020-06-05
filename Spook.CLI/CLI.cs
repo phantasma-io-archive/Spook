@@ -622,7 +622,7 @@ namespace Phantasma.Spook
         {
             var storagePath = _settings.Node.StoragePath;
             var oraclePath = _settings.Node.OraclePath;
-            var dbstoragePath = _settings.Node.StoragePath; // maybe we can get rid of dbstoragepath?
+            var dbstoragePath = _settings.Node.DbStoragePath; // maybe we can get rid of dbstoragepath?
             var nexusName = _settings.Node.NexusName;
 
             switch (_settings.Node.StorageBackend)

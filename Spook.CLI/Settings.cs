@@ -171,8 +171,9 @@ namespace Phantasma.Spook
             this.DbStoragePath = settings.GetString("db.storage.path", section.GetValue<string>("db.storage.path"));
             if (string.IsNullOrEmpty(this.DbStoragePath))
             {
-                this.StoragePath = defaultDbStoragePath;
+                this.DbStoragePath = defaultDbStoragePath;
             }
+            Console.WriteLine("dbstoragePath: " + DbStoragePath);
 
             this.OraclePath = settings.GetString("oracle.path", section.GetValue<string>("oracle.path"));
             if (string.IsNullOrEmpty(this.OraclePath))
