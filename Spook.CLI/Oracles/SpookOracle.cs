@@ -21,8 +21,6 @@ namespace Phantasma.Spook.Oracles
     {
         private readonly CLI _cli;
 
-        private Func<string, IKeyValueStoreAdapter> _adapterFactory = null;
-
         private Dictionary<string, IKeyValueStoreAdapter> _keystoreCache =
            new Dictionary<string, IKeyValueStoreAdapter>();
 
@@ -41,10 +39,9 @@ namespace Phantasma.Spook.Oracles
             Platform
         }
 
-        public SpookOracle(CLI cli, Nexus nexus, Logger logger, Func<string, IKeyValueStoreAdapter> adapterFactory = null) : base(nexus)
+        public SpookOracle(CLI cli, Nexus nexus, Logger logger) : base(nexus)
         {
             this._cli = cli;
-            this._adapterFactory = adapterFactory;
             nexus.Attach(this);
             platforms = new KeyValueStore<string, string>(CreateKeyStoreAdapter(StorageConst.Platform.ToString()));
             this.logger = logger;
@@ -94,26 +91,8 @@ namespace Phantasma.Spook.Oracles
                 return _keystoreCache[name];
             }
 
-            IKeyValueStoreAdapter result;
-
-            if (_adapterFactory != null)
-            {
-                result = _adapterFactory(name);
-
-                if (result == null)
-                {
-                    throw new Exception("keystore adapter factory failed");
-                }
-            }
-            else
-            {
-                result = new MemoryStore();
-            }
-
-            if (!_keystoreCache.ContainsKey(name))
-            {
-                _keystoreCache[name] = result;
-            }
+            IKeyValueStoreAdapter result = Nexus.CreateKeyStoreAdapter(name);
+            _keystoreCache[name] = result;
 
             return result;
         }

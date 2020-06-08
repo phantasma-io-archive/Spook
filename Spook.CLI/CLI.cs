@@ -628,23 +628,17 @@ namespace Phantasma.Spook
             switch (_settings.Node.StorageBackend)
             {
                 case "file":
-                    nexus = new Nexus(nexusName, logger,
-                            (name) => new BasicDiskStore(storagePath + name + ".csv"),
-                            (n) => new SpookOracle(this, n, logger,
-                                (name) => new BasicDiskStore(oraclePath + name + ".csv"))
-                            );
+                    nexus = new Nexus(nexusName, logger, (name) => new BasicDiskStore(storagePath + name + ".csv"));
                     break;
 
                 case "db":
-                    nexus = new Nexus(nexusName, logger,
-                            (name) => new DBPartition(logger, dbstoragePath + name),
-                            (n) => new SpookOracle(this, n, logger,
-                                (name) => new DBPartition(logger, oraclePath + name))
-                            );
+                    nexus = new Nexus(nexusName, logger, (name) => new DBPartition(logger, dbstoragePath + name));
                     break;
                 default:
                     throw new Exception("Backend has to be set to either \"db\" or \"file\"");
             }
+
+            nexus.SetOracleReader(new SpookOracle(this, nexus, logger));
 
             return true;
         }
