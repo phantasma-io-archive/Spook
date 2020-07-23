@@ -45,6 +45,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phantasma.Core", "..\Phanta
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StorageDump", "StorageDump\StorageDump.csproj", "{98CB27AB-65CB-4CF8-AABD-C5DE92B162D7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TxSender", "TxSender\TxSender.csproj", "{FDC2C82A-9B51-40C2-A092-8356764A2888}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -127,10 +129,10 @@ Global
 		{98CB27AB-65CB-4CF8-AABD-C5DE92B162D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{98CB27AB-65CB-4CF8-AABD-C5DE92B162D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{98CB27AB-65CB-4CF8-AABD-C5DE92B162D7}.Release|Any CPU.Build.0 = Release|Any CPU
-		{2D984FE1-27FE-4E60-A4C2-8B5E29690E56}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{2D984FE1-27FE-4E60-A4C2-8B5E29690E56}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{2D984FE1-27FE-4E60-A4C2-8B5E29690E56}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{2D984FE1-27FE-4E60-A4C2-8B5E29690E56}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FDC2C82A-9B51-40C2-A092-8356764A2888}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FDC2C82A-9B51-40C2-A092-8356764A2888}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FDC2C82A-9B51-40C2-A092-8356764A2888}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FDC2C82A-9B51-40C2-A092-8356764A2888}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
