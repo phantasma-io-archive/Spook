@@ -212,6 +212,11 @@ namespace Phantasma.Spook.Oracles
                         neoBlock = _cli.NeoAPI.GetBlock(height);
                     }
 
+                    if (neoBlock == null)
+                    {
+                        throw new OracleException($"Neo block is null");
+                    }
+
                     interopTuple = NeoInterop.MakeInteropBlock(logger, neoBlock, _cli.NeoAPI, _cli.TokenSwapper.swapAddress);
                     break;
 
