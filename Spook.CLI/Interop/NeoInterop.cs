@@ -18,6 +18,7 @@ using Phantasma.Core.Log;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Text;
+using System.Threading;
 
 namespace Phantasma.Spook.Interop
 {
@@ -109,6 +110,8 @@ namespace Phantasma.Spook.Interop
                         taskList.Add(
                                 new Task<InteropBlock>(() =>
                                 {
+                                    var delay = 1000;
+
                                     while (true)
                                     {
                                         try
@@ -128,6 +131,12 @@ namespace Phantasma.Spook.Interop
 
                                             logger.Message(logMessage.Contains("Neo block is null") ? "oracleReader.Read(): Neo block is null, possible connection failure" : logMessage);
                                         }
+
+                                        Thread.Sleep(delay);
+                                        if (delay >= 60000) // Once we reach 1 minute, we stop increasing delay and just repeat every minute.
+                                            delay = 60000;
+                                        else
+                                            delay *= 2;
                                     }
                                 })
                         );
