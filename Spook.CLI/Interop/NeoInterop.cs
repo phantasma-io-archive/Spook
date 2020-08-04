@@ -109,7 +109,26 @@ namespace Phantasma.Spook.Interop
                         taskList.Add(
                                 new Task<InteropBlock>(() =>
                                 {
-                                    return oracleReader.Read<InteropBlock>(DateTime.Now, url);
+                                    while (true)
+                                    {
+                                        try
+                                        {
+                                            return oracleReader.Read<InteropBlock>(DateTime.Now, url);
+                                        }
+                                        catch (Exception e)
+                                        {
+                                            var logMessage = "oracleReader.Read() exception caught:\n" + e.Message;
+                                            var inner = e.InnerException;
+                                            while (inner != null)
+                                            {
+                                                logMessage += "\n---> " + inner.Message + "\n\n" + inner.StackTrace;
+                                                inner = inner.InnerException;
+                                            }
+                                            logMessage += "\n\n" + e.StackTrace;
+
+                                            logger.Message(logMessage.Contains("Neo block is null") ? "oracleReader.Read(): Neo block is null, possible connection failure" : logMessage);
+                                        }
+                                    }
                                 })
                         );
                     }
