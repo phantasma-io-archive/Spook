@@ -19,6 +19,7 @@ using Phantasma.Storage.Context;
 using Phantasma.Storage;
 using Phantasma.Storage.Utils;
 using System.IO;
+using System.Threading;
 
 namespace Phantasma.Spook.Swaps
 {
@@ -517,8 +518,33 @@ namespace Phantasma.Spook.Swaps
                     return Hash.Null;
                 }
 
-                var txHash = Hash.Parse(tx.Hash.ToString());
-                return txHash;
+                var strHash = tx.Hash.ToString();
+
+                int counter = 0;
+
+                do
+                {
+                    Thread.Sleep(10 * 1000); // wait 10 seconds
+
+                    var temp = this.neoAPI.GetTransactionHeight(strHash);
+
+                    int height;
+
+                    if (int.TryParse(temp, out height) && height > 0)
+                    {
+                        var txHash = Hash.Parse(strHash);
+                        return txHash;
+                    }
+                    else
+                    {
+                        counter++;
+                        if (counter > 5)
+                        {
+                            return Hash.Null;
+                        }
+                    }
+
+                } while (true);
             });
         }
 
