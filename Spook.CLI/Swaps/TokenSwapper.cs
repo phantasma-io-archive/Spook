@@ -524,7 +524,7 @@ namespace Phantasma.Spook.Swaps
 
                 do
                 {
-                    Thread.Sleep(10 * 1000); // wait 10 seconds
+                    Thread.Sleep(15 * 1000); // wait 15 seconds
 
                     var temp = this.neoAPI.GetTransactionHeight(strHash);
 
