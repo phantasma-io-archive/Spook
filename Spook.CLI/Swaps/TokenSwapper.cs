@@ -456,6 +456,8 @@ namespace Phantasma.Spook.Swaps
 
                 logger.Message($"NEOSWAP: Trying transfer of {total} {token.Symbol} from {neoKeys.Address} to {destAddress}");
 
+                var nonce = sourceHash.ToByteArray();
+
                 Neo.Core.Transaction tx;
                 if (token.Symbol == "NEO" || token.Symbol == "GAS")
                 {
@@ -464,7 +466,7 @@ namespace Phantasma.Spook.Swaps
                 else
                 {
                     var nep5 = neoAPI.GetToken(token.Symbol);
-                    tx = nep5.Transfer(neoKeys, destAddress, total);
+                    tx = nep5.Transfer(neoKeys, destAddress, total, nonce);
                 }
 
                 if (tx == null)
