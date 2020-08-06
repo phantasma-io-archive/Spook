@@ -496,6 +496,7 @@ namespace Phantasma.Spook
                     }
 
                 case "validator": isValidator = true; break;
+                case "node": isValidator = false; break;
                 case "default": break;
 
                 default:

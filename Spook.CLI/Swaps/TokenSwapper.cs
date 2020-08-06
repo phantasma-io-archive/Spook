@@ -20,6 +20,7 @@ using Phantasma.Storage;
 using Phantasma.Storage.Utils;
 using System.IO;
 using System.Threading;
+using Phantasma.Neo.Cryptography;
 
 namespace Phantasma.Spook.Swaps
 {
@@ -157,6 +158,8 @@ namespace Phantasma.Spook.Swaps
 
             interopBlocks["phantasma"] = BigInteger.Parse(arguments.GetString("interop.phantasma.height", "0"));
             interopBlocks["neo"] = BigInteger.Parse(arguments.GetString("interop.neo.height", "4261049"));
+
+            VerifyPastSwaps();
             //interopBlocks["ethereum"] = BigInteger.Parse(arguments.GetString("interop.ethereum.height", "4261049"));
 
             InitWIF("neo", arguments);
@@ -217,6 +220,142 @@ namespace Phantasma.Spook.Swaps
                     }
                 }
             }*/
+        }
+
+        private void VerifyPastSwaps()
+        {
+            var settlements = new StorageMap(SettlementTag, this.Storage);
+            settlements.Visit((key, value) =>
+            {
+                try
+                {
+                    var keyHash = Serialization.Unserialize<Hash>(key);
+                    var valueHash = Serialization.Unserialize<Hash>(value);
+                    var tx = Nexus.FindTransactionByHash(valueHash);
+                    bool found = false;
+                    if (tx != null)
+                    {
+                        //Console.WriteLine($"{hash} is Phantasma hash");
+                        found = true;
+                    }
+                    else
+                    {
+                        var temp = this.neoAPI.GetTransaction(UInt256.Parse(valueHash.ToString()));
+                        if (temp != null)
+                        {
+                            //Console.WriteLine($"{hash} is Neo hash");
+                            found = true;
+                        }
+                    }
+
+                    if (!found)
+                    {
+                        Console.WriteLine($"key: {keyHash}");
+                        Console.WriteLine($"value: {valueHash}");
+                        ChainSwap swap = default(ChainSwap);
+                        Blockchain.Transaction swaptx = null;
+                        try
+                        {
+                            swap = Nexus.RootChain.GetSwap(Nexus.RootStorage, keyHash);
+                            swaptx = Nexus.FindTransactionByHash(keyHash);
+                        }
+                        catch
+                        {
+                            try
+                            {
+                                swap = Nexus.RootChain.GetSwap(Nexus.RootStorage, valueHash);
+                                swaptx = Nexus.FindTransactionByHash(valueHash);
+                            }
+                            catch
+                            {
+                                Console.WriteLine($"Swap not stored, key: {keyHash}, value {valueHash}");
+                            }
+                        }
+
+                        if (swaptx != null)
+                        {
+                            var block = Nexus.FindBlockByTransaction(swaptx);
+                            Console.WriteLine($"valueHash: {valueHash} keyHash: {keyHash} platform from: {swap.sourcePlatform} platform to: {swap.destinationPlatform} ");
+                            WriteToFile($"valueHash: {valueHash} keyHash: {keyHash} from: {swap.sourcePlatform} to: {swap.destinationPlatform} ");
+                            Console.WriteLine($"sourceHash: {swap.sourceHash} destinationHash: {swap.destinationHash}");
+                            WriteToFile($"sourceHash: {swap.sourceHash} destinationHash: {swap.destinationHash}");
+                            // hash gets written to a file, which is later read and picked up again
+                            WriteHashToFile(swap.sourceHash.ToString());
+
+                            var events =block.GetEventsForTransaction(swaptx.Hash);
+                            foreach (var evt in events)
+                            {
+                                if (evt.Kind == EventKind.TokenSend || evt.Kind == EventKind.TokenReceive)
+                                {
+                                    var data = evt.GetContent<TokenEventData>();
+                                    Console.WriteLine($"kind: {evt.Kind} symbol: {data.Symbol} amount: {data.Value}");
+                                    WriteToFile($"kind: {evt.Kind} symbol: {data.Symbol} amount: {data.Value}");
+                                }
+                            }
+                        }
+                    }
+                }
+                catch
+                {
+                    //nothing
+                }
+            });
+
+            try
+            {
+                var file = new StreamReader(@"/tmp/failed_swap_hashes.txt");
+                string line;
+                while((line = file.ReadLine()) != null)
+                {
+                    System.Console.WriteLine($"found failed hash: {line}");
+                }
+                
+                file.Close();
+            }
+            catch
+            {
+
+            }
+
+            logger.Message("Done checking for failed swaps");
+        }
+
+        private void ResettleSwap()
+        {
+            try
+            {
+                var settlements = new StorageMap(SettlementTag, this.Storage);
+                var file = new StreamReader(@"/tmp/failed_swap_hashes.txt");
+                string line;
+                while((line = file.ReadLine()) != null)
+                {
+                    System.Console.WriteLine($"found failed hash: {line}");
+                    var hash = Hash.Parse(line);
+                    settlements.Remove<Hash>(hash);
+
+                    //settle swap
+                    var settleHash = SettleSwap(PhantasmaWallet.PhantasmaPlatform, NeoWallet.NeoPlatform, hash);
+                }
+                
+                file.Close();
+
+                // clear file
+                File.WriteAllText(@"/tmp/failed_swap_hashes.txt", string.Empty);
+            }
+            catch (Exception e)
+            {
+                logger.Warning("Resettle failed!" + e);
+            }
+        }
+
+        private void WriteToFile(string txt)
+        {
+            File.AppendAllText(@"/tmp/failed_swaps.txt", txt + Environment.NewLine);
+        }
+
+        private void WriteHashToFile(string hash)
+        {
+            File.AppendAllText(@"/tmp/failed_swap_hashes.txt", hash + Environment.NewLine);
         }
 
         private void InitWIF(string platformName, Arguments arguments)
@@ -302,6 +441,9 @@ namespace Phantasma.Spook.Swaps
             {
                 return;
             }
+
+            // check for failed swaps, should be a command in dev branch later on.
+            ResettleSwap();
 
             var pendingList = new StorageList(PendingTag, this.Storage);
             int i = 0;
