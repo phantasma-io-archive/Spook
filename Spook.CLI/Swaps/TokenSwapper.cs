@@ -250,8 +250,8 @@ namespace Phantasma.Spook.Swaps
 
                     if (!found)
                     {
-                        Console.WriteLine($"key: {keyHash}");
-                        Console.WriteLine($"value: {valueHash}");
+                        logger.Message($"key: {keyHash}");
+                        logger.Message($"value: {valueHash}");
                         ChainSwap swap = default(ChainSwap);
                         Blockchain.Transaction swaptx = null;
                         try
@@ -268,16 +268,16 @@ namespace Phantasma.Spook.Swaps
                             }
                             catch
                             {
-                                Console.WriteLine($"Swap not stored, key: {keyHash}, value {valueHash}");
+                                logger.Message($"Swap not stored, key: {keyHash}, value {valueHash}");
                             }
                         }
 
                         if (swaptx != null)
                         {
                             var block = Nexus.FindBlockByTransaction(swaptx);
-                            Console.WriteLine($"valueHash: {valueHash} keyHash: {keyHash} platform from: {swap.sourcePlatform} platform to: {swap.destinationPlatform} ");
+                            logger.Message($"valueHash: {valueHash} keyHash: {keyHash} platform from: {swap.sourcePlatform} platform to: {swap.destinationPlatform} ");
                             WriteToFile($"valueHash: {valueHash} keyHash: {keyHash} from: {swap.sourcePlatform} to: {swap.destinationPlatform} ");
-                            Console.WriteLine($"sourceHash: {swap.sourceHash} destinationHash: {swap.destinationHash}");
+                            logger.Message($"sourceHash: {swap.sourceHash} destinationHash: {swap.destinationHash}");
                             WriteToFile($"sourceHash: {swap.sourceHash} destinationHash: {swap.destinationHash}");
                             // hash gets written to a file, which is later read and picked up again
                             WriteHashToFile(swap.sourceHash.ToString());
@@ -288,7 +288,7 @@ namespace Phantasma.Spook.Swaps
                                 if (evt.Kind == EventKind.TokenSend || evt.Kind == EventKind.TokenReceive)
                                 {
                                     var data = evt.GetContent<TokenEventData>();
-                                    Console.WriteLine($"kind: {evt.Kind} symbol: {data.Symbol} amount: {data.Value}");
+                                    logger.Message($"kind: {evt.Kind} symbol: {data.Symbol} amount: {data.Value}");
                                     WriteToFile($"kind: {evt.Kind} symbol: {data.Symbol} amount: {data.Value}");
                                 }
                             }
