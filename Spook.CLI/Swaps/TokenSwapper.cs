@@ -334,7 +334,7 @@ namespace Phantasma.Spook.Swaps
                     settlements.Remove<Hash>(hash);
 
                     //settle swap
-                    var settleHash = SettleSwap(PhantasmaWallet.PhantasmaPlatform, NeoWallet.NeoPlatform, hash);
+                    var settleHash = SettleSwapToNeo(hash);
                 }
                 
                 file.Close();
