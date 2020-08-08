@@ -35,7 +35,8 @@
             "oracle.path": "",
             "storage.backend": "db",
             "convert.storage": false,
-            "random.swap.data": false
+            "random.swap.data": false,
+            "seeds": []
         },
 
         "Oracle": {
@@ -57,7 +58,7 @@
         },
 
         "Simulator": {
-            "simulator.enabled": true,
+            "simulator.enabled": false,
             "simulator.dapps": [""],
             "simulator.generate.blocks": false
         },

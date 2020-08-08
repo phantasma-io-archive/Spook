@@ -1,5 +1,12 @@
 using System;
-
+using System.Collections;
+using System.IO;
+using System.Text;
+using Phantasma.Blockchain;
+using Phantasma.Cryptography;
+using Phantasma.RocksDB;
+using Phantasma.Storage;
+using Phantasma.Storage.Context;
 
 namespace Phantasma.Spook.Command
 {
@@ -29,5 +36,149 @@ namespace Phantasma.Spook.Command
             _cli.Start();
             Console.WriteLine("Node bounced");
         }
+
+        [ConsoleCommand("node convert", Category = "Node", Description = "")]
+        protected void OnConvertCommand(string fileStoragePath, string dbStoragePath, string verificationPath, int includeArchives = 0)
+        {
+            // TODO, could actually run in a background thread, with updates written out to console.
+            // TODO2, not necessary, it's a one time thing...
+            
+            Func<string, IKeyValueStoreAdapter> fileStorageFactory  = (name)
+                => new BasicDiskStore(fileStoragePath);
+
+            Func<string, IKeyValueStoreAdapter> dbStorageFactory    = (name)
+                => new DBPartition(_cli.Logger, dbStoragePath);
+
+            Func<string, IKeyValueStoreAdapter> verificationStorageFactory = null;
+            if (!string.IsNullOrEmpty(verificationPath))
+            {
+                verificationStorageFactory = (name) => new BasicDiskStore(verificationPath);
+            }
+
+            KeyValueStore<Hash, Archive> fileStorageArchives = null;
+            if (includeArchives > 0)
+            {
+                fileStorageArchives = new KeyValueStore<Hash, Archive>(fileStorageFactory("archives"));
+            }
+
+            KeyValueStore<Hash, byte[]> fileStorageContents = new KeyValueStore<Hash, byte[]>(fileStorageFactory("contents"));
+            KeyStoreStorage fileStorageRoot     = new KeyStoreStorage(fileStorageFactory("chain.main"));
+
+            KeyValueStore<Hash, Archive> dbStorageArchives = new KeyValueStore<Hash, Archive>(dbStorageFactory("archives"));
+            KeyValueStore<Hash, byte[]> dbStorageContents = new KeyValueStore<Hash, byte[]>(dbStorageFactory("contents"));
+            KeyStoreStorage dbStorageRoot    = new KeyStoreStorage(dbStorageFactory("chain.main"));
+
+            KeyValueStore<Hash, Archive> fileStorageArchiveVerify = new KeyValueStore<Hash, Archive>(verificationStorageFactory("archives.verify"));
+            KeyValueStore<Hash, byte[]> fileStorageContentVerify = new KeyValueStore<Hash, byte[]>(verificationStorageFactory("contents.verify"));
+            KeyStoreStorage fileStorageRootVerify = new KeyStoreStorage(verificationStorageFactory("chain.main.verify"));
+
+            int count = 0;
+
+            if (includeArchives > 0)
+            {
+                _cli.Logger.Message("Starting copying archives...");
+                fileStorageArchives.Visit((key, value) =>
+                {
+                    count++;
+                    dbStorageArchives.Set(key, value);
+                    var val = dbStorageArchives.Get(key);
+                    if (!CompareArchive(val, value))
+                    {
+                        _cli.Logger.Message($"Archives: NewValue: {value.Hash} and oldValue: {val.Hash} differ, fail now!");
+                        Environment.Exit(-1);
+                    }
+                });
+                _cli.Logger.Message($"Finished copying {count} archives...");
+                count = 0;
+            }
+
+            _cli.Logger.Message("Starting copying content items...");
+            fileStorageContents.Visit((key, value) =>
+            {
+                count++;
+                dbStorageContents.Set(key, value);
+                var val = dbStorageContents.Get(key);
+                _cli.Logger.Message("COUNT: " + count);
+                if (!CompareBA(val, value))
+                {
+                    _cli.Logger.Message($"CONTENTS: NewValue: {Encoding.UTF8.GetString(val)} and oldValue: {Encoding.UTF8.GetString(value)} differ, fail now!");
+                    Environment.Exit(-1);
+                }
+            });
+
+            _cli.Logger.Message("Starting copying root...");
+            fileStorageRoot.Visit((key, value) =>
+            {
+                count++;
+                StorageKey stKey = new StorageKey(key);
+                dbStorageRoot.Put(stKey, value);
+                _cli.Logger.Message("COUNT: " + count);
+                var val = dbStorageRoot.Get(stKey);
+                if (!CompareBA(val, value))
+                {
+                    _cli.Logger.Message($"ROOT: NewValue: {Encoding.UTF8.GetString(val)} and oldValue: {Encoding.UTF8.GetString(value)} differ, fail now!");
+                    Environment.Exit(-1);
+                }
+            });
+            _cli.Logger.Message($"Finished copying {count} root items...");
+            count = 0;
+
+            if (!string.IsNullOrEmpty(verificationPath))
+            {
+                _cli.Logger.Message($"Create verification stores");
+
+                if (includeArchives > 0)
+                {
+                    _cli.Logger.Message("Start writing verify archives...");
+                    dbStorageArchives.Visit((key, value) =>
+                    {
+                        count++;
+                        // very ugly and might not always work, but should be ok for now
+                        byte[] bytes = value.Size.ToUnsignedByteArray();
+                        if (BitConverter.IsLittleEndian)
+                            Array.Reverse(bytes);
+                        int size = BitConverter.ToInt32(bytes, 0);
+
+                        var ms = new MemoryStream(new byte[size]);
+                        var bw = new BinaryWriter(ms);
+                        value.SerializeData(bw);
+                        fileStorageContentVerify.Set(key, ms.ToArray());
+                    });
+                    _cli.Logger.Message($"Finished writing {count} archives...");
+                    count = 0;
+                }
+
+                _cli.Logger.Message("Start writing content items...");
+                dbStorageContents.Visit((key, value) =>
+                {
+                    count++;
+                    _cli.Logger.Message ($"Content: {count}");
+                    fileStorageContentVerify.Set(key, value);
+                });
+                _cli.Logger.Message($"Finished writing {count} content items...");
+                count = 0;
+
+                _cli.Logger.Message("Starting writing root...");
+                dbStorageRoot.Visit((key, value) =>
+                {
+                    count++;
+                    StorageKey stKey = new StorageKey(key);
+                    fileStorageRootVerify.Put(stKey, value);
+                    _cli.Logger.Message ($"Wrote: {count}");
+                });
+                _cli.Logger.Message($"Finished writing {count} root items...");
+            }
+        }
+
+        static bool CompareArchive(Archive a1, Archive a2)
+        {
+            return a1.Hash.Equals(a2.Hash);
+        }
+
+        static bool CompareBA(byte[] ba1, byte[] ba2)
+        {
+            return StructuralComparisons.StructuralEqualityComparer.Equals(ba1, ba2);
+        }
+
     }
 }
