@@ -107,18 +107,18 @@ namespace Phantasma.Spook.Interop
                 Task.WaitAll(taskList.ToArray());
                 
                 // get blocks and order them for processing
-                // TODO not sure if InteropBlock.Hash is prepended with a 0x, if not we would fail here because it wouldn't match.
-                var blocksToProcess = taskList.Select(x => x.Result).ToList().Where(
-                        x => blockIds.ContainsKey(x.Hash.ToString())).ToDictionary(x => x, x => blockIds[x.Hash.ToString()])
-                        .OrderBy(x => x.Value);
+                var blocksToProcess = taskList.Select(x => x.Result).ToList()
+                        .Where(x => blockIds.ContainsKey(x.Hash.ToString()))
+                        .Select(x => new { block = x, id = blockIds[x.Hash.ToString()] })
+                        .OrderBy(x => x.id);
 
                 logger.Message($"blocksToProcess: {blocksToProcess.Count()}");
 
                 foreach (var entry in blocksToProcess)
                 {
-                    ProcessBlock(entry.Key, result);
+                    ProcessBlock(entry.block, result);
                     oracleReader.SetCurrentHeight("neo", "neo", _interopBlockHeight.ToString());
-                    _interopBlockHeight = BigInteger.Parse(entry.Value.ToString());
+                    _interopBlockHeight = BigInteger.Parse(entry.id.ToString());
                 }
             }
             else
