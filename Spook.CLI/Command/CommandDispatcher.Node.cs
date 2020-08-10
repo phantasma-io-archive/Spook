@@ -38,10 +38,35 @@ namespace Phantasma.Spook.Command
         }
 
         [ConsoleCommand("node convert", Category = "Node", Description = "")]
-        protected void OnConvertCommand(string fileStoragePath, string dbStoragePath, string verificationPath, int includeArchives = 0)
+        protected void OnConvertCommand(string[] args)
         {
             // TODO, could actually run in a background thread, with updates written out to console.
             // TODO2, not necessary, it's a one time thing...
+
+            // TODO ugly quickfix, add additional command handler to support commands with multiple args
+            string fileStoragePath = null;
+            string dbStoragePath = null;
+            string verificationPath = null;
+            int includeArchives = 0;
+
+            if (args.Length == 2)
+            {
+                fileStoragePath = args[0];
+                dbStoragePath = args[1];
+            }
+            else if (args.Length == 3)
+            {
+                fileStoragePath = args[0];
+                dbStoragePath = args[1];
+                verificationPath = args[2];
+            }
+            else if (args.Length == 4)
+            {
+                fileStoragePath = args[0];
+                dbStoragePath = args[1];
+                verificationPath = args[2];
+                includeArchives = Int32.Parse(args[3]);
+            }
             
             Func<string, IKeyValueStoreAdapter> fileStorageFactory  = (name)
                 => new BasicDiskStore(fileStoragePath);
