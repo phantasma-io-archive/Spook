@@ -59,7 +59,7 @@
         },
 
         "Simulator": {
-            "simulator.enabled": false,
+            "simulator.enabled": true,
             "simulator.dapps": [""],
             "simulator.generate.blocks": false
         },
