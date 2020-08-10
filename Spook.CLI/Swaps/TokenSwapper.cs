@@ -248,7 +248,7 @@ namespace Phantasma.Spook.Swaps
                     return;
                 }
 
-                var neoInterop = new NeoInterop(this, neoAPI,  wifs["neo"], interopBlocks["neo"], OracleReader, logger);
+                var neoInterop = new NeoInterop(this, neoAPI,  wifs["neo"], interopBlocks["neo"], OracleReader, _settings.Oracle.NeoQuickSync, logger);
                 swapAddress = neoInterop.LocalAddress;
                 _finders["neo"] = neoInterop;
             }

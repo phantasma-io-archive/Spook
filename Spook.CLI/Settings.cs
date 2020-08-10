@@ -200,14 +200,25 @@ namespace Phantasma.Spook
         public string NeoInteropHeight { get; } = "4261049";
         public string EthInteropHeight { get; }
         public string NeoWif { get; }
+        public bool NeoQuickSync { get; } = true;
 
         public OracleSettings(Arguments settings, IConfigurationSection section)
         {
             this.NeoscanUrl = settings.GetString("neoscan.api", section.GetValue<string>("neoscan.api"));
-            this.NeoRpcNodes = section.GetSection("neo.rpc.nodes").AsEnumerable()
+            this.NeoRpcNodes = section.GetSection("neo.rpc.specific.nodes").AsEnumerable()
                         .Where(p => p.Value != null)
                         .Select(p => p.Value)
                         .ToList();
+
+            if (this.NeoRpcNodes.Count() == 0)
+            {
+                this.NeoRpcNodes = section.GetSection("neo.rpc.nodes").AsEnumerable()
+                            .Where(p => p.Value != null)
+                            .Select(p => p.Value)
+                            .ToList();
+                this.NeoQuickSync = false;
+            }
+
             this.CryptoCompareAPIKey = settings.GetString("crypto.compare.key", section.GetValue<string>("crypto.compare.key"));
             this.Swaps = settings.GetBool("swaps.enabled", section.GetValue<bool>("swaps.enabled"));
             this.PhantasmaInteropHeight = settings.GetString("phantasma.interop.height", section.GetValue<string>("phantasma.interop.height"));

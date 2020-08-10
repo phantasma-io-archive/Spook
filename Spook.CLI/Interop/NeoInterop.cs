@@ -30,6 +30,7 @@ namespace Phantasma.Spook.Interop
         private OracleReader oracleReader;
         private DateTime lastScan;
         private static bool initialStart = true;
+        private bool quickSync = false;
 
         public static Dictionary<string, CryptoCurrencyInfo> NeoTokenInfo = new Dictionary<string, CryptoCurrencyInfo>()
         {
@@ -40,14 +41,15 @@ namespace Phantasma.Spook.Interop
         };
 
         public NeoInterop(TokenSwapper swapper, NeoAPI neoAPI, string wif, PBigInteger interopBlockHeight
-            ,OracleReader oracleReader, Logger logger)
+            ,OracleReader oracleReader, bool quickSync, Logger logger)
                 : base(swapper, wif, "neo")
         {
             string lastBlockHeight = oracleReader.GetCurrentHeight("neo", "neo");
 
-            this._interopBlockHeight= (!string.IsNullOrEmpty(lastBlockHeight)) 
+            this._interopBlockHeight = (!string.IsNullOrEmpty(lastBlockHeight)) 
                                        ? BigInteger.Parse(lastBlockHeight) 
                                        : new BigInteger(interopBlockHeight.ToUnsignedByteArray());
+            this.quickSync = quickSync;
 
             logger.Message($"interopHeight: {_interopBlockHeight}");
             this.neoAPI = neoAPI;
@@ -72,11 +74,11 @@ namespace Phantasma.Spook.Interop
             // initial start, we have to verify all processed swaps
             if (initialStart)
             {
+                // TODO check if quick sync nodes are configured, if so use quick sync
                 // we need to find a better solution for that though
                 var allInteropBlocks = oracleReader.ReadAllBlocks("neo", "neo");
 
                 logger.Message($"Found {allInteropBlocks.Count} blocks");
-                //Thread.Sleep(1000000000);
 
                 foreach (var block in allInteropBlocks)
                 {
@@ -89,90 +91,131 @@ namespace Phantasma.Spook.Interop
                 return result;
             }
 
-            var blockIterator = new BlockIterator(neoAPI);
-            var blockDifference = blockIterator.currentBlock - _interopBlockHeight;
-            var batchCount = (blockDifference > 8) ? 8 : blockDifference; //TODO make it a constant, should be no more than 8
-
-            while (blockIterator.currentBlock > _interopBlockHeight)
+            if (quickSync)
             {
-                logger.Message("==== current: " + blockIterator.currentBlock + " interop: " + _interopBlockHeight);
-                //logger.Message("start======================= " + DateTime.Now.ToString("yyyy’-‘MM’-‘dd’ ’HH’:’mm’:’ss.fff"));
-                if (batchCount > 1)
+                // if quick sync is active, we can use a specific plugin installed on the nodes (EventTracker)
+                // TODO reversed contract hash is hardcoded for now, very unlikely to change.
+                var blockIds = neoAPI.GetSwapBlocks("b3a766ac60afa2990d9251db08138fd1facf07ed", LocalAddress, this._interopBlockHeight.ToString());
+                var batchCount = 8;
+                List<Task<InteropBlock>> taskList = CreateTaskList(batchCount, blockIds);
+
+                foreach (var task in taskList)
                 {
-                    List<Task<InteropBlock>> taskList = new List<Task<InteropBlock>>();
-                    var nextCurrentBlockHeight = _interopBlockHeight + batchCount;
-                    
-                    for (var i = _interopBlockHeight; i < nextCurrentBlockHeight; i++)
+                    task.Start();
+                }
+                
+                Task.WaitAll(taskList.ToArray());
+                
+                // get blocks and order them for processing
+                var blocksToProcess = taskList.Select(x => x.Result).OrderBy(x => x.Height).ToList();
+                foreach (var block in blocksToProcess)
+                {
+                    ProcessBlock(block, result);
+                    oracleReader.SetCurrentHeight("neo", "neo", _interopBlockHeight.ToString());
+                    _interopBlockHeight = BigInteger.Parse(block.Height.ToString());
+                }
+            }
+            else
+            {
+                var blockIterator = new BlockIterator(neoAPI);
+                var blockDifference = blockIterator.currentBlock - _interopBlockHeight;
+                var batchCount = (blockDifference > 8) ? 8 : blockDifference; //TODO make it a constant, should be no more than 8
+
+                while (blockIterator.currentBlock > _interopBlockHeight)
+                {
+                    logger.Message("==== current: " + blockIterator.currentBlock + " interop: " + _interopBlockHeight);
+                    //logger.Message("start======================= " + DateTime.Now.ToString("yyyy’-‘MM’-‘dd’ ’HH’:’mm’:’ss.fff"));
+                    if (batchCount > 1)
+                    {
+                        List<Task<InteropBlock>> taskList = CreateTaskList(batchCount);
+                        
+                        foreach (var task in taskList)
+                        {
+                            task.Start();
+                        }
+                        
+                        Task.WaitAll(taskList.ToArray());
+                        
+                        foreach (var task in taskList)
+                        {
+                            var block = task.Result;
+
+                            ProcessBlock(block, result);
+                        }
+
+                        oracleReader.SetCurrentHeight("neo", "neo", _interopBlockHeight.ToString());
+                        _interopBlockHeight += batchCount;
+                    }
+                    else
                     {
                         var url = DomainExtensions.GetOracleBlockURL(
-                                "neo", "neo", PBigInteger.FromUnsignedArray(i.ToByteArray(), true));
-                    
-                        taskList.Add(
-                                new Task<InteropBlock>(() =>
-                                {
-                                    var delay = 1000;
+                                "neo", "neo", PBigInteger.FromUnsignedArray(_interopBlockHeight.ToByteArray(), true));
 
-                                    while (true)
-                                    {
-                                        try
-                                        {
-                                            return oracleReader.Read<InteropBlock>(DateTime.Now, url);
-                                        }
-                                        catch (Exception e)
-                                        {
-                                            var logMessage = "oracleReader.Read() exception caught:\n" + e.Message;
-                                            var inner = e.InnerException;
-                                            while (inner != null)
-                                            {
-                                                logMessage += "\n---> " + inner.Message + "\n\n" + inner.StackTrace;
-                                                inner = inner.InnerException;
-                                            }
-                                            logMessage += "\n\n" + e.StackTrace;
+                        var interopBlock = oracleReader.Read<InteropBlock>(DateTime.Now, url);
 
-                                            logger.Message(logMessage.Contains("Neo block is null") ? "oracleReader.Read(): Neo block is null, possible connection failure" : logMessage);
-                                        }
+                        ProcessBlock(interopBlock, result);
 
-                                        Thread.Sleep(delay);
-                                        if (delay >= 60000) // Once we reach 1 minute, we stop increasing delay and just repeat every minute.
-                                            delay = 60000;
-                                        else
-                                            delay *= 2;
-                                    }
-                                })
-                        );
+                        oracleReader.SetCurrentHeight("neo", "neo", _interopBlockHeight.ToString());
+                        _interopBlockHeight++;
                     }
-                    
-                    foreach (var task in taskList)
-                    {
-                        task.Start();
-                    }
-                    
-                    Task.WaitAll(taskList.ToArray());
-                    
-                    foreach (var task in taskList)
-                    {
-                        var block = task.Result;
-
-                        ProcessBlock(block, result);
-                    }
-
-                    oracleReader.SetCurrentHeight("neo", "neo", _interopBlockHeight.ToString());
-                    _interopBlockHeight += batchCount;
-                }
-                else
-                {
-                    var url = DomainExtensions.GetOracleBlockURL(
-                            "neo", "neo", PBigInteger.FromUnsignedArray(_interopBlockHeight.ToByteArray(), true));
-
-                    var interopBlock = oracleReader.Read<InteropBlock>(DateTime.Now, url);
-
-                    ProcessBlock(interopBlock, result);
-
-                    oracleReader.SetCurrentHeight("neo", "neo", _interopBlockHeight.ToString());
-                    _interopBlockHeight++;
                 }
             }
             return result;
+        }
+
+        private List<Task<InteropBlock>> CreateTaskList(BigInteger batchCount, BigInteger[] blockIds = null)
+        {
+            List<Task<InteropBlock>> taskList = new List<Task<InteropBlock>>();
+            if (blockIds == null)
+            {
+                var nextCurrentBlockHeight = _interopBlockHeight + batchCount;
+                
+                for (var i = _interopBlockHeight; i < nextCurrentBlockHeight; i++)
+                {
+                    var url = DomainExtensions.GetOracleBlockURL(
+                            "neo", "neo", PBigInteger.FromUnsignedArray(i.ToByteArray(), true));
+                
+                    taskList.Add(
+                            new Task<InteropBlock>(() =>
+                            {
+                                var delay = 1000;
+
+                                while (true)
+                                {
+                                    try
+                                    {
+                                        return oracleReader.Read<InteropBlock>(DateTime.Now, url);
+                                    }
+                                    catch (Exception e)
+                                    {
+                                        var logMessage = "oracleReader.Read() exception caught:\n" + e.Message;
+                                        var inner = e.InnerException;
+                                        while (inner != null)
+                                        {
+                                            logMessage += "\n---> " + inner.Message + "\n\n" + inner.StackTrace;
+                                            inner = inner.InnerException;
+                                        }
+                                        logMessage += "\n\n" + e.StackTrace;
+
+                                        logger.Message(logMessage.Contains("Neo block is null") ? "oracleReader.Read(): Neo block is null, possible connection failure" : logMessage);
+                                    }
+
+                                    Thread.Sleep(delay);
+                                    if (delay >= 60000) // Once we reach 1 minute, we stop increasing delay and just repeat every minute.
+                                        delay = 60000;
+                                    else
+                                        delay *= 2;
+                                }
+                            })
+                    );
+                }
+            }
+            else
+            {
+
+            }
+
+            return taskList;
         }
 
         private void ProcessBlock(InteropBlock block, List<PendingSwap> result)
@@ -239,10 +282,9 @@ namespace Phantasma.Spook.Interop
                 }
             }
 
-            //logger.Message("blockOfInterest " + block.Height + " :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::  " + blockOfInterest);
             InteropBlock iBlock = (blockOfInterest)
-                ? new InteropBlock("neo", "neo", Hash.FromBytes(block.Hash.ToArray()), hashes.ToArray())
-                : new InteropBlock("neo", "neo", Hash.Null, hashes.ToArray());
+                ? new InteropBlock("neo", "neo", new PBigInteger(block.Height), Hash.FromBytes(block.Hash.ToArray()), hashes.ToArray())
+                : new InteropBlock("neo", "neo", 0, Hash.Null, hashes.ToArray());
 
             return Tuple.Create(iBlock, interopTransactions.ToArray());
         }

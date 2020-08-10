@@ -232,6 +232,7 @@ namespace Phantasma.Spook.Oracles
                 var root = JSONReader.ReadFromString(json);
 
                 var transactions = root.GetNode("transactions");
+                var height = root.GetInt32("index");
                 var hashes = new List<Hash>();
 
                 foreach (var entry in transactions.Children)
@@ -240,7 +241,7 @@ namespace Phantasma.Spook.Oracles
                     hashes.Add(txHash);
                 }
 
-                var block = new InteropBlock(platformName, "main", Hash.Parse(blockText), hashes.ToArray());
+                var block = new InteropBlock(platformName, "main", height, Hash.Parse(blockText), hashes.ToArray());
                 return block;
             }
             catch (Exception e)

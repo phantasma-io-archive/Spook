@@ -42,6 +42,7 @@
         "Oracle": {
             "neoscan.api": "mankinighost.phantasma.io:4000",
             "neo.rpc.nodes": ["http://mankinighost.phantasma.io:30333"],
+            "neo.rpc.specific.nodes": ["http://135.181.45.206:10332"],
             "crypto.compare.key": "4e6ffe0dedfd49d2e182b706b72e736fa027844181d179dc5310f115deeb29be",
             "swaps.enabled": true,
             "phantasma.interop.height": "0",
