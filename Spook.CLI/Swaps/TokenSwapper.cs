@@ -483,6 +483,10 @@ namespace Phantasma.Spook.Swaps
                 {
                     Thread.Sleep(15 * 1000); // wait 15 seconds
 
+                    if (strHash.StartsWith("0x"))
+                    {
+                        strHash = strHash.Substring(2);
+                    }
                     var temp = this.neoAPI.GetTransactionHeight(strHash);
 
                     int height;
