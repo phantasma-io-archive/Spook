@@ -34,7 +34,16 @@
     <PackageReference Include="ReadLine" Version="2.0.1" />
     <PackageReference Include="System.Runtime.Loader" Version="4.3.0" />
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="4.7.0" />
+
+    <!--PackageReference Include="Nethereum.BlockchainProcessing" Version="3.8.0" />
+    <PackageReference Include="Nethereum.StandardTokenEIP20" Version="3.8.0" />
+    <PackageReference Include="Nethereum.Web3" Version="3.8.0" />
+    <PackageReference Include="Nethereum.JsonRpc.Client" Version="3.8.0" />
+    <PackageReference Include="Nethereum.JsonRpc.RpcClient" Version="3.8.0" />
+    <PackageReference Include="Nethereum.JsonRpc.WebSocketClient" Version="3.8.0" />
+    <PackageReference Include="Nethereum.RPC" Version="3.8.0" /-->
   </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.API\Phantasma.API.csproj" />
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.Blockchain\Phantasma.Blockchain.csproj" />
@@ -48,5 +57,15 @@
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.Simulator\Phantasma.Simulator.csproj" />
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.Storage\Phantasma.Storage.csproj" />
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.VM\Phantasma.VM.csproj" />
+    <ProjectReference Include="..\..\PhantasmaChain\Phantasma.Domain\Phantasma.Domain.csproj" />
+
+    <ProjectReference Include="/home/enzensbe/source/Nethereum/src/Nethereum.Signer/Nethereum.Signer.csproj" />
+    <ProjectReference Include="/home/enzensbe/source/Nethereum/src/Nethereum.JsonRpc.RpcClient/Nethereum.JsonRpc.RpcClient.csproj" />
+    <ProjectReference Include="/home/enzensbe/source/Nethereum/src/Nethereum.JsonRpc.WebSocketClient/Nethereum.JsonRpc.WebSocketClient.csproj" />
+    <ProjectReference Include="/home/enzensbe/source/Nethereum/src/Nethereum.Web3/Nethereum.Web3.csproj" />
+    <ProjectReference Include="/home/enzensbe/source/Nethereum/src/Nethereum.RPC/Nethereum.RPC.csproj" />
+    <ProjectReference Include="/home/enzensbe/source/Nethereum/src/Nethereum.JsonRpc.Client/Nethereum.JsonRpc.Client.csproj" />
+    <ProjectReference Include="/home/enzensbe/source/Nethereum/src/Nethereum.StandardTokenEIP20/Nethereum.StandardTokenEIP20.csproj" />
+    <ProjectReference Include="/home/enzensbe/source/Nethereum/src/Nethereum.BlockchainProcessing/Nethereum.BlockchainProcessing.csproj" />
   </ItemGroup>
 </Project>

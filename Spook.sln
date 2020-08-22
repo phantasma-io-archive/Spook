@@ -35,8 +35,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phantasma.Simulator", "..\P
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phantasma.Neo", "..\PhantasmaChain\Phantasma.Neo\Phantasma.Neo.csproj", "{3231DDF2-A936-4828-BA83-B2C1B6B71B6F}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phantasma.Ethereum", "..\PhantasmaChain\Phantasma.Ethereum\Phantasma.Ethereum.csproj", "{8BA34008-2D35-44DE-88C1-65936F3DFCC8}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phantasma.Domain", "..\PhantasmaChain\Phantasma.Domain\Phantasma.Domain.csproj", "{462E855A-FE3F-477C-AFCE-2E645EBFC42F}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phantasma.Contracts", "..\PhantasmaChain\Phantasma.Contracts\Phantasma.Contracts.csproj", "{B5A5637B-5521-44C1-9713-BBCBDC0A5CCC}"

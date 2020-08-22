@@ -37,6 +37,18 @@ namespace Phantasma.Spook.Command
             Console.WriteLine("Node bounced");
         }
 
+        [ConsoleCommand("create token", Category = "Node", Description = "Bounce a node to reload configuration")]
+        protected void OnCreatePlatformToken(string[] args)
+        {
+            // TODO should be done in a tx to distribute to other nodes
+            var symbol = args[0];
+            var platform = args[1];
+            var hash = Hash.FromUnpaddedHex(args[2]);
+
+            _cli.Nexus.SetTokenPlatformHash(symbol, platform, hash, _cli.Nexus.RootStorage);
+            Console.WriteLine("Token {symbol}/{platform} created.");
+        }
+
         [ConsoleCommand("node convert", Category = "Node", Description = "")]
         protected void OnConvertCommand(string[] args)
         {

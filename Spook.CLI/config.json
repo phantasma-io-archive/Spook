@@ -42,13 +42,20 @@
         "Oracle": {
             "neoscan.api": "mankinighost.phantasma.io:4000",
             "neo.rpc.nodes": ["http://mankinighost.phantasma.io:30333"],
-            "neo.rpc.specific.nodes": ["http://135.181.45.206:10332"],
+            "neo.rpc.specific.nodes": [],
+            "eth.rpc.nodes": ["13.91.228.58:7545"],
+            "eth.contracts": [
+                {"symbol": "SOUL", "hash": "0x4c2af2fb374b988363deb535bf0ff2d1eb7b2106"},
+                {"symbol": "KCAL", "hash": "0xa9858f0e2037c18dd6a0b4bc082d41b0536d47e2"}
+            ],
+            "eth.block.confirmations": 0,
             "crypto.compare.key": "4e6ffe0dedfd49d2e182b706b72e736fa027844181d179dc5310f115deeb29be",
             "swaps.enabled": true,
             "phantasma.interop.height": "0",
-            "neo.interop.height": "4261049",
-            "eth.interop.height": "0",
-            "neo.wif": ""
+            "neo.interop.height": "28463738",
+            "eth.interop.height": "214",
+            "neo.wif": "",
+            "eth.wif": ""
         },
 
         "Plugins": {

@@ -20,6 +20,9 @@ using Phantasma.Spook.Interop;
 using System.IO;
 using System.Reflection;
 using System.Threading;
+using Phantasma.Spook.Chains;
+using EthereumKey = Phantasma.Ethereum.EthereumKey;
+using Nethereum.RPC.Eth.DTOs;
 
 namespace Phantasma.Spook.Swaps
 {
@@ -109,7 +112,7 @@ namespace Phantasma.Spook.Swaps
             var localKeys = GetAvailableAddress(wif);
             if (localKeys == LocalAddress)
             {
-                Swapper.logger.Message($"Listening for {platformName} swaps at address {LocalAddress}");
+                Swapper.logger.Message($"Listening for {platformName} swaps at address {LocalAddress.ToLower()}");
             }
             else
             {
@@ -131,9 +134,10 @@ namespace Phantasma.Spook.Swaps
         internal readonly PhantasmaKeys SwapKeys;
         private readonly BigInteger MinimumFee;
         private readonly NeoAPI neoAPI;
+        private readonly EthAPI ethAPI;
         private OracleReader OracleReader;
-        public string swapAddress;
         private readonly string _txIdentifier;
+        public Dictionary<string, string> SwapAddresses = new Dictionary<string,string>();
 
         private readonly Dictionary<string, BigInteger> interopBlocks;
         private PlatformInfo[] platforms;
@@ -142,7 +146,7 @@ namespace Phantasma.Spook.Swaps
 
         private Dictionary<string, ChainWatcher> _finders = new Dictionary<string, ChainWatcher>();
 
-        public TokenSwapper(SpookSettings settings, PhantasmaKeys swapKey, NexusAPI nexusAPI, NeoAPI neoAPI, BigInteger minFee, Logger logger)
+        public TokenSwapper(SpookSettings settings, PhantasmaKeys swapKey, NexusAPI nexusAPI, NeoAPI neoAPI, EthAPI ethAPI, BigInteger minFee, Logger logger)
         {
             this._settings = settings;
             this.SwapKeys = swapKey;
@@ -150,6 +154,7 @@ namespace Phantasma.Spook.Swaps
             this.OracleReader = Nexus.GetOracleReader();
             this.MinimumFee = minFee;
             this.neoAPI = neoAPI;
+            this.ethAPI = ethAPI;
             this._txIdentifier = "SPK" + Assembly.GetAssembly(typeof(CLI)).GetVersion();
 
             this.logger = logger;
@@ -160,9 +165,11 @@ namespace Phantasma.Spook.Swaps
 
             interopBlocks["phantasma"] = BigInteger.Parse(_settings.Oracle.PhantasmaInteropHeight);
             interopBlocks["neo"] = BigInteger.Parse(_settings.Oracle.NeoInteropHeight);
-            //interopBlocks["ethereum"] = BigInteger.Parse(arguments.GetString("interop.ethereum.height", "4261049"));
+            interopBlocks["ethereum"] = BigInteger.Parse(_settings.Oracle.EthInteropHeight);
 
             InitWIF("neo");
+            InitWIF("ethereum");
+            //TODO init eth wif
         }
 
         private void InitWIF(string platformName)
@@ -172,12 +179,16 @@ namespace Phantasma.Spook.Swaps
             var defaultWif = interopKeys.ToWIF();
 
             var wif = _settings.Oracle.NeoWif;
+            var ethwif = _settings.Oracle.EthWif;
 
             switch (platformName)
             {
                 case "neo":
                     wifs[platformName] = (wif == null) ? defaultWif : wif;
-                        break;
+                    break;
+                case "ethereum":
+                    wifs[platformName] = (ethwif == null) ? defaultWif : ethwif;
+                    break;
                 default:
                     break;
             }
@@ -248,9 +259,15 @@ namespace Phantasma.Spook.Swaps
                     return;
                 }
 
-                var neoInterop = new NeoInterop(this, neoAPI,  wifs["neo"], interopBlocks["neo"], OracleReader, _settings.Oracle.NeoQuickSync, logger);
-                swapAddress = neoInterop.LocalAddress;
-                _finders["neo"] = neoInterop;
+                //TODO neo swaps currently disabled for eth testing, a long sync period could block other platform from starting up
+                //_finders["neo"] = new NeoInterop(this, neoAPI,  wifs["neo"], interopBlocks["neo"], OracleReader,
+                //        _settings.Oracle.NeoQuickSync, logger);
+                //SwapAddresses["neo"] = _finders["neo"].LocalAddress;
+
+                _finders["ethereum"] = new EthereumInterop(this, ethAPI,  wifs["ethereum"], interopBlocks["ethereum"],
+                        OracleReader, _settings.Oracle.EthContracts.Values.ToArray(), _settings.Oracle.EthConfirmations,
+                        Nexus, logger);
+                SwapAddresses["ethereum"] = _finders["ethereum"].LocalAddress;
             }
 
             if (this.platforms.Length == 0)
@@ -318,6 +335,8 @@ namespace Phantasma.Spook.Swaps
             {
                 case NeoWallet.NeoPlatform:
                     return SettleSwapToNeo(sourceHash);
+                case EthereumWallet.EthereumPlatform:
+                    return SettleSwapToEth(sourceHash);
 
                 default:
                     return Hash.Null;
@@ -441,6 +460,62 @@ namespace Phantasma.Spook.Swaps
 
             logger.Message($"Getting pending swaps for {address} done, found {dict.Count()} swaps.");
             return dict.Values;
+        }
+
+        private Hash SettleSwapToEth(Hash sourceHash)
+        {
+            return SettleSwapToExternal(EthereumWallet.EthereumPlatform, sourceHash, (destination, token, amount) =>
+            {
+                var total = UnitConversion.ToDecimal(amount, token.Decimals);
+
+                var wif = wifs["ethereum"];
+                var ethKeys = EthereumKey.FromWIF(wif);
+
+                var destAddress = EthereumWallet.DecodeAddress(destination);
+
+                logger.Message($"ETHSWAP: Trying transfer of {total} {token.Symbol} from {ethKeys.Address} to {destAddress}");
+
+                TransactionReceipt txr = ethAPI.TransferAsset(token.Symbol, destAddress, total, token.Decimals);
+
+                if (txr == null || txr.Status.Value == 0) // Status == 0 = error
+                {
+                    // TODO additional error handling?
+                    logger.Error($"EthAPI error, tx {txr.TransactionHash} ");
+                    return Hash.Null;
+                }
+
+                return Hash.Parse(txr.TransactionHash.Substring(2));
+
+                //int counter = 0;
+
+                //do
+                //{
+                //    Thread.Sleep(15 * 1000); // wait 15 seconds
+
+                //    if (strHash.StartsWith("0x"))
+                //    {
+                //        strHash = strHash.Substring(2);
+                //    }
+                //    var temp = this.neoAPI.GetTransactionHeight(strHash);
+
+                //    int height;
+
+                //    if (int.TryParse(temp, out height) && height > 0)
+                //    {
+                //        var txHash = Hash.Parse(strHash);
+                //        return txHash;
+                //    }
+                //    else
+                //    {
+                //        counter++;
+                //        if (counter > 5)
+                //        {
+                //            return Hash.Null;
+                //        }
+                //    }
+
+                //} while (true);
+            });
         }
 
         private Hash SettleSwapToNeo(Hash sourceHash)

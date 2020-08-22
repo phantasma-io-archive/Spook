@@ -14,6 +14,7 @@ using Phantasma.Spook.Interop;
 using NeoBlock = Phantasma.Neo.Core.Block;
 using NeoTx = Phantasma.Neo.Core.Transaction;
 using Logger = Phantasma.Core.Log.Logger;
+using System.Linq;
 
 namespace Phantasma.Spook.Oracles
 {
@@ -111,7 +112,7 @@ namespace Phantasma.Spook.Oracles
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
+                logger.Error(e.ToString());
                 return default(T);
             }
             return default(T);
@@ -161,6 +162,7 @@ namespace Phantasma.Spook.Oracles
                 return true;
             }
 
+            logger.Error("storageKey " + storageKey + " failed!");
             return false;
         }
 
@@ -196,6 +198,7 @@ namespace Phantasma.Spook.Oracles
                 return block;
             }
 
+            logger.Message($"Pull block: {height} platform: {platformName}");
             Tuple<InteropBlock, InteropTransaction[]> interopTuple;
             switch (platformName)
             {
@@ -217,7 +220,23 @@ namespace Phantasma.Spook.Oracles
                         throw new OracleException($"Neo block is null");
                     }
 
-                    interopTuple = NeoInterop.MakeInteropBlock(logger, neoBlock, _cli.NeoAPI, _cli.TokenSwapper.swapAddress);
+                    interopTuple = NeoInterop.MakeInteropBlock(logger, neoBlock, _cli.NeoAPI, _cli.TokenSwapper.SwapAddresses[platformName]);
+                    break;
+                case EthereumWallet.EthereumPlatform:
+
+                    //BlockWithTransactions ethBlock;
+                    //if (height == 0)
+                    //{
+                    //    //TODO MakeInteropBlock for a full block not done yet
+                    //    //ethBlock = _cli.EthAPI.GetBlock(hash.ToString());
+                    //    //interopTuple = EthereumInterop.MakeInteropBlock(logger, ethBlock, _cli.EthAPI, _cli.TokenSwapper.swapAddress);
+                    //}
+                    //else
+                    //{
+                    //}
+                    
+                    interopTuple = EthereumInterop.MakeInteropBlock(logger, _cli.EthAPI, height,
+                            _cli.Settings.Oracle.EthContracts.Values.ToArray(), _cli.TokenSwapper.SwapAddresses[platformName]);
                     break;
 
                 default:
@@ -227,7 +246,8 @@ namespace Phantasma.Spook.Oracles
             if (interopTuple.Item1.Hash != Hash.Null)
             {
 
-                var persisted = Persist<InteropBlock>(platformName, chainName, interopTuple.Item1.Hash, StorageConst.Block, interopTuple.Item1);
+                var persisted = Persist<InteropBlock>(platformName, chainName, interopTuple.Item1.Hash, StorageConst.Block,
+                        interopTuple.Item1);
 
                 if (persisted)
                 {
@@ -249,8 +269,8 @@ namespace Phantasma.Spook.Oracles
 
         protected override InteropTransaction PullPlatformTransaction(string platformName, string chainName, Hash hash)
         {
+            logger.Message("pull tx: " + hash);
             InteropTransaction tx = Read<InteropTransaction>(platformName, chainName, hash, StorageConst.Transaction);
-
             if (tx != null && tx.Hash != null)
             {
                 return tx;
@@ -262,7 +282,11 @@ namespace Phantasma.Spook.Oracles
                     NeoTx neoTx;
                     UInt256 uHash = new UInt256(LuxUtils.ReverseHex(hash.ToString()).HexToBytes());
                     neoTx = _cli.NeoAPI.GetTransaction(uHash);
-                    tx = NeoInterop.MakeInteropTx(logger, neoTx, _cli.NeoAPI, _cli.TokenSwapper.swapAddress);
+                    tx = NeoInterop.MakeInteropTx(logger, neoTx, _cli.NeoAPI, _cli.TokenSwapper.SwapAddresses[platformName]);
+                    break;
+                case EthereumWallet.EthereumPlatform:
+                    var txRcpt = _cli.EthAPI.GetTransactionReceipt(hash.ToString());
+                    tx = EthereumInterop.MakeInteropTx(logger, txRcpt, _cli.EthAPI, _cli.TokenSwapper.SwapAddresses[platformName]);
                     break;
 
                 default:
