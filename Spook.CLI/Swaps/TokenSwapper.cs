@@ -23,6 +23,7 @@ using System.Threading;
 using Phantasma.Spook.Chains;
 using EthereumKey = Phantasma.Ethereum.EthereumKey;
 using Nethereum.RPC.Eth.DTOs;
+using System.Threading.Tasks;
 
 namespace Phantasma.Spook.Swaps
 {
@@ -223,6 +224,7 @@ namespace Phantasma.Spook.Swaps
         private Dictionary<Address, List<Hash>> _swapAddressMap = new Dictionary<Address, List<Hash>>();
        // private Dictionary<Hash, Hash> _settlements = new Dictionary<Hash, Hash>();    
         //private List<PendingSettle> _pendingSettles = new List<PendingSettle>();
+        private List<Task<IEnumerable<PendingSwap>>> taskList = new List<Task<IEnumerable<PendingSwap>>>();
 
         private void MapSwap(Address address, Hash hash)
         {
@@ -260,9 +262,9 @@ namespace Phantasma.Spook.Swaps
                 }
 
                 //TODO neo swaps currently disabled for eth testing, a long sync period could block other platform from starting up
-                //_finders["neo"] = new NeoInterop(this, neoAPI,  wifs["neo"], interopBlocks["neo"], OracleReader,
-                //        _settings.Oracle.NeoQuickSync, logger);
-                //SwapAddresses["neo"] = _finders["neo"].LocalAddress;
+                _finders["neo"] = new NeoInterop(this, neoAPI,  wifs["neo"], interopBlocks["neo"], OracleReader,
+                        _settings.Oracle.NeoQuickSync, logger);
+                SwapAddresses["neo"] = _finders["neo"].LocalAddress;
 
                 _finders["ethereum"] = new EthereumInterop(this, ethAPI,  wifs["ethereum"], interopBlocks["ethereum"],
                         OracleReader, _settings.Oracle.EthContracts.Values.ToArray(), _settings.Oracle.EthConfirmations,
@@ -292,25 +294,85 @@ namespace Phantasma.Spook.Swaps
                 }
             }
 
-            foreach (var finder in _finders.Values)
+            var completed = ProcessCompletedTasks();
+
+            if (taskList.Count < _finders.Count)
             {
-                var swaps = finder.Update();
-
-                foreach (var swap in swaps)
+                if (completed.Count > 0)
                 {
-                    if (_pendingSwaps.ContainsKey(swap.hash))
+                    foreach (var platform in completed)
                     {
-
-                        logger.Message($"Already known swap, ignore {finder.PlatformName} swap: {swap.source} => {swap.destination}");
-                        continue;
+                        var finder = _finders[platform];
+                        taskList.Add(
+                                new Task<IEnumerable<PendingSwap>>(() => 
+                                {
+                                    return finder.Update();
+                                })
+                        );
                     }
-
-                    logger.Message($"Detected {finder.PlatformName} swap: {swap.source} => {swap.destination} hash: {swap.hash}");
-                    _pendingSwaps[swap.hash] = swap;
-                    MapSwap(swap.source, swap.hash);
-                    MapSwap(swap.destination, swap.hash);
+                }
+                else if (taskList.Count == 0)
+                {
+                    // no tasks have been created yet.
+                    foreach (var finder in _finders.Values)
+                    {
+                        taskList.Add(
+                                new Task<IEnumerable<PendingSwap>>(() => 
+                                {
+                                    return finder.Update();
+                                })
+                        );
+                    }
+                }
+                else
+                {
+                    // nothing to do, all tasks are still running.
+                    return;
                 }
             }
+
+            // start new tasks
+            foreach (var task in taskList)
+            {
+                if (!task.Status.Equals(TaskStatus.Running))
+                {
+                    task.Start();
+                }
+            }
+        }
+
+        public HashSet<string> ProcessCompletedTasks()
+        {
+            var completedPlatforms = new HashSet<string>();
+            foreach (var task in taskList)
+            {
+                if (task.IsCompleted)
+                {
+                    var swaps = task.Result;
+                    foreach (var swap in swaps)
+                    {
+                        if (_pendingSwaps.ContainsKey(swap.hash))
+                        {
+
+                            logger.Message($"Already known swap, ignore {swap.platform} swap: {swap.source} => {swap.destination}");
+                            continue;
+                        }
+
+                        logger.Message($"Detected {swap.platform} swap: {swap.source} => {swap.destination} hash: {swap.hash}");
+                        _pendingSwaps[swap.hash] = swap;
+                        MapSwap(swap.source, swap.hash);
+                        MapSwap(swap.destination, swap.hash);
+                    
+                        // add to set
+                        completedPlatforms.Add(swap.platform);
+                    }
+                    
+                    // remove all completed tasks
+                    taskList.RemoveAll(task => task.IsCompleted == true);
+                }
+            }
+
+            return completedPlatforms;
         }
 
         public Hash SettleSwap(string sourcePlatform, string destPlatform, Hash sourceHash)
