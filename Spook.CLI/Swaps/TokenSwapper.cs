@@ -224,7 +224,7 @@ namespace Phantasma.Spook.Swaps
         private Dictionary<Address, List<Hash>> _swapAddressMap = new Dictionary<Address, List<Hash>>();
        // private Dictionary<Hash, Hash> _settlements = new Dictionary<Hash, Hash>();    
         //private List<PendingSettle> _pendingSettles = new List<PendingSettle>();
-        private List<Task<IEnumerable<PendingSwap>>> taskList = new List<Task<IEnumerable<PendingSwap>>>();
+        private Dictionary<string, Task<IEnumerable<PendingSwap>>> taskList = new Dictionary<string, Task<IEnumerable<PendingSwap>>>();
 
         private void MapSwap(Address address, Hash hash)
         {
@@ -276,6 +276,16 @@ namespace Phantasma.Spook.Swaps
             {
                 return;
             }
+            else
+            {
+                if (taskList.Count == 0)
+                {
+                    foreach (var platform in this.platforms)
+                    {
+                        taskList.Add(platform.Name, null);
+                    }
+                }
+            }
 
             var pendingList = new StorageList(PendingTag, this.Storage);
             int i = 0;
@@ -294,46 +304,26 @@ namespace Phantasma.Spook.Swaps
                 }
             }
 
-            var completed = ProcessCompletedTasks();
+            ProcessCompletedTasks();
 
-            if (taskList.Count < _finders.Count)
+            for (var j = 0; j < taskList.Count; j++)
             {
-                if (completed.Count > 0)
+                var platform = taskList.Keys.ElementAt(j);
+                var task = taskList[platform];
+                if (task == null)
                 {
-                    foreach (var platform in completed)
-                    {
-                        var finder = _finders[platform];
-                        taskList.Add(
-                                new Task<IEnumerable<PendingSwap>>(() => 
-                                {
-                                    return finder.Update();
-                                })
-                        );
-                    }
-                }
-                else if (taskList.Count == 0)
-                {
-                    // no tasks have been created yet.
-                    foreach (var finder in _finders.Values)
-                    {
-                        taskList.Add(
-                                new Task<IEnumerable<PendingSwap>>(() => 
-                                {
-                                    return finder.Update();
-                                })
-                        );
-                    }
-                }
-                else
-                {
-                    // nothing to do, all tasks are still running.
-                    return;
+                    var finder = _finders[platform];
+                    taskList[platform] = new Task<IEnumerable<PendingSwap>>(() => 
+                                            {
+                                                return finder.Update();
+                                            });
                 }
             }
 
             // start new tasks
-            foreach (var task in taskList)
+            foreach (var entry in taskList)
             {
+                var task = entry.Value;
                 if (!task.Status.Equals(TaskStatus.Running))
                 {
                     task.Start();
@@ -341,12 +331,13 @@ namespace Phantasma.Spook.Swaps
             }
         }
 
-        public HashSet<string> ProcessCompletedTasks()
+        public void ProcessCompletedTasks()
         {
-            var completedPlatforms = new HashSet<string>();
-            foreach (var task in taskList)
+            for (var i = 0; i < taskList.Count; i++)
             {
-                if (task.IsCompleted)
+                var platform = taskList.Keys.ElementAt(i);
+                var task = taskList[platform];
+                if (task != null && task.IsCompleted)
                 {
                     var swaps = task.Result;
                     foreach (var swap in swaps)
@@ -362,17 +353,12 @@ namespace Phantasma.Spook.Swaps
                         _pendingSwaps[swap.hash] = swap;
                         MapSwap(swap.source, swap.hash);
                         MapSwap(swap.destination, swap.hash);
-                    
-                        // add to set
-                        completedPlatforms.Add(swap.platform);
                     }
                     
                     // remove all completed tasks
-                    taskList.RemoveAll(task => task.IsCompleted == true);
+                    taskList[platform] = null;
                 }
             }
-
-            return completedPlatforms;
         }
 
         public Hash SettleSwap(string sourcePlatform, string destPlatform, Hash sourceHash)
