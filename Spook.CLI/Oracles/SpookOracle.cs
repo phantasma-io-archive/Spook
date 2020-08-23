@@ -165,6 +165,17 @@ namespace Phantasma.Spook.Oracles
             logger.Error("storageKey " + storageKey + " failed!");
             return false;
         }
+        protected override Phantasma.Numerics.BigInteger PullFee(Timestamp time, string platform)
+        {
+            switch (platform)
+            {
+                case "NEO":
+                    return Phantasma.Numerics.UnitConversion.ToBigInteger(0.1m, DomainSettings.FiatTokenDecimals);
+
+                default:
+                    throw new OracleException($"Support for {platform} fee not implemented in this node");
+            }
+        }
 
         protected override decimal PullPrice(Timestamp time, string symbol)
         {
