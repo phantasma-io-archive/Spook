@@ -167,9 +167,11 @@ namespace Phantasma.Spook.Oracles
         }
         protected override Phantasma.Numerics.BigInteger PullFee(Timestamp time, string platform)
         {
+            platform = platform.ToLower();
+
             switch (platform)
             {
-                case "NEO":
+                case "neo":
                     return Phantasma.Numerics.UnitConversion.ToBigInteger(0.1m, DomainSettings.FiatTokenDecimals);
 
                 default:
