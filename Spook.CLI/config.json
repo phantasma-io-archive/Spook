@@ -48,6 +48,13 @@
                 {"symbol": "SOUL", "hash": "0x4c2af2fb374b988363deb535bf0ff2d1eb7b2106"},
                 {"symbol": "KCAL", "hash": "0xa9858f0e2037c18dd6a0b4bc082d41b0536d47e2"}
             ],
+
+            "eth.fee.urls": [
+                "https://gasprice.poa.network/",
+                "https://www.etherchain.org/api/gasPriceOracle",
+                "https://api.anyblock.tools/latest-minimum-gasprice"
+            ],
+
             "eth.block.confirmations": 0,
             "crypto.compare.key": "4e6ffe0dedfd49d2e182b706b72e736fa027844181d179dc5310f115deeb29be",
             "swaps.enabled": true,

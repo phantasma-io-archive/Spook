@@ -201,6 +201,7 @@ namespace Phantasma.Spook
         public string NeoscanUrl{ get; }
         public List<string> NeoRpcNodes{ get; }
         public List<string> EthRpcNodes{ get; }
+        public List<string> EthFeeURLs{ get; }
         public Dictionary<string, string> EthContracts { get; }
         public string CryptoCompareAPIKey { get; }
         public bool Swaps { get; }
@@ -230,6 +231,11 @@ namespace Phantasma.Spook
             }
 
             this.EthRpcNodes = section.GetSection("eth.rpc.nodes").AsEnumerable()
+                        .Where(p => p.Value != null)
+                        .Select(p => p.Value)
+                        .ToList();
+
+            this.EthFeeURLs = section.GetSection("eth.fee.urls").AsEnumerable()
                         .Where(p => p.Value != null)
                         .Select(p => p.Value)
                         .ToList();

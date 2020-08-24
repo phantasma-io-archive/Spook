@@ -2,6 +2,7 @@
 using NativeBigInt = System.Numerics.BigInteger;
 using System.Collections.Generic;
 using Phantasma.Blockchain;
+using Phantasma.Numerics;
 using Phantasma.Core.Types;
 using Phantasma.Cryptography;
 using Phantasma.Domain;
@@ -22,12 +23,9 @@ namespace Phantasma.Spook.Oracles
     {
         private readonly CLI _cli;
 
-        private Dictionary<string, IKeyValueStoreAdapter> _keystoreCache =
-           new Dictionary<string, IKeyValueStoreAdapter>();
-
-        private Dictionary<string, object> _keyValueStore =
-           new Dictionary<string, object>();
-
+        private Dictionary<string, IKeyValueStoreAdapter> _keystoreCache = new Dictionary<string, IKeyValueStoreAdapter>();
+        private Dictionary<string, CachedFee> _feeCache = new Dictionary<string, CachedFee>();
+        private Dictionary<string, object> _keyValueStore = new Dictionary<string, object>();
         private KeyValueStore<string, string> platforms;
 
         private Logger logger;
@@ -165,6 +163,7 @@ namespace Phantasma.Spook.Oracles
             logger.Error("storageKey " + storageKey + " failed!");
             return false;
         }
+
         protected override Phantasma.Numerics.BigInteger PullFee(Timestamp time, string platform)
         {
             platform = platform.ToLower();
@@ -173,6 +172,23 @@ namespace Phantasma.Spook.Oracles
             {
                 case "neo":
                     return Phantasma.Numerics.UnitConversion.ToBigInteger(0.1m, DomainSettings.FiatTokenDecimals);
+
+                case "ethereum":
+
+                    CachedFee fee;
+                    if (_feeCache.TryGetValue(platform, out fee))
+                    {
+                        if ((Timestamp.Now - fee.Time) < 60)
+                        {
+                            return fee.Value;
+                        }
+                    }
+
+                    var newFee = EthereumInterop.GetNormalizedFee(_cli.Settings.Oracle.EthFeeURLs.ToArray());
+                    fee = new CachedFee(Timestamp.Now, UnitConversion.ToBigInteger(newFee, 2)); // fixed to 2 decimal places for now
+                    _feeCache.Add(platform, fee);
+
+                    return fee.Value;
 
                 default:
                     throw new OracleException($"Support for {platform} fee not implemented in this node");
@@ -317,6 +333,18 @@ namespace Phantasma.Spook.Oracles
         protected override T PullData<T>(Timestamp time, string url)
         {
             throw new OracleException("unknown oracle url");
+        }
+    }
+
+    struct CachedFee
+    {
+        public Timestamp Time;
+        public BigInteger Value;
+
+        public CachedFee(Timestamp time, BigInteger value)
+        {
+            this.Time = time;
+            this.Value = value;
         }
     }
 }
