@@ -499,7 +499,7 @@ namespace Phantasma.Spook
             var ethRpcList = _settings.Oracle.EthRpcNodes;
             var interopKeys = InteropUtils.GenerateInteropKeys(_nodeKeys, Nexus.GetGenesisHash(Nexus.RootStorage), "ethereum");
 
-            this._ethAPI = new EthAPI(this._settings, new EthAccount(interopKeys.PrivateKey.ToHex()));
+            this._ethAPI = new EthAPI(this.Nexus, this._settings, new EthAccount(interopKeys.PrivateKey.ToHex()));
             this._ethAPI.SetLogger((s) => logger.Message(s));
 
             this._neoScanAPI = new NeoScanAPI(neoScanURL, logger, nexus, _nodeKeys);

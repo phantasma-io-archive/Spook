@@ -202,7 +202,6 @@ namespace Phantasma.Spook
         public List<string> NeoRpcNodes{ get; }
         public List<string> EthRpcNodes{ get; }
         public List<string> EthFeeURLs{ get; }
-        public Dictionary<string, string> EthContracts { get; }
         public string CryptoCompareAPIKey { get; }
         public bool Swaps { get; }
         public string PhantasmaInteropHeight { get; } = "0";
@@ -242,7 +241,6 @@ namespace Phantasma.Spook
 
             var sectionEthContracts = section.GetSection("eth.contracts");
 
-            this.EthContracts = sectionEthContracts.Get<List<Contract>>().ToDictionary(x => x.symbol, x => x.hash);
             this.EthConfirmations = settings.GetUInt("eth.block.confirmations", section.GetValue<uint>("eth.block.confirmations"));
             this.CryptoCompareAPIKey = settings.GetString("crypto.compare.key", section.GetValue<string>("crypto.compare.key"));
             this.Swaps = settings.GetBool("swaps.enabled", section.GetValue<bool>("swaps.enabled"));

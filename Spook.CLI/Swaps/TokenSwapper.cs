@@ -268,7 +268,7 @@ namespace Phantasma.Spook.Swaps
                     SwapAddresses["neo"] = _finders["neo"].LocalAddress;
 
                     _finders["ethereum"] = new EthereumInterop(this, ethAPI, wifs["ethereum"], interopBlocks["ethereum"],
-                            OracleReader, _settings.Oracle.EthContracts.Values.ToArray(), _settings.Oracle.EthConfirmations,
+                            OracleReader, Nexus.GetPlatformTokenHashes("ethereum", Nexus.RootStorage).Select(x => x.ToString().Substring(0, 40)).ToArray(), _settings.Oracle.EthConfirmations,
                             Nexus, logger);
                     SwapAddresses["ethereum"] = _finders["ethereum"].LocalAddress;
                 }
