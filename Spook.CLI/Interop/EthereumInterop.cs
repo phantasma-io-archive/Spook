@@ -18,6 +18,8 @@ using Nethereum.StandardTokenEIP20.ContractDefinition;
 using EthereumKey = Phantasma.Ethereum.EthereumKey;
 using PBigInteger = Phantasma.Numerics.BigInteger;
 using Phantasma.Core.Utils;
+using System.Net;
+using System.Text.Json;
 
 namespace Phantasma.Spook.Interop
 {
@@ -447,6 +449,84 @@ namespace Phantasma.Spook.Interop
                 ? new InteropTransaction(Hash.Parse(txr.TransactionHash), interopTransfers.ToArray())
                 : new InteropTransaction(Hash.Null, interopTransfers.ToArray()));
 
+        }
+
+        public static decimal GetNormalizedFee(string[] urls)
+        {
+            var taskList = new List<Task<decimal>>();
+
+            foreach (var url in urls)
+            {
+                taskList.Add(
+                        new Task<decimal>(() => 
+                        {
+                            return GetFee(url);
+                        })
+                );
+            }
+
+            Parallel.ForEach(taskList, (task) =>
+            {
+                task.Start();
+            });
+
+            Task.WaitAll(taskList.ToArray());
+
+            var results = new List<decimal>();
+            foreach (var task in taskList)
+            {
+                results.Add(task.Result);
+            }
+
+            var median = GetMedian<decimal>(results.ToArray());
+
+            return median;
+        }
+
+        public static decimal GetFee(string url)
+        {
+            decimal fee = 0;
+
+            try
+            {
+                using (WebClient wc = new WebClient())
+                {
+                    var json = wc.DownloadString(url);
+                    var doc = JsonDocument.Parse(json);
+                    if (doc.RootElement.TryGetProperty("standard", out var prop)) // TODO config?
+                    {
+                        fee = decimal.Parse(prop.ToString());
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Getting fee failed: " + e);
+            }
+
+            return fee;
+        }
+
+        public static T GetMedian<T>(T[] sourceArray) where T : IComparable<T>
+        {
+            if (sourceArray == null || sourceArray.Length == 0)
+                throw new ArgumentException("Median of empty array not defined.");
+
+            T[] sortedArray = sourceArray;
+            Array.Sort(sortedArray);
+
+            //get the median
+            int size = sortedArray.Length;
+            int mid = size / 2;
+            if (size % 2 != 0)
+            {
+                return sortedArray[mid];
+            }
+
+            dynamic value1 = sortedArray[mid];
+            dynamic value2 = sortedArray[mid - 1];
+
+            return (sortedArray[mid] + value2) * 0.5;
         }
     }
 }
