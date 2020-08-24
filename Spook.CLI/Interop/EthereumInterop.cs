@@ -270,7 +270,7 @@ namespace Phantasma.Spook.Interop
             return Address.FromBytes(bytes);
         }
 
-        public static Tuple<InteropBlock, InteropTransaction[]> MakeInteropBlock(Logger logger, EthAPI api
+        public static Tuple<InteropBlock, InteropTransaction[]> MakeInteropBlock(Nexus nexus, Logger logger, EthAPI api
                 , BigInteger height, string[] contracts, string swapAddress)
         {
             Hash blockHash = Hash.Null;
@@ -285,7 +285,7 @@ namespace Phantasma.Spook.Interop
             // fetch blocks
             crawler.Fetch(height);
 
-            var transfers = crawler.ExtractInteropTransfers(logger, swapAddress);
+            var transfers = crawler.ExtractInteropTransfers(nexus, logger, swapAddress);
 
             if (transfers.Count == 0)
             {
@@ -317,7 +317,7 @@ namespace Phantasma.Spook.Interop
             return Tuple.Create(interopBlock, interopTransactions.ToArray());
         }
 
-        private static Dictionary<string, List<InteropTransfer>> GetInteropTransfers(Logger logger,
+        private static Dictionary<string, List<InteropTransfer>> GetInteropTransfers(Nexus nexus, Logger logger,
                 TransactionReceipt txr, EthAPI api, string swapAddress)
         {
             logger.Message($"get interop transfers for tx {txr.TransactionHash}");
@@ -341,7 +341,7 @@ namespace Phantasma.Spook.Interop
             // ERC20
             foreach(var evt in events)
             {
-                var asset = EthUtils.FindSymbolFromAsset(evt.Log.Address);
+                var asset = EthUtils.FindSymbolFromAsset(nexus, evt.Log.Address);
                 if (asset == null)
                 {
                     logger.Message($"Asset [{evt.Log.Address}] not supported");
@@ -416,13 +416,13 @@ namespace Phantasma.Spook.Interop
                 : new InteropTransaction(Hash.Null, transfers.ToArray()));
         }
 
-        public static InteropTransaction MakeInteropTx(Logger logger, TransactionReceipt txr, EthAPI api, string swapAddress)
+        public static InteropTransaction MakeInteropTx(Nexus nexus, Logger logger, TransactionReceipt txr, EthAPI api, string swapAddress)
         {
             logger.Message("checking tx: " + txr.TransactionHash);
 
             IList<InteropTransfer> interopTransfers = new List<InteropTransfer>();
 
-            interopTransfers = GetInteropTransfers(logger, txr, api, swapAddress).SelectMany(x => x.Value).ToList();
+            interopTransfers = GetInteropTransfers(nexus, logger, txr, api, swapAddress).SelectMany(x => x.Value).ToList();
             logger.Message($"Found {interopTransfers.Count} interop transfers!");
 
             return ((interopTransfers.Count() > 0)

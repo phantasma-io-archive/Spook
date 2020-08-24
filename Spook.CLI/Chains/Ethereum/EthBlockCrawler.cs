@@ -83,7 +83,7 @@ namespace Phantasma.Spook.Chains
                     );
         }
 
-        public InteropTransfers ExtractInteropTransfers(Logger logger, string swapAddress)
+        public InteropTransfers ExtractInteropTransfers(Blockchain.Nexus nexus, Logger logger, string swapAddress)
         {
             logger.Message("extract interop transfers");
             var interopTransfers = new InteropTransfers();
@@ -120,7 +120,7 @@ namespace Phantasma.Spook.Chains
 
                         foreach(var evt in events)
                         {
-                            var asset = EthUtils.FindSymbolFromAsset(evt.Log.Address);
+                            var asset = EthUtils.FindSymbolFromAsset(nexus, evt.Log.Address);
                             logger.Message("asset: " + asset);
                             if (asset == null)
                             {
