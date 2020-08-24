@@ -59,13 +59,13 @@
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.VM\Phantasma.VM.csproj" />
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.Domain\Phantasma.Domain.csproj" />
 
-    <ProjectReference Include="/home/enzensbe/source/Nethereum/src/Nethereum.Signer/Nethereum.Signer.csproj" />
-    <ProjectReference Include="/home/enzensbe/source/Nethereum/src/Nethereum.JsonRpc.RpcClient/Nethereum.JsonRpc.RpcClient.csproj" />
-    <ProjectReference Include="/home/enzensbe/source/Nethereum/src/Nethereum.JsonRpc.WebSocketClient/Nethereum.JsonRpc.WebSocketClient.csproj" />
-    <ProjectReference Include="/home/enzensbe/source/Nethereum/src/Nethereum.Web3/Nethereum.Web3.csproj" />
-    <ProjectReference Include="/home/enzensbe/source/Nethereum/src/Nethereum.RPC/Nethereum.RPC.csproj" />
-    <ProjectReference Include="/home/enzensbe/source/Nethereum/src/Nethereum.JsonRpc.Client/Nethereum.JsonRpc.Client.csproj" />
-    <ProjectReference Include="/home/enzensbe/source/Nethereum/src/Nethereum.StandardTokenEIP20/Nethereum.StandardTokenEIP20.csproj" />
-    <ProjectReference Include="/home/enzensbe/source/Nethereum/src/Nethereum.BlockchainProcessing/Nethereum.BlockchainProcessing.csproj" />
+    <ProjectReference Include="../../Nethereum/src/Nethereum.Signer/Nethereum.Signer.csproj" />
+    <ProjectReference Include="../../Nethereum/src/Nethereum.JsonRpc.RpcClient/Nethereum.JsonRpc.RpcClient.csproj" />
+    <ProjectReference Include="../../Nethereum/src/Nethereum.JsonRpc.WebSocketClient/Nethereum.JsonRpc.WebSocketClient.csproj" />
+    <ProjectReference Include="../../Nethereum/src/Nethereum.Web3/Nethereum.Web3.csproj" />
+    <ProjectReference Include="../../Nethereum/src/Nethereum.RPC/Nethereum.RPC.csproj" />
+    <ProjectReference Include="../../Nethereum/src/Nethereum.JsonRpc.Client/Nethereum.JsonRpc.Client.csproj" />
+    <ProjectReference Include="../../Nethereum/src/Nethereum.StandardTokenEIP20/Nethereum.StandardTokenEIP20.csproj" />
+    <ProjectReference Include="../../Nethereum/src/Nethereum.BlockchainProcessing/Nethereum.BlockchainProcessing.csproj" />
   </ItemGroup>
 </Project>

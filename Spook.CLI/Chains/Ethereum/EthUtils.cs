@@ -17,22 +17,22 @@ namespace Phantasma.Spook.Chains
             return task.GetAwaiter().GetResult();
         }
 
-        public static string FindSymbolFromAsset(string assetID)
+        public static string FindSymbolFromAsset(Blockchain.Nexus nexus, string assetID)
         {
             if (assetID.StartsWith("0x"))
             {
-                assetID = assetID.Substring(2) ;
+                assetID = assetID.Substring(2);
             }
 
-            switch (assetID)
+            var symbol = nexus.GetPlatformTokenByHash(Cryptography.Hash.FromUnpaddedHex(assetID), "ethereum", nexus.RootStorage);
+
+            if (String.IsNullOrEmpty(symbol))
             {
-                case "4c2af2fb374b988363deb535bf0ff2d1eb7b2106": return "SOUL";
-                case "a9858f0e2037c18dd6a0b4bc082d41b0536d47e2": return "KCAL";
-                //case "ETH": return "ETH";
-                default: 
-                    Console.WriteLine("assset not found: " + assetID);
-                    return null;
+                Console.WriteLine("assset not found: " + assetID);
+                return null;
             }
+
+            return symbol;
         }
     }
 }

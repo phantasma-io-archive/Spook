@@ -264,7 +264,7 @@ namespace Phantasma.Spook.Oracles
                     //{
                     //}
                     
-                    interopTuple = EthereumInterop.MakeInteropBlock(logger, _cli.EthAPI, height,
+                    interopTuple = EthereumInterop.MakeInteropBlock(_cli.Nexus, logger, _cli.EthAPI, height,
                             _cli.Settings.Oracle.EthContracts.Values.ToArray(), _cli.TokenSwapper.SwapAddresses[platformName]);
                     break;
 
@@ -315,7 +315,7 @@ namespace Phantasma.Spook.Oracles
                     break;
                 case EthereumWallet.EthereumPlatform:
                     var txRcpt = _cli.EthAPI.GetTransactionReceipt(hash.ToString());
-                    tx = EthereumInterop.MakeInteropTx(logger, txRcpt, _cli.EthAPI, _cli.TokenSwapper.SwapAddresses[platformName]);
+                    tx = EthereumInterop.MakeInteropTx(_cli.Nexus, logger, txRcpt, _cli.EthAPI, _cli.TokenSwapper.SwapAddresses[platformName]);
                     break;
 
                 default:
