@@ -261,7 +261,6 @@ namespace Phantasma.Spook.Swaps
                     return;
                 }
 
-                //TODO neo swaps currently disabled for eth testing, a long sync period could block other platform from starting up
                 _finders["neo"] = new NeoInterop(this, neoAPI,  wifs["neo"], interopBlocks["neo"], OracleReader,
                         _settings.Oracle.NeoQuickSync, logger);
                 SwapAddresses["neo"] = _finders["neo"].LocalAddress;
@@ -312,11 +311,14 @@ namespace Phantasma.Spook.Swaps
                 var task = taskList[platform];
                 if (task == null)
                 {
-                    var finder = _finders[platform];
-                    taskList[platform] = new Task<IEnumerable<PendingSwap>>(() => 
-                                            {
-                                                return finder.Update();
-                                            });
+                    ChainWatcher finder;
+                    if (_finders.TryGetValue( platform, out finder))
+                    {
+                        taskList[platform] = new Task<IEnumerable<PendingSwap>>(() => 
+                                                {
+                                                    return finder.Update();
+                                                });
+                    }
                 }
             }
 
@@ -324,7 +326,7 @@ namespace Phantasma.Spook.Swaps
             foreach (var entry in taskList)
             {
                 var task = entry.Value;
-                if (!task.Status.Equals(TaskStatus.Running))
+                if (task != null && !task.Status.Equals(TaskStatus.Running))
                 {
                     task.Start();
                 }
