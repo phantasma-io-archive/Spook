@@ -64,69 +64,71 @@ namespace Phantasma.Spook.Interop
 
         public override IEnumerable<PendingSwap> Update()
         {
-            var result = new List<PendingSwap>();
-
-            // initial start, we have to verify all processed swaps
-            if (initialStart)
+            try
             {
-                var allInteropBlocks = oracleReader.ReadAllBlocks(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform);
+                var result = new List<PendingSwap>();
 
-                logger.Message($"Found {allInteropBlocks.Count} blocks");
-
-                foreach (var block in allInteropBlocks)
+                // initial start, we have to verify all processed swaps
+                if (initialStart)
                 {
-                    ProcessBlock(block, ref result);
+                    var allInteropBlocks = oracleReader.ReadAllBlocks(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform);
+
+                    logger.Message($"Found {allInteropBlocks.Count} blocks");
+
+                    foreach (var block in allInteropBlocks)
+                    {
+                        ProcessBlock(block, ref result);
+                    }
+
+                    initialStart = false;
+
+                    // return after the initial start to be able to process all swaps that happend in the mean time.
+                    return result;
                 }
 
-                initialStart = false;
+                //var x = MakeInteropBlock(logger, ethAPI, 160, LocalAddress);
+                //Thread.Sleep(10000000);
+                var currentHeight = ethAPI.GetBlockHeight();
+                logger.Message($"current eth height: {currentHeight} interop eth height {_interopBlockHeight}");
 
-                // return after the initial start to be able to process all swaps that happend in the mean time.
-                return result;
-            }
+                if (currentHeight == _interopBlockHeight)
+                {
+                    return result;
+                }
 
-            //var x = MakeInteropBlock(logger, ethAPI, 160, LocalAddress);
-            //Thread.Sleep(10000000);
-            var currentHeight = ethAPI.GetBlockHeight();
-            logger.Message($"current eth height: {currentHeight} interop eth height {_interopBlockHeight}");
+                var blockDifference = currentHeight - _interopBlockHeight;
+                var nextHeight = (blockDifference > 50) ? 50 : blockDifference; //TODO
 
-            if (currentHeight == _interopBlockHeight)
-            {
-                return result;
-            }
+                var transfers = new Dictionary<string, Dictionary<string, List<InteropTransfer>>>();
 
-            var blockDifference = currentHeight - _interopBlockHeight;
-            var nextHeight = (blockDifference > 50) ? 50 : blockDifference; //TODO
+                //TODO quick sync not done yet, requieres a change to the oracle impl to fetch multiple blocks
+                //if (nextHeight > 1)
+                //{
+                //    var blockCrawler = new EthBlockCrawler(logger, contracts.ToArray(), 0/*confirmations*/, ethAPI); //TODO settings confirmations
 
-            var transfers = new Dictionary<string, Dictionary<string, List<InteropTransfer>>>();
+                //    blockCrawler.Fetch(currentHeight, nextHeight);
+                //    transfers = blockCrawler.ExtractInteropTransfers(logger, LocalAddress);
+                //    foreach (var entry in transfers)
+                //    {
+                //        foreach (var txInteropTransfer in entry.Value)
+                //        {
+                //            foreach (var interopTransfer in txInteropTransfer.Value)
+                //            {
+                //                result.Add(new PendingSwap(
+                //                    this.PlatformName
+                //                    ,Hash.Parse(entry.Key)
+                //                    ,interopTransfer.sourceAddress
+                //                    ,interopTransfer.interopAddress)
+                //                );
+                //            }
+                //        }
+                //    }
 
-            //TODO quick sync not done yet, requieres a change to the oracle impl to fetch multiple blocks
-            //if (nextHeight > 1)
-            //{
-            //    var blockCrawler = new EthBlockCrawler(logger, contracts.ToArray(), 0/*confirmations*/, ethAPI); //TODO settings confirmations
-
-            //    blockCrawler.Fetch(currentHeight, nextHeight);
-            //    transfers = blockCrawler.ExtractInteropTransfers(logger, LocalAddress);
-            //    foreach (var entry in transfers)
-            //    {
-            //        foreach (var txInteropTransfer in entry.Value)
-            //        {
-            //            foreach (var interopTransfer in txInteropTransfer.Value)
-            //            {
-            //                result.Add(new PendingSwap(
-            //                    this.PlatformName
-            //                    ,Hash.Parse(entry.Key)
-            //                    ,interopTransfer.sourceAddress
-            //                    ,interopTransfer.interopAddress)
-            //                );
-            //            }
-            //        }
-            //    }
-
-            //    _interopBlockHeight = nextHeight;
-            //    oracleReader.SetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, _interopBlockHeight.ToString());
-            //}
-            //else
-            //{
+                //    _interopBlockHeight = nextHeight;
+                //    oracleReader.SetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, _interopBlockHeight.ToString());
+                //}
+                //else
+                //{
                 var url = DomainExtensions.GetOracleBlockURL(
                         EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, PBigInteger.FromUnsignedArray(currentHeight.ToByteArray(), true));
 
@@ -136,10 +138,26 @@ namespace Phantasma.Spook.Interop
 
                 _interopBlockHeight++;
                 oracleReader.SetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, _interopBlockHeight.ToString());
-            //}
+                //}
 
-            logger.Message($"found { result.Count() } swaps");
-            return result;
+                logger.Message($"found { result.Count() } swaps");
+                return result;
+            }
+            catch (Exception e)
+            {
+                var logMessage = "EthereumInterop.Update() exception caught:\n" + e.Message;
+                var inner = e.InnerException;
+                while (inner != null)
+                {
+                    logMessage += "\n---> " + inner.Message + "\n\n" + inner.StackTrace;
+                    inner = inner.InnerException;
+                }
+                logMessage += "\n\n" + e.StackTrace;
+
+                logger.Error(logMessage);
+
+                return new List<PendingSwap>();
+            }
         }
 
         TimeSpan TimeAction(Action blockingAction)

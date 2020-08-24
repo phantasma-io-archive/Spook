@@ -245,91 +245,107 @@ namespace Phantasma.Spook.Swaps
 
         public void Update()
         {
-            if (this.platforms == null)
+            try
             {
-                if (!Nexus.HasGenesis)
+                if (this.platforms == null)
                 {
-                    return;
-                }
+                    if (!Nexus.HasGenesis)
+                    {
+                        return;
+                    }
 
-                var platforms = Nexus.GetPlatforms(Nexus.RootStorage);
-                this.platforms = platforms.Select(x => Nexus.GetPlatformInfo(Nexus.RootStorage, x)).ToArray();
+                    var platforms = Nexus.GetPlatforms(Nexus.RootStorage);
+                    this.platforms = platforms.Select(x => Nexus.GetPlatformInfo(Nexus.RootStorage, x)).ToArray();
+
+                    if (this.platforms.Length == 0)
+                    {
+                        logger.Warning("No interop platforms found. Make sure that the Nexus was created correctly.");
+                        return;
+                    }
+
+                    _finders["neo"] = new NeoInterop(this, neoAPI, wifs["neo"], interopBlocks["neo"], OracleReader,
+                            _settings.Oracle.NeoQuickSync, logger);
+                    SwapAddresses["neo"] = _finders["neo"].LocalAddress;
+
+                    _finders["ethereum"] = new EthereumInterop(this, ethAPI, wifs["ethereum"], interopBlocks["ethereum"],
+                            OracleReader, _settings.Oracle.EthContracts.Values.ToArray(), _settings.Oracle.EthConfirmations,
+                            Nexus, logger);
+                    SwapAddresses["ethereum"] = _finders["ethereum"].LocalAddress;
+                }
 
                 if (this.platforms.Length == 0)
                 {
-                    logger.Warning("No interop platforms found. Make sure that the Nexus was created correctly.");
                     return;
-                }
-
-                _finders["neo"] = new NeoInterop(this, neoAPI,  wifs["neo"], interopBlocks["neo"], OracleReader,
-                        _settings.Oracle.NeoQuickSync, logger);
-                SwapAddresses["neo"] = _finders["neo"].LocalAddress;
-
-                _finders["ethereum"] = new EthereumInterop(this, ethAPI,  wifs["ethereum"], interopBlocks["ethereum"],
-                        OracleReader, _settings.Oracle.EthContracts.Values.ToArray(), _settings.Oracle.EthConfirmations,
-                        Nexus, logger);
-                SwapAddresses["ethereum"] = _finders["ethereum"].LocalAddress;
-            }
-
-            if (this.platforms.Length == 0)
-            {
-                return;
-            }
-            else
-            {
-                if (taskList.Count == 0)
-                {
-                    foreach (var platform in this.platforms)
-                    {
-                        taskList.Add(platform.Name, null);
-                    }
-                }
-            }
-
-            var pendingList = new StorageList(PendingTag, this.Storage);
-            int i = 0;
-            var count = pendingList.Count();
-            while (i < count)
-            {
-                var settlement = pendingList.Get<PendingSettle>(i);
-                if (UpdatePendingSettle(pendingList, i))
-                {
-                    pendingList.RemoveAt<PendingSettle>(i);
-                    count--;
                 }
                 else
                 {
-                    i++;
-                }
-            }
-
-            ProcessCompletedTasks();
-
-            for (var j = 0; j < taskList.Count; j++)
-            {
-                var platform = taskList.Keys.ElementAt(j);
-                var task = taskList[platform];
-                if (task == null)
-                {
-                    ChainWatcher finder;
-                    if (_finders.TryGetValue( platform, out finder))
+                    if (taskList.Count == 0)
                     {
-                        taskList[platform] = new Task<IEnumerable<PendingSwap>>(() => 
-                                                {
-                                                    return finder.Update();
-                                                });
+                        foreach (var platform in this.platforms)
+                        {
+                            taskList.Add(platform.Name, null);
+                        }
+                    }
+                }
+
+                var pendingList = new StorageList(PendingTag, this.Storage);
+                int i = 0;
+                var count = pendingList.Count();
+                while (i < count)
+                {
+                    var settlement = pendingList.Get<PendingSettle>(i);
+                    if (UpdatePendingSettle(pendingList, i))
+                    {
+                        pendingList.RemoveAt<PendingSettle>(i);
+                        count--;
+                    }
+                    else
+                    {
+                        i++;
+                    }
+                }
+
+                ProcessCompletedTasks();
+
+                for (var j = 0; j < taskList.Count; j++)
+                {
+                    var platform = taskList.Keys.ElementAt(j);
+                    var task = taskList[platform];
+                    if (task == null)
+                    {
+                        ChainWatcher finder;
+                        if (_finders.TryGetValue(platform, out finder))
+                        {
+                            taskList[platform] = new Task<IEnumerable<PendingSwap>>(() =>
+                                                    {
+                                                        return finder.Update();
+                                                    });
+                        }
+                    }
+                }
+
+                // start new tasks
+                foreach (var entry in taskList)
+                {
+                    var task = entry.Value;
+                    if (task != null && !task.Status.Equals(TaskStatus.Running))
+                    {
+                        task.Start();
                     }
                 }
             }
-
-            // start new tasks
-            foreach (var entry in taskList)
+            catch (Exception e)
             {
-                var task = entry.Value;
-                if (task != null && !task.Status.Equals(TaskStatus.Running))
+                var logMessage = "TokenSwapper.Update() exception caught:\n" + e.Message;
+                var inner = e.InnerException;
+                while (inner != null)
                 {
-                    task.Start();
+                    logMessage += "\n---> " + inner.Message + "\n\n" + inner.StackTrace;
+                    inner = inner.InnerException;
                 }
+                logMessage += "\n\n" + e.StackTrace;
+
+                logger.Error(logMessage);
             }
         }
 
