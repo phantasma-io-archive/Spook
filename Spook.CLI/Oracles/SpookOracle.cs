@@ -265,7 +265,7 @@ namespace Phantasma.Spook.Oracles
                     //}
                     
                     interopTuple = EthereumInterop.MakeInteropBlock(_cli.Nexus, logger, _cli.EthAPI, height,
-                            _cli.Settings.Oracle.EthContracts.Values.ToArray(), _cli.TokenSwapper.SwapAddresses[platformName]);
+                            _cli.Nexus.GetPlatformTokenHashes("ethereum", _cli.Nexus.RootStorage).Select(x => x.ToString().Substring(0, 40)).ToArray(), _cli.TokenSwapper.SwapAddresses[platformName]);
                     break;
 
                 default:

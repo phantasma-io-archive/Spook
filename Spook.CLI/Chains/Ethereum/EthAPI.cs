@@ -54,6 +54,7 @@ namespace Phantasma.Spook.Chains
         private List<string> urls = new List<string>();
         private List<WebSocketClient> clients = new List<WebSocketClient>();
         private List<Web3> web3Clients = new List<Web3>();
+        private Blockchain.Nexus Nexus;
         private SpookSettings _settings;
 
         private static Random rnd = new Random();
@@ -67,8 +68,9 @@ namespace Phantasma.Spook.Chains
             }
         }
 
-        public EthAPI(SpookSettings settings, Account account)
+        public EthAPI(Blockchain.Nexus nexus, SpookSettings settings, Account account)
         {
+            this.Nexus = nexus;
             this._settings = settings;
 
             var clientURLs = this._settings.Oracle.EthRpcNodes;
@@ -239,8 +241,10 @@ namespace Phantasma.Spook.Chains
                 };
 
                 string contractAddress;
-                if (this._settings.Oracle.EthContracts.TryGetValue(symbol, out contractAddress))
+                var hash = Nexus.GetTokenPlatformHash(symbol, "ethereum", Nexus.RootStorage);
+                if (!hash.IsNull)
                 {
+                    contractAddress = hash.ToString().Substring(0, 40);
                     //test
                     //var balanceOfFunctionMessage = new BalanceOfFunction()
                     //{
