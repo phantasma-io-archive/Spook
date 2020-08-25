@@ -170,10 +170,10 @@ namespace Phantasma.Spook.Oracles
 
             switch (platform)
             {
-                case "neo":
+                case NeoWallet.NeoPlatform:
                     return Phantasma.Numerics.UnitConversion.ToBigInteger(0.1m, DomainSettings.FiatTokenDecimals);
 
-                case "ethereum":
+                case EthereumWallet.EthereumPlatform:
 
                     CachedFee fee;
                     if (_feeCache.TryGetValue(platform, out fee))
@@ -186,7 +186,7 @@ namespace Phantasma.Spook.Oracles
 
                     var newFee = EthereumInterop.GetNormalizedFee(_cli.Settings.Oracle.EthFeeURLs.ToArray());
                     fee = new CachedFee(Timestamp.Now, UnitConversion.ToBigInteger(newFee, 2)); // fixed to 2 decimal places for now
-                    _feeCache.Add(platform, fee);
+                    _feeCache[platform] = fee;
 
                     return fee.Value;
 
@@ -264,8 +264,11 @@ namespace Phantasma.Spook.Oracles
                     //{
                     //}
                     
+                    var hashes = _cli.Nexus.GetPlatformTokenHashes(EthereumWallet.EthereumPlatform, _cli.Nexus.RootStorage)
+                        .Select(x => x.ToString().Substring(0, 40)).ToArray();
+                
                     interopTuple = EthereumInterop.MakeInteropBlock(_cli.Nexus, logger, _cli.EthAPI, height,
-                            _cli.Nexus.GetPlatformTokenHashes("ethereum", _cli.Nexus.RootStorage).Select(x => x.ToString().Substring(0, 40)).ToArray(), _cli.TokenSwapper.SwapAddresses[platformName]);
+                            hashes, _cli.Settings.Oracle.EthConfirmations, _cli.TokenSwapper.SwapAddresses[platformName]);
                     break;
 
                 default:
