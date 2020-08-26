@@ -227,7 +227,6 @@ namespace Phantasma.Spook.Oracles
                 return block;
             }
 
-            logger.Message($"Pull block: {height} platform: {platformName}");
             Tuple<InteropBlock, InteropTransaction[]> interopTuple;
             switch (platformName)
             {
