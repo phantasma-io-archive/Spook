@@ -268,7 +268,7 @@ namespace Phantasma.Spook.Oracles
                         .Select(x => x.ToString().Substring(0, 40)).ToArray();
                 
                     interopTuple = EthereumInterop.MakeInteropBlock(_cli.Nexus, logger, _cli.EthAPI, height,
-                            hashes, _cli.TokenSwapper.SwapAddresses[platformName]);
+                            hashes, _cli.Settings.Oracle.EthConfirmations, _cli.TokenSwapper.SwapAddresses[platformName]);
                     break;
 
                 default:
