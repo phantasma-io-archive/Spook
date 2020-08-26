@@ -88,22 +88,21 @@ namespace Phantasma.Spook.Interop
                     return result;
                 }
 
-                //var x = MakeInteropBlock(logger, ethAPI, 160, LocalAddress);
-                //Thread.Sleep(10000000);
                 var currentHeight = ethAPI.GetBlockHeight();
                 logger.Message($"current eth height: {currentHeight} interop eth height {_interopBlockHeight}");
 
-                if (currentHeight == _interopBlockHeight)
+                var blockDifference = currentHeight - _interopBlockHeight;
+                if (blockDifference < confirmations)
                 {
+                    // no need to query the node yet
                     return result;
                 }
 
-                var blockDifference = currentHeight - _interopBlockHeight;
-                var nextHeight = (blockDifference > 50) ? 50 : blockDifference; //TODO
-
-                var transfers = new Dictionary<string, Dictionary<string, List<InteropTransfer>>>();
-
                 //TODO quick sync not done yet, requieres a change to the oracle impl to fetch multiple blocks
+                //var nextHeight = (blockDifference > 50) ? 50 : blockDifference; //TODO
+
+                //var transfers = new Dictionary<string, Dictionary<string, List<InteropTransfer>>>();
+
                 //if (nextHeight > 1)
                 //{
                 //    var blockCrawler = new EthBlockCrawler(logger, contracts.ToArray(), 0/*confirmations*/, ethAPI); //TODO settings confirmations
@@ -131,8 +130,10 @@ namespace Phantasma.Spook.Interop
                 //}
                 //else
                 //{
+
+                /* Future improvement, implement oracle call to fetch multiple blocks */
                 var url = DomainExtensions.GetOracleBlockURL(
-                        EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, PBigInteger.FromUnsignedArray(currentHeight.ToByteArray(), true));
+                        EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, PBigInteger.FromUnsignedArray(_interopBlockHeight.ToByteArray(), true));
 
                 var interopBlock = oracleReader.Read<InteropBlock>(DateTime.Now, url);
 
@@ -291,7 +292,7 @@ namespace Phantasma.Spook.Interop
         }
 
         public static Tuple<InteropBlock, InteropTransaction[]> MakeInteropBlock(Nexus nexus, Logger logger, EthAPI api
-                , BigInteger height, string[] contracts, string swapAddress)
+                , BigInteger height, string[] contracts, uint confirmations, string swapAddress)
         {
             Hash blockHash = Hash.Null;
             var interopTransactions = new List<InteropTransaction>();
@@ -300,7 +301,7 @@ namespace Phantasma.Spook.Interop
             var combinedAddresses = contracts.ToList();
             combinedAddresses.Add(swapAddress);
 
-            var crawler = new EthBlockCrawler(logger, combinedAddresses.ToArray(), 0/*confirmations*/, api);
+            var crawler = new EthBlockCrawler(logger, combinedAddresses.ToArray(), confirmations, api);
 
             // fetch blocks
             crawler.Fetch(height);
