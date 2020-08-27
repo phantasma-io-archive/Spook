@@ -1,0 +1,93 @@
+{
+    "ApplicationConfiguration": {
+        "Node": {
+            "web.logs": false,
+            "block.time": 2,
+            "minimum.fee": 100000,
+            "minimum.pow": 0,
+            "api.proxy.url": "http://localhost:7094/api",
+            "nexus.name": "simnet",
+            "node.wif": "L17ZzGLiJwyrrqY9AkZSN9dGnZCuKKdAnKaCHEjzBEX7WsE5VzyH",
+            "api.log": false,
+			"node.port": 7799,
+            "node.mode": "node",
+            "seeds": "localhost:7788",
+            "profiler.path": "",
+            "has.sync": true,
+            "has.mempool": true,
+            "mempool.log": false,
+            "has.events": false,
+            "has.relay": false,
+            "has.archive": false,
+            "has.rpc": true,
+            "has.rest": true,
+            "rpc.port": 7091,
+            "rest.port": 7092,
+            "nexus.bootstrap": true,
+            "genesis.timestamp": 0,
+            "api.cache": true,
+            "readonly": false,
+            "sender.host": "",
+            "sender.threads": 8,
+            "sender.address.count": 100,
+            "storage.path": "",
+            "verify.storage.path": "",
+            "db.storage.path": "",
+            "oracle.path": "",
+            "storage.backend": "db",
+            "convert.storage": false,
+            "random.swap.data": false
+        },
+		
+         "Oracle": {
+            "neoscan.api": "mankinighost.phantasma.io:4000",
+            "neo.rpc.nodes": ["http://mankinighost.phantasma.io:30333"],
+            "neo.rpc.specific.nodes": [],
+            "eth.rpc.nodes": ["13.91.228.58:7545"],
+
+            "eth.fee.urls": [
+                "https://gasprice.poa.network/",
+                "https://www.etherchain.org/api/gasPriceOracle",
+                "https://api.anyblock.tools/latest-minimum-gasprice"
+            ],
+
+            "eth.block.confirmations": 5,
+            "crypto.compare.key": "4e6ffe0dedfd49d2e182b706b72e736fa027844181d179dc5310f115deeb29be",
+            "swaps.enabled": true,
+            "phantasma.interop.height": "0",
+            "neo.interop.height": "28463738",
+            "eth.interop.height": "327",
+            "neo.wif": "",
+            "eth.wif": ""
+        },
+
+        "Plugins": {
+            "plugin.refresh.interval": 1,
+            "tps.plugin": true,
+            "ram.plugin": true,
+            "mempool.plugin": true
+        },
+
+        "Simulator": {
+            "simulator.enabled": true,
+            "simulator.dapps": [""],
+            "simulator.generate.blocks": false
+        },
+
+        "App": {
+            "gui.enabled": false, 
+            "shell.enabled": false, 
+            "node.start": true, 
+            "app.name": "SPK",
+            "config": "",
+            "prompt": "[{0}] spook> ",
+            "history": ".history", 
+            "log.file": "spook.log" 
+        },
+
+        "RPC": {
+            "rpc.address": "localhost",
+            "rpc.port": 7654 
+        }
+    }
+}
