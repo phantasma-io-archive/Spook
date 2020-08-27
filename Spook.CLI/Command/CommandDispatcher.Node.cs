@@ -82,10 +82,20 @@ namespace Phantasma.Spook.Command
                 hashStr = hashStr.Substring(2);
             }
 
-            var hash = Hash.FromUnpaddedHex(hashStr);
+            Hash hash;
+
+            try
+            {
+                hash = Hash.FromUnpaddedHex(hashStr);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Parsing hash failed: " + e.Message);
+                return;
+            }
 
             var script = ScriptUtils.BeginScript()
-                .AllowGas(_cli.NodeKeys.Address, Address.Null, 1, 99999)
+                .AllowGas(_cli.NodeKeys.Address, Address.Null, 100000, 1500)
                 .CallInterop("Nexus.SetTokenPlatformHash", symbol.ToUpper(), platform, hash)
                 .SpendGas(_cli.NodeKeys.Address).EndScript();
 
@@ -105,7 +115,7 @@ namespace Phantasma.Spook.Command
                 return;
             }
 
-            Console.WriteLine("Token {symbol}/{platform} created.");
+            Console.WriteLine($"Token {symbol}/{platform} created.");
         }
 
         [ConsoleCommand("node convert", Category = "Node", Description = "")]

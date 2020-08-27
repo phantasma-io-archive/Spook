@@ -76,7 +76,7 @@
 
         "App": {
             "gui.enabled": false, 
-            "shell.enabled": false, 
+            "shell.enabled": true, 
             "node.start": true, 
             "app.name": "SPK",
             "config": "",
