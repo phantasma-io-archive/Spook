@@ -3,10 +3,14 @@ using System.Collections;
 using System.IO;
 using System.Text;
 using Phantasma.Blockchain;
+using Phantasma.Blockchain.Contracts;
+using Phantasma.Core.Types;
 using Phantasma.Cryptography;
+using Phantasma.Domain;
 using Phantasma.RocksDB;
 using Phantasma.Storage;
 using Phantasma.Storage.Context;
+using Phantasma.VM.Utils;
 
 namespace Phantasma.Spook.Command
 {
@@ -40,12 +44,67 @@ namespace Phantasma.Spook.Command
         [ConsoleCommand("create token", Category = "Node", Description = "Bounce a node to reload configuration")]
         protected void OnCreatePlatformToken(string[] args)
         {
-            // TODO should be done in a tx to distribute to other nodes
-            var symbol = args[0];
-            var platform = args[1];
-            var hash = Hash.FromUnpaddedHex(args[2]);
 
-            _cli.Nexus.SetTokenPlatformHash(symbol, platform, hash, _cli.Nexus.RootStorage);
+            var chain = _cli.Nexus.GetChainByName(_cli.Nexus.RootChain.Name);
+            var fuelToken = _cli.Nexus.GetTokenInfo(_cli.Nexus.RootStorage, DomainSettings.FuelTokenSymbol);
+            var balance = chain.GetTokenBalance(chain.Storage, fuelToken, _cli.NodeKeys.Address);
+
+            if (balance == 0)
+            {
+                Console.WriteLine("Node wallet needs gas to create a platform token!");
+                return;
+            }
+
+            var symbol = args[0];
+
+            if (string.IsNullOrEmpty(symbol)) 
+            {
+                Console.WriteLine("Symbol has to be set!");
+                return;
+            }
+
+            var platform = args[1];
+            if (string.IsNullOrEmpty(symbol)) 
+            {
+                Console.WriteLine("Platform has to be set!");
+                return;
+            }
+
+            var hashStr = args[2];
+            if (string.IsNullOrEmpty(symbol)) 
+            {
+                Console.WriteLine("Hash has to be set!");
+                return;
+            }
+
+            if (hashStr.StartsWith("0x"))
+            {
+                hashStr = hashStr.Substring(2);
+            }
+
+            var hash = Hash.FromUnpaddedHex(hashStr);
+
+            var script = ScriptUtils.BeginScript()
+                .AllowGas(_cli.NodeKeys.Address, Address.Null, 1, 99999)
+                .CallInterop("Nexus.SetTokenPlatformHash", symbol.ToUpper(), platform, hash)
+                .SpendGas(_cli.NodeKeys.Address).EndScript();
+
+            var expire = Timestamp.Now + TimeSpan.FromMinutes(2);
+            var tx = new Phantasma.Blockchain.Transaction(_cli.Nexus.Name, _cli.Nexus.RootChain.Name, script, expire, CLI.Identifier);
+
+            tx.Mine((int)ProofOfWork.Minimal);
+            tx.Sign(_cli.NodeKeys);
+
+            if (_cli.Mempool != null)
+            {
+                _cli.Mempool.Submit(tx);
+            }
+            else
+            {
+                Console.WriteLine("No mempool available");
+                return;
+            }
+
             Console.WriteLine("Token {symbol}/{platform} created.");
         }
 

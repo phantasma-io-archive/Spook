@@ -98,6 +98,7 @@ namespace Phantasma.Spook
         public Mempool Mempool { get { return _mempool; } }
         public Node Node { get { return _node; } }
         public NexusSimulator Simulator { get { return _simulator; } }
+        public PhantasmaKeys NodeKeys { get { return _nodeKeys; } }
         public Logger Logger { get { return logger; } }
 
         private void SenderSpawn(int ID, PhantasmaKeys masterKeys, string nexusName, string host, BigInteger initialAmount, int addressesListSize)
