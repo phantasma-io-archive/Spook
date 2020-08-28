@@ -69,104 +69,107 @@ namespace Phantasma.Spook.Interop
 
         public override IEnumerable<PendingSwap> Update()
         {
-            var result = new List<PendingSwap>();
-
-            // initial start, we have to verify all processed swaps
-            if (initialStart)
+            lock (String.Intern("PendingSetCurrentHeight_" + "neo"))
             {
-                // TODO check if quick sync nodes are configured, if so use quick sync
-                // we need to find a better solution for that though
-                var allInteropBlocks = oracleReader.ReadAllBlocks("neo", "neo");
+                var result = new List<PendingSwap>();
 
-                logger.Message($"Found {allInteropBlocks.Count} blocks");
-
-                foreach (var block in allInteropBlocks)
+                // initial start, we have to verify all processed swaps
+                if (initialStart)
                 {
-                    ProcessBlock(block, result);
+                    // TODO check if quick sync nodes are configured, if so use quick sync
+                    // we need to find a better solution for that though
+                    var allInteropBlocks = oracleReader.ReadAllBlocks("neo", "neo");
+
+                    logger.Message($"Found {allInteropBlocks.Count} blocks");
+
+                    foreach (var block in allInteropBlocks)
+                    {
+                        ProcessBlock(block, result);
+                    }
+
+                    initialStart = false;
+
+                    // return after the initial start to be able to process all swaps that happend in the mean time.
+                    return result;
                 }
 
-                initialStart = false;
+                if (quickSync)
+                {
+                    // if quick sync is active, we can use a specific plugin installed on the nodes (EventTracker)
+                    // TODO reversed contract hash is hardcoded for now, very unlikely to change.
+                    var blockIds = neoAPI.GetSwapBlocks("b3a766ac60afa2990d9251db08138fd1facf07ed", LocalAddress, this._interopBlockHeight.ToString());
+                    var batchCount = 8;
+                    List<Task<InteropBlock>> taskList = CreateTaskList(batchCount, blockIds.Values.ToArray());
 
-                // return after the initial start to be able to process all swaps that happend in the mean time.
+                    foreach (var task in taskList)
+                    {
+                        task.Start();
+                    }
+
+                    Task.WaitAll(taskList.ToArray());
+
+                    // get blocks and order them for processing
+                    var blocksToProcess = taskList.Select(x => x.Result).ToList()
+                            .Where(x => blockIds.ContainsKey(x.Hash.ToString()))
+                            .Select(x => new { block = x, id = blockIds[x.Hash.ToString()] })
+                            .OrderBy(x => x.id);
+
+                    logger.Message($"blocksToProcess: {blocksToProcess.Count()}");
+
+                    foreach (var entry in blocksToProcess)
+                    {
+                        ProcessBlock(entry.block, result);
+                        oracleReader.SetCurrentHeight("neo", "neo", _interopBlockHeight.ToString());
+                        _interopBlockHeight = BigInteger.Parse(entry.id.ToString());
+                    }
+                }
+                else
+                {
+                    var blockIterator = new BlockIterator(neoAPI);
+                    var blockDifference = blockIterator.currentBlock - _interopBlockHeight;
+                    var batchCount = (blockDifference > 8) ? 8 : blockDifference; //TODO make it a constant, should be no more than 8
+
+                    while (blockIterator.currentBlock > _interopBlockHeight)
+                    {
+                        logger.Message("==== current: " + blockIterator.currentBlock + " interop: " + _interopBlockHeight);
+                        //logger.Message("start======================= " + DateTime.Now.ToString("yyyy’-‘MM’-‘dd’ ’HH’:’mm’:’ss.fff"));
+                        if (batchCount > 1)
+                        {
+                            List<Task<InteropBlock>> taskList = CreateTaskList(batchCount);
+
+                            foreach (var task in taskList)
+                            {
+                                task.Start();
+                            }
+
+                            Task.WaitAll(taskList.ToArray());
+
+                            foreach (var task in taskList)
+                            {
+                                var block = task.Result;
+
+                                ProcessBlock(block, result);
+                            }
+
+                            oracleReader.SetCurrentHeight("neo", "neo", _interopBlockHeight.ToString());
+                            _interopBlockHeight += batchCount;
+                        }
+                        else
+                        {
+                            var url = DomainExtensions.GetOracleBlockURL(
+                                    "neo", "neo", PBigInteger.FromUnsignedArray(_interopBlockHeight.ToByteArray(), true));
+
+                            var interopBlock = oracleReader.Read<InteropBlock>(DateTime.Now, url);
+
+                            ProcessBlock(interopBlock, result);
+
+                            oracleReader.SetCurrentHeight("neo", "neo", _interopBlockHeight.ToString());
+                            _interopBlockHeight++;
+                        }
+                    }
+                }
                 return result;
             }
-
-            if (quickSync)
-            {
-                // if quick sync is active, we can use a specific plugin installed on the nodes (EventTracker)
-                // TODO reversed contract hash is hardcoded for now, very unlikely to change.
-                var blockIds = neoAPI.GetSwapBlocks("b3a766ac60afa2990d9251db08138fd1facf07ed", LocalAddress, this._interopBlockHeight.ToString());
-                var batchCount = 8;
-                List<Task<InteropBlock>> taskList = CreateTaskList(batchCount, blockIds.Values.ToArray());
-
-                foreach (var task in taskList)
-                {
-                    task.Start();
-                }
-                
-                Task.WaitAll(taskList.ToArray());
-                
-                // get blocks and order them for processing
-                var blocksToProcess = taskList.Select(x => x.Result).ToList()
-                        .Where(x => blockIds.ContainsKey(x.Hash.ToString()))
-                        .Select(x => new { block = x, id = blockIds[x.Hash.ToString()] })
-                        .OrderBy(x => x.id);
-
-                logger.Message($"blocksToProcess: {blocksToProcess.Count()}");
-
-                foreach (var entry in blocksToProcess)
-                {
-                    ProcessBlock(entry.block, result);
-                    oracleReader.SetCurrentHeight("neo", "neo", _interopBlockHeight.ToString());
-                    _interopBlockHeight = BigInteger.Parse(entry.id.ToString());
-                }
-            }
-            else
-            {
-                var blockIterator = new BlockIterator(neoAPI);
-                var blockDifference = blockIterator.currentBlock - _interopBlockHeight;
-                var batchCount = (blockDifference > 8) ? 8 : blockDifference; //TODO make it a constant, should be no more than 8
-
-                while (blockIterator.currentBlock > _interopBlockHeight)
-                {
-                    logger.Message("==== current: " + blockIterator.currentBlock + " interop: " + _interopBlockHeight);
-                    //logger.Message("start======================= " + DateTime.Now.ToString("yyyy’-‘MM’-‘dd’ ’HH’:’mm’:’ss.fff"));
-                    if (batchCount > 1)
-                    {
-                        List<Task<InteropBlock>> taskList = CreateTaskList(batchCount);
-                        
-                        foreach (var task in taskList)
-                        {
-                            task.Start();
-                        }
-                        
-                        Task.WaitAll(taskList.ToArray());
-                        
-                        foreach (var task in taskList)
-                        {
-                            var block = task.Result;
-
-                            ProcessBlock(block, result);
-                        }
-
-                        oracleReader.SetCurrentHeight("neo", "neo", _interopBlockHeight.ToString());
-                        _interopBlockHeight += batchCount;
-                    }
-                    else
-                    {
-                        var url = DomainExtensions.GetOracleBlockURL(
-                                "neo", "neo", PBigInteger.FromUnsignedArray(_interopBlockHeight.ToByteArray(), true));
-
-                        var interopBlock = oracleReader.Read<InteropBlock>(DateTime.Now, url);
-
-                        ProcessBlock(interopBlock, result);
-
-                        oracleReader.SetCurrentHeight("neo", "neo", _interopBlockHeight.ToString());
-                        _interopBlockHeight++;
-                    }
-                }
-            }
-            return result;
         }
 
         private List<Task<InteropBlock>> CreateTaskList(BigInteger batchCount, BigInteger[] blockIds = null)
