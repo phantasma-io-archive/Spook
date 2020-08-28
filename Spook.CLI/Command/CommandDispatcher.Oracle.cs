@@ -17,5 +17,13 @@ namespace Phantasma.Spook.Command
             // not sure if that's exactly what we want, probably needs more output...
             Console.WriteLine(tx.Transfers[0].interopAddress.Text);
         }
+        [ConsoleCommand("platform height set", Category = "Oracle", Description = "Set platform height")]
+        protected void OnPlatformHeightSet(string[] args)
+        {
+            var reader = _cli.Nexus.GetOracleReader();
+            reader.SetCurrentHeight(args[0], args[1], args[2]);
+
+            _cli.Logger.Message($"Height {args[2]} is set for platform {args[0]}, chain {args[1]}...");
+        }
     }
 }
