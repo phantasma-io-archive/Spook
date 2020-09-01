@@ -105,6 +105,9 @@ namespace Phantasma.Spook.Swaps
             this.PlatformName = platformName;
             this.LocalAddress = swapper.FindAddress(platformName);
 
+            // for testing with mainnet swap address
+            //this.LocalAddress = "AbFdbvacCeBrncvwYnPEtfKqyr5KU9SWAU"; //swapper.FindAddress(platformName);
+
             if (string.IsNullOrEmpty(LocalAddress))
             {
                 throw new SwapException($"Invalid address for {platformName} swaps");
@@ -170,7 +173,6 @@ namespace Phantasma.Spook.Swaps
 
             InitWIF("neo");
             InitWIF("ethereum");
-            //TODO init eth wif
         }
 
         private void InitWIF(string platformName)
