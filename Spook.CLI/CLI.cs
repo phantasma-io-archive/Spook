@@ -2,8 +2,6 @@ using System;
 using System.Net.Sockets;
 using System.Linq;
 using System.Collections.Generic;
-using System.Collections;
-using System.Text;
 using System.Threading;
 using System.IO;
 
@@ -27,19 +25,20 @@ using Phantasma.Core;
 using Phantasma.Network.P2P.Messages;
 using Phantasma.RocksDB;
 using Phantasma.Storage;
-using Phantasma.Storage.Context;
 using Phantasma.Spook.Oracles;
 using Phantasma.Spook.Swaps;
 using Phantasma.Domain;
 using Logger = Phantasma.Core.Log.Logger;
 using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
 using System.Globalization;
-using Microsoft.Extensions.Configuration;
 using NeoAPI = Phantasma.Neo.Core.NeoAPI;
 using System.Reflection;
 using Phantasma.Spook.Shell;
 using Phantasma.Spook.Command;
-using Phantasma.Core.Log;
+using Phantasma.Spook.Chains;
+using System.Threading.Tasks;
+using EthAccount = Nethereum.Web3.Accounts.Account;
+using Nethereum.Hex.HexConvertors.Extensions;
 
 namespace Phantasma.Spook
 {
@@ -78,6 +77,7 @@ namespace Phantasma.Spook
         private bool _nodeReady = false;
         private List<string> _seeds = new List<string>();
         private NeoAPI _neoAPI;
+        private EthAPI _ethAPI;
         private NeoScanAPI _neoScanAPI;
         private CommandDispatcher _commandDispatcher;
         private TokenSwapper _tokenSwapper;
@@ -89,6 +89,7 @@ namespace Phantasma.Spook
         public NexusAPI NexusAPI { get { return _nexusApi; } }
         public Nexus Nexus { get { return nexus; } }
         public NeoAPI NeoAPI { get { return _neoAPI; } }
+        public EthAPI EthAPI { get { return _ethAPI; } }
         public NeoScanAPI NeoScanAPI { get { return _neoScanAPI; } }
         public SpookSettings Settings { get { return _settings; } }
         public string CryptoCompareAPIKey  { get { return _cryptoCompareAPIKey; } }
@@ -97,6 +98,7 @@ namespace Phantasma.Spook
         public Mempool Mempool { get { return _mempool; } }
         public Node Node { get { return _node; } }
         public NexusSimulator Simulator { get { return _simulator; } }
+        public PhantasmaKeys NodeKeys { get { return _nodeKeys; } }
         public Logger Logger { get { return logger; } }
 
         private void SenderSpawn(int ID, PhantasmaKeys masterKeys, string nexusName, string host, BigInteger initialAmount, int addressesListSize)
@@ -403,7 +405,7 @@ namespace Phantasma.Spook
         {
             var minimumFee = _settings.Node.MinimumFee;
             var oracleSettings = _settings.Oracle;
-            var tokenSwapper = new TokenSwapper(_settings, _nodeKeys, _nexusApi, _neoAPI, minimumFee, logger);
+            var tokenSwapper = new TokenSwapper(_settings, _nodeKeys, _nexusApi, _neoAPI, _ethAPI, minimumFee, logger);
             _nexusApi.TokenSwapper = tokenSwapper;
 
             new Thread(() =>
@@ -412,7 +414,8 @@ namespace Phantasma.Spook
                 while (_running)
                 {
                     //Thread.Sleep(5000);
-                    Thread.Sleep(1000); //test
+                    //Thread.Sleep(8000);
+                    Task.Delay(5000).Wait();
                     if (_nodeReady)
                     {
                         tokenSwapper.Update();
@@ -493,6 +496,12 @@ namespace Phantasma.Spook
             var neoRpcList = _settings.Oracle.NeoRpcNodes;
             this._neoAPI = new Neo.Core.RemoteRPCNode(neoScanURL, neoRpcList.ToArray());
             this._neoAPI.SetLogger((s) => logger.Message(s));
+
+            var ethRpcList = _settings.Oracle.EthRpcNodes;
+            var interopKeys = InteropUtils.GenerateInteropKeys(_nodeKeys, Nexus.GetGenesisHash(Nexus.RootStorage), "ethereum");
+
+            this._ethAPI = new EthAPI(this.Nexus, this._settings, new EthAccount(interopKeys.PrivateKey.ToHex()));
+            this._ethAPI.SetLogger((s) => logger.Message(s));
 
             this._neoScanAPI = new NeoScanAPI(neoScanURL, logger, nexus, _nodeKeys);
 
@@ -580,6 +589,7 @@ namespace Phantasma.Spook
 
         private PhantasmaKeys SetupNodeKeys()
         {
+            Console.WriteLine("NodeWif: " + _settings.Node.NodeWif);
             PhantasmaKeys nodeKeys = PhantasmaKeys.FromWIF(_settings.Node.NodeWif);;
             //TODO wallet module?
 

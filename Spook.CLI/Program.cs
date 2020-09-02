@@ -1,9 +1,8 @@
 using System.Globalization;
 using System.Threading;
-using Phantasma.Spook;
 using Phantasma.Spook.Shell;
 
-namespace Neo
+namespace Phantasma.Spook
 {
     static class Program
     {

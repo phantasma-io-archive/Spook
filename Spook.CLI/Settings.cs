@@ -190,16 +190,26 @@ namespace Phantasma.Spook
         }
     }
 
+    public class Contract
+    {
+        public string symbol { get; set; }
+        public string hash { get; set; }
+    }
+
     public class OracleSettings 
     {
         public string NeoscanUrl{ get; }
         public List<string> NeoRpcNodes{ get; }
+        public List<string> EthRpcNodes{ get; }
+        public List<string> EthFeeURLs{ get; }
         public string CryptoCompareAPIKey { get; }
         public bool Swaps { get; }
         public string PhantasmaInteropHeight { get; } = "0";
         public string NeoInteropHeight { get; } = "4261049";
         public string EthInteropHeight { get; }
         public string NeoWif { get; }
+        public string EthWif { get; }
+        public uint EthConfirmations { get; }
         public bool NeoQuickSync { get; } = true;
 
         public OracleSettings(Arguments settings, IConfigurationSection section)
@@ -219,6 +229,19 @@ namespace Phantasma.Spook
                 this.NeoQuickSync = false;
             }
 
+            this.EthRpcNodes = section.GetSection("eth.rpc.nodes").AsEnumerable()
+                        .Where(p => p.Value != null)
+                        .Select(p => p.Value)
+                        .ToList();
+
+            this.EthFeeURLs = section.GetSection("eth.fee.urls").AsEnumerable()
+                        .Where(p => p.Value != null)
+                        .Select(p => p.Value)
+                        .ToList();
+
+            var sectionEthContracts = section.GetSection("eth.contracts");
+
+            this.EthConfirmations = settings.GetUInt("eth.block.confirmations", section.GetValue<uint>("eth.block.confirmations"));
             this.CryptoCompareAPIKey = settings.GetString("crypto.compare.key", section.GetValue<string>("crypto.compare.key"));
             this.Swaps = settings.GetBool("swaps.enabled", section.GetValue<bool>("swaps.enabled"));
             this.PhantasmaInteropHeight = settings.GetString("phantasma.interop.height", section.GetValue<string>("phantasma.interop.height"));
@@ -228,6 +251,11 @@ namespace Phantasma.Spook
             if(string.IsNullOrEmpty(this.NeoWif))
             {
                 this.NeoWif = null;
+            }
+            this.EthWif = settings.GetString("eth.wif", section.GetValue<string>("eth.wif"));
+            if(string.IsNullOrEmpty(this.EthWif))
+            {
+                this.EthWif = null;
             }
         }
     }

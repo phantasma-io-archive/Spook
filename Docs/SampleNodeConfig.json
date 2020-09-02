@@ -5,12 +5,12 @@
             "block.time": 2,
             "minimum.fee": 100000,
             "minimum.pow": 0,
-            "api.proxy.url": "",
+            "api.proxy.url": "http://localhost:7092/api",
             "nexus.name": "simnet",
-            "node.mode": "validator",
-            "node.wif": "L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25",
+            "node.mode": "node",
+            "node.wif": "L1FMpQT1r4ZHcyAHD5NghsV3o3zZRWTygApXV4SrWaUroJ2BojDq",
             "api.log": false,
-            "node.port": 7777,
+            "node.port": 7788,
             "profiler.path": "",
             "has.sync": true,
             "has.mempool": true,
@@ -20,8 +20,8 @@
             "has.archive": false,
             "has.rpc": true,
             "has.rest": true,
-            "rpc.port": 7081,
-            "rest.port": 7078,
+            "rpc.port": 7093,
+            "rest.port": 7094,
             "nexus.bootstrap": true,
             "genesis.timestamp": 0,
             "api.cache": true,
@@ -36,14 +36,17 @@
             "storage.backend": "db",
             "convert.storage": false,
             "random.swap.data": false,
-            "seeds": []
+            "seeds": ["localhost:7777"]
         },
 
         "Oracle": {
             "neoscan.api": "mankinighost.phantasma.io:4000",
             "neo.rpc.nodes": ["http://mankinighost.phantasma.io:30333"],
-            "neo.rpc.specific.nodes": ["http://148.251.52.67:10332"],
-            "eth.rpc.nodes": ["13.91.228.58:7545"],
+            "neo.rpc.specific.nodes": [],
+            "eth.rpc.nodes": [
+                "ropsten.infura.io/v3/34a7c02e7f2f458181180c72c4de58a6",
+                "ropsten.infura.io/v3/780d5a9837de47649be4c10836b5dbcf"
+            ],
 
             "eth.fee.urls": [
                 "https://gasprice.poa.network/",
@@ -51,12 +54,12 @@
                 "https://api.anyblock.tools/latest-minimum-gasprice"
             ],
 
-            "eth.block.confirmations": 5,
+            "eth.block.confirmations": 12,
             "crypto.compare.key": "4e6ffe0dedfd49d2e182b706b72e736fa027844181d179dc5310f115deeb29be",
-            "swaps.enabled": true,
+            "swaps.enabled": false,
             "phantasma.interop.height": "0",
-            "neo.interop.height": "4261049",
-            "eth.interop.height": "0",
+            "neo.interop.height": "29159785",
+            "eth.interop.height": "8577158",
             "neo.wif": "",
             "eth.wif": ""
         },
@@ -69,20 +72,20 @@
         },
 
         "Simulator": {
-            "simulator.enabled": true,
+            "simulator.enabled": false,
             "simulator.dapps": [""],
             "simulator.generate.blocks": false
         },
 
         "App": {
             "gui.enabled": false, 
-            "shell.enabled": true, 
+            "shell.enabled": false, 
             "node.start": true, 
             "app.name": "SPK",
             "config": "",
             "prompt": "[{0}] spook> ",
             "history": ".history", 
-            "log.file": "spook.log" 
+            "log.file": "spookNode.log" 
         },
 
         "RPC": {

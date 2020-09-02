@@ -42,8 +42,12 @@
         "Oracle": {
             "neoscan.api": "mankinighost.phantasma.io:4000",
             "neo.rpc.nodes": ["http://mankinighost.phantasma.io:30333"],
-            "neo.rpc.specific.nodes": ["http://148.251.52.67:10332"],
-            "eth.rpc.nodes": ["13.91.228.58:7545"],
+            "neo.rpc.specific.nodes": [],
+
+            "eth.rpc.nodes": [
+                "mainnet.infura.io/v3/34a7c02e7f2f458181180c72c4de58a6",
+                "mainnet.infura.io/v3/780d5a9837de47649be4c10836b5dbcf"
+            ],
 
             "eth.fee.urls": [
                 "https://gasprice.poa.network/",
@@ -51,12 +55,12 @@
                 "https://api.anyblock.tools/latest-minimum-gasprice"
             ],
 
-            "eth.block.confirmations": 5,
+            "eth.block.confirmations": 12,
             "crypto.compare.key": "4e6ffe0dedfd49d2e182b706b72e736fa027844181d179dc5310f115deeb29be",
             "swaps.enabled": true,
             "phantasma.interop.height": "0",
-            "neo.interop.height": "4261049",
-            "eth.interop.height": "0",
+            "neo.interop.height": "28463738",
+            "eth.interop.height": "10730765",
             "neo.wif": "",
             "eth.wif": ""
         },
@@ -76,7 +80,7 @@
 
         "App": {
             "gui.enabled": false, 
-            "shell.enabled": true, 
+            "shell.enabled": false, 
             "node.start": true, 
             "app.name": "SPK",
             "config": "",
