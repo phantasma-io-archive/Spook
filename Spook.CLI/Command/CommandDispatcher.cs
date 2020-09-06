@@ -262,29 +262,6 @@ namespace Phantasma.Spook.Command
             }
         }
 
-        public void RegisterCommandHandler<T, TRet>(Func<T, object> handler)
-        {
-            _handlers[typeof(TRet)] = (args, cosumeAll) =>
-            {
-                var value = (T)_handlers[typeof(T)](args, cosumeAll);
-                return handler(value);
-            };
-        }
-
-        public void RegisterCommandHandler<T, TRet>(bool canConsumeAll, Func<T, object> handler)
-        {
-            _handlers[typeof(TRet)] = (args, cosumeAll) =>
-            {
-                var value = (T)_handlers[typeof(T)](args, canConsumeAll);
-                return handler(value);
-            };
-        }
-
-        private void RegisterCommandHandler<TRet>(Func<List<CommandToken>, bool, object> handler)
-        {
-            _handlers[typeof(TRet)] = handler;
-        }
-
         private void RegisterCommandHandler<TRet>(Func<List<CommandToken>, bool, object> handler)
         {
             _handlers[typeof(TRet)] = handler;
