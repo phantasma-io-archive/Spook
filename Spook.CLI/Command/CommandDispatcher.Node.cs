@@ -2,11 +2,14 @@ using System;
 using System.Collections;
 using System.IO;
 using System.Text;
+using Nethereum.Hex.HexConvertors.Extensions;
 using Phantasma.Blockchain;
 using Phantasma.Blockchain.Contracts;
 using Phantasma.Core.Types;
 using Phantasma.Cryptography;
 using Phantasma.Domain;
+using Phantasma.Ethereum;
+using Phantasma.Pay.Chains;
 using Phantasma.RocksDB;
 using Phantasma.Storage;
 using Phantasma.Storage.Context;
@@ -39,6 +42,41 @@ namespace Phantasma.Spook.Command
             _cli.Stop();
             _cli.Start();
             Console.WriteLine("Node bounced");
+        }
+
+        [ConsoleCommand("show keys", Category = "Node", Description = "Bounce a node to reload configuration")]
+        protected void onShowInteropKeys(string[] args)
+        {
+            var wif = args[0];
+            if (string.IsNullOrEmpty(wif))
+            {
+                Console.WriteLine("Wif cannot be empty");
+                return;
+            }
+
+            var platformName = args[1];
+            if (string.IsNullOrEmpty(platformName))
+            {
+                Console.WriteLine("Wif cannot be empty");
+                return;
+            }
+
+            var genesisHash = _cli.Nexus.GetGenesisHash(_cli.Nexus.RootStorage);
+            var interopKeys = InteropUtils.GenerateInteropKeys(PhantasmaKeys.FromWIF(wif), genesisHash, platformName);
+
+            switch(platformName)
+            {
+                case EthereumWallet.EthereumPlatform:
+                    var ethKeys = EthereumKey.FromWIF(interopKeys.ToWIF());
+                    Console.WriteLine($"Platfrom:    {platformName}");
+                    Console.WriteLine($"WIF:         {ethKeys.GetWIF()}");
+                    Console.WriteLine($"Private key: {ethKeys.PrivateKey.ToHex()}");
+                    Console.WriteLine($"Address:     {ethKeys.Address}");
+                    break;
+                case NeoWallet.NeoPlatform:
+                    Console.WriteLine($"Not yet added, feel free to add.");
+                    break;
+            }
         }
 
         [ConsoleCommand("create token", Category = "Node", Description = "Bounce a node to reload configuration")]
