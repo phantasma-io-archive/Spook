@@ -9,8 +9,6 @@ using Phantasma.Core.Log;
 using Phantasma.Domain;
 using Phantasma.Pay.Chains;
 using PBigInteger = Phantasma.Numerics.BigInteger;
-
-using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Threading;
@@ -98,28 +96,28 @@ namespace Phantasma.Spook.Chains
                     var tx = txVo.Transaction;
 
                     var interopAddress = EthereumInterop.ExtractInteropAddress(tx);
-                    var events = txr.DecodeAllEvents<TransferEventDTO>();
+                    var transferEvents = txr.DecodeAllEvents<TransferEventDTO>();
+                    //var swapEvents = txr.DecodeAllEvents<SwapEventDTO>();
                     var nodeSwapAddress = EthereumWallet.EncodeAddress(swapAddress);
 
-                    if (events.Count > 0 || tx.Value != null && tx.Value.Value > 0)
+                    if (transferEvents.Count > 0 || tx.Value != null && tx.Value.Value > 0)
                     {
                         if (!interopTransfers.ContainsKey(block.BlockHash))
                         {
                             interopTransfers.Add(block.BlockHash, new Dictionary<string, List<InteropTransfer>>());
                         }
                     }
+                    //System.Console.WriteLine("SwapEvents: " + swapEvents.Count);
+                    System.Console.WriteLine("TransferEvents: " + transferEvents.Count);
 
-                    if (events.Count > 0)
+                    if (transferEvents.Count > 0)
                     {
-                        logger.Message("ERC20:");
-                        logger.Message(block.Number.ToString());
-                        logger.Message(events[0].Log.TransactionHash);
-                        logger.Message(events[0].Event.To);
-                        logger.Message(events[0].Event.From);
-                        logger.Message(events[0].Event.Value.ToString());
+                        var blockId = block.Number.ToString();
+                        var hash = txr.TransactionHash;
 
-                        foreach(var evt in events)
+                        foreach(var evt in transferEvents)
                         {
+                            logger.Message($"Found ERC20 swap: {blockId} hash: {hash} to: {evt.Event.To} from: {evt.Event.From} value: {evt.Event.Value}");
                             var asset = EthUtils.FindSymbolFromAsset(nexus, evt.Log.Address);
                             logger.Message("asset: " + asset);
                             if (asset == null)

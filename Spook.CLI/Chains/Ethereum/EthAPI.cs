@@ -8,8 +8,7 @@ using Nethereum.StandardTokenEIP20.ContractDefinition;
 using Nethereum.Web3;
 using Nethereum.Web3.Accounts;
 using Nethereum.Hex.HexTypes;
-using Nethereum.ABI.FunctionEncoding.Attributes;
-using Phantasma.Core.Log;
+using Nethereum.RPC.TransactionReceipts;
 
 namespace Phantasma.Spook.Chains
 {
@@ -158,21 +157,27 @@ namespace Phantasma.Spook.Chains
 
         }
 
-        public TransactionReceipt TransferAsset(string symbol, string toAddress, decimal amount, int decimals)
+        public TransactionReceipt PollForReceipt(string txHash)
+        {
+            var txrService = (TransactionReceiptPollingService)GetWeb3Client().TransactionManager.TransactionReceiptService;
+            return EthUtils.RunSync(() => txrService.PollForReceiptAsync(txHash));
+        }
+
+        public string TransferAsset(string symbol, string toAddress, decimal amount, int decimals)
         {
             Console.WriteLine($"Transferring {amount} {symbol} to {toAddress}!");
             if (symbol.Equals("ETH", StringComparison.InvariantCultureIgnoreCase))
             {
                 return EthUtils.RunSync(() => GetWeb3Client().Eth.GetEtherTransferService()
-                        .TransferEtherAndWaitForReceiptAsync(toAddress, amount));
+                        .TransferEtherAsync(toAddress, amount));
             }
             else
             {
-
-                var transfer = new TransferFunction()
+                var swapIn = new SwapInFunction()
                 {
-                    To = toAddress,
-                    TokenAmount = Nethereum.Util.UnitConversion.Convert.ToWei(amount, decimals)
+                    Source = _account.Address,
+                    Target = toAddress,
+                    Amount = Nethereum.Util.UnitConversion.Convert.ToWei(amount, decimals)
                 };
 
                 string contractAddress;
@@ -180,10 +185,10 @@ namespace Phantasma.Spook.Chains
                 if (!hash.IsNull)
                 {
                     contractAddress = hash.ToString().Substring(0, 40);
-                    var transferHandler = GetWeb3Client().Eth.GetContractTransactionHandler<TransferFunction>();
+                    var swapInHandler = GetWeb3Client().Eth.GetContractTransactionHandler<SwapInFunction>();
 
-                    var result = EthUtils.RunSync(() => transferHandler
-                            .SendRequestAndWaitForReceiptAsync(contractAddress, transfer));
+                    var result = EthUtils.RunSync(() => swapInHandler
+                            .SendRequestAsync(contractAddress, swapIn));
                     return result;
 
                 }
@@ -203,22 +208,5 @@ namespace Phantasma.Spook.Chains
             int idx = rnd.Next(urls.Count);
             return "http://" + urls[idx];
         }
-    }
-
-    [Function("balanceOf", "uint256")]
-    public class BalanceOfFunction : FunctionMessage
-    {
-        [Parameter("address", "_owner", 1)]
-        public string Owner { get; set; }
-    }
-
-    [Function("transfer", "bool")]
-    public class TransferFunction : FunctionMessage
-    {
-        [Parameter("address", "_to", 1)]
-        public string To { get; set; }
-
-        [Parameter("uint256", "_value", 2)]
-        public BigInteger TokenAmount { get; set; }
     }
 }
