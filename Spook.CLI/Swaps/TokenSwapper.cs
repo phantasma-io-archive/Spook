@@ -267,9 +267,9 @@ namespace Phantasma.Spook.Swaps
                         return;
                     }
 
-                    //_finders["neo"] = new NeoInterop(this, neoAPI, wifs["neo"], interopBlocks["neo"], OracleReader,
-                    //        _settings.Oracle.NeoQuickSync, logger);
-                    //SwapAddresses["neo"] = _finders["neo"].LocalAddress;
+                    _finders["neo"] = new NeoInterop(this, neoAPI, wifs["neo"], interopBlocks["neo"], OracleReader,
+                            _settings.Oracle.NeoQuickSync, logger);
+                    SwapAddresses["neo"] = _finders["neo"].LocalAddress;
 
                     _finders["ethereum"] = new EthereumInterop(this, ethAPI, wifs["ethereum"], interopBlocks["ethereum"],
                             OracleReader, Nexus.GetPlatformTokenHashes("ethereum", Nexus.RootStorage).Select(x => x.ToString().Substring(0, 40)).ToArray(), _settings.Oracle.EthConfirmations,
