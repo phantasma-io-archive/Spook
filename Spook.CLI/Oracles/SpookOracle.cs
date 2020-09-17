@@ -184,7 +184,7 @@ namespace Phantasma.Spook.Oracles
                             logger.Message(logMessage);
                             Console.WriteLine(logMessage); // Remove later when fees are fixed.
 
-                            return fee.Value;
+                            return fee.Value * _cli.Settings.Oracle.EthGasLimit;
                         }
                     }
 
