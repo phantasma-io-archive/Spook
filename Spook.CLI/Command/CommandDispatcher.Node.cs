@@ -96,7 +96,7 @@ namespace Phantasma.Spook.Command
 
             if (string.IsNullOrEmpty(key)) 
             {
-                Console.WriteLine("Symbol has to be set!");
+                Console.WriteLine("Key has to be set!");
                 return;
             }
 
