@@ -170,7 +170,7 @@ namespace Phantasma.Spook.Chains
             {
                 var bytes = Nexus.GetOracleReader().Read<byte[]>(DateTime.Now, Domain.DomainExtensions.GetOracleFeeURL("ethereum"));
                 var fees = Phantasma.Numerics.BigInteger.FromUnsignedArray(bytes, true);
-                var gasPrice = Decimal.Parse(fees.ToString()) / _settings.Oracle.EthGasLimit;
+                var gasPrice = Numerics.UnitConversion.ToDecimal(fees, 2 /* 2 decimals hardcoded in oracle */) / _settings.Oracle.EthGasLimit;
 
                 Console.WriteLine($"Eth TransferAsset()/ETH fees: Gas price: {gasPrice}, GAS limit: {_settings.Oracle.EthGasLimit}, calculated fee: {fees}"); // Remove later.
 
@@ -197,7 +197,7 @@ namespace Phantasma.Spook.Chains
                     swapIn.Gas = _settings.Oracle.EthGasLimit;
                     var bytes = Nexus.GetOracleReader().Read<byte[]>(DateTime.Now, Domain.DomainExtensions.GetOracleFeeURL("ethereum"));
                     var fees = Phantasma.Numerics.BigInteger.FromUnsignedArray(bytes, true);
-                    swapIn.GasPrice = System.Numerics.BigInteger.Parse(fees.ToString()) / swapIn.Gas;
+                    swapIn.GasPrice = new System.Numerics.BigInteger(Numerics.UnitConversion.ToDecimal(fees, 2 /* 2 decimals hardcoded in oracle */)) / swapIn.Gas;
 
                     Console.WriteLine($"Eth TransferAsset()/SwapIn fees: Gas price: {swapIn.GasPrice}, GAS limit: {swapIn.Gas}, calculated fee: {fees}"); // Remove later.
 
