@@ -5,5 +5,7 @@ Spook.CLI/bin/*
 Spook.CLI/Publish/*
 StorageDump/obj/*
 StorageDump/bin/*
+TxSender/obj/*
+TxSender/bin/*
 launchSettings.json
 ScanScanner/*

@@ -1,108 +1,352 @@
-﻿using Phantasma.Blockchain;
+﻿using System;
+using NativeBigInt = System.Numerics.BigInteger;
+using System.Collections.Generic;
+using Phantasma.Blockchain;
+using Phantasma.Numerics;
 using Phantasma.Core.Types;
 using Phantasma.Cryptography;
 using Phantasma.Domain;
 using Phantasma.Pay.Chains;
 using Phantasma.Storage;
-using System.IO;
+using Phantasma.Storage.Context;
+using Phantasma.Neo.Cryptography;
+using Phantasma.Neo.Utils;
+using Phantasma.Spook.Interop;
+using NeoBlock = Phantasma.Neo.Core.Block;
+using NeoTx = Phantasma.Neo.Core.Transaction;
+using Logger = Phantasma.Core.Log.Logger;
+using System.Linq;
 
 namespace Phantasma.Spook.Oracles
 {
-    public class SpookOracle : OracleReader
+    public class SpookOracle : OracleReader, IOracleObserver
     {
-        public readonly CLI CLI;
+        private readonly CLI _cli;
 
-        public readonly string cachePath;
-        public SpookOracle(CLI cli, Nexus nexus, string cachePath) : base(nexus)
+        private Dictionary<string, IKeyValueStoreAdapter> _keystoreCache = new Dictionary<string, IKeyValueStoreAdapter>();
+        private Dictionary<string, CachedFee> _feeCache = new Dictionary<string, CachedFee>();
+        private Dictionary<string, object> _keyValueStore = new Dictionary<string, object>();
+        private KeyValueStore<string, string> platforms;
+
+        private Logger logger;
+
+        enum StorageConst
         {
-            this.CLI = cli;
-            this.cachePath = cachePath;
+            CurrentHeight,
+            Block,
+            Transaction,
+            Platform
+        }
+
+        public SpookOracle(CLI cli, Nexus nexus, Logger logger) : base(nexus)
+        {
+            this._cli = cli;
+            nexus.Attach(this);
+            platforms = new KeyValueStore<string, string>(CreateKeyStoreAdapter(StorageConst.Platform.ToString()));
+            this.logger = logger;
+
+            logger.Message("Platform count: " + platforms.Count);
+            platforms.Visit((key, _) =>
+    		{
+                logger.Message("Adding: " + key);
+                _keyValueStore.Add(key + StorageConst.Block, new KeyValueStore<string, InteropBlock>(
+                                                    CreateKeyStoreAdapter(key + StorageConst.Block)
+                                                )
+                                            );
+
+                _keyValueStore.Add(key + StorageConst.Transaction, new KeyValueStore<string, InteropTransaction>(
+                                                    CreateKeyStoreAdapter(key + StorageConst.Transaction)
+                                                )
+                                            );
+
+                _keyValueStore.Add(key + StorageConst.CurrentHeight, new KeyValueStore<string, string>(
+                                                    CreateKeyStoreAdapter(key + StorageConst.CurrentHeight)
+                                                )
+                                            );
+    		});
+        }
+
+        public void Update(INexus nexus, StorageContext storage)
+        {
+            var nexusPlatforms = (nexus as Nexus).GetPlatforms(storage);
+            foreach (var platform in nexusPlatforms)
+            {
+                if (_keyValueStore.ContainsKey(platform + StorageConst.Block) || _keyValueStore.ContainsKey(platform + StorageConst.Transaction))
+                {
+                    continue;
+                }
+                platforms.Set(platform, platform);
+
+                _keyValueStore.Add(platform + StorageConst.Block, new KeyValueStore<string, InteropBlock>(CreateKeyStoreAdapter(platform + StorageConst.Block)));
+                _keyValueStore.Add(platform + StorageConst.Transaction, new KeyValueStore<string, InteropTransaction>(CreateKeyStoreAdapter(platform + StorageConst.Transaction)));
+                _keyValueStore.Add(platform + StorageConst.CurrentHeight, new KeyValueStore<string, string>(CreateKeyStoreAdapter(platform + StorageConst.CurrentHeight)));
+            }
+        }
+
+        private IKeyValueStoreAdapter CreateKeyStoreAdapter(string name)
+        {
+            if (_keystoreCache.ContainsKey(name))
+            {
+                return _keystoreCache[name];
+            }
+
+            IKeyValueStoreAdapter result = Nexus.CreateKeyStoreAdapter(name);
+            _keystoreCache[name] = result;
+
+            return result;
+        }
+
+        private T Read<T>(string platform, string chainName, Hash hash, StorageConst type)
+        {
+            var storageKey = type + chainName + hash.ToString();
+            var keyStore = _keyValueStore[platform + type] as KeyValueStore<string, T>;
+
+            try
+            {
+                if(keyStore.TryGet(storageKey, out T data))
+                {
+                    return data;
+                }
+            }
+            catch (Exception e)
+            {
+                logger.Error(e.ToString());
+                return default(T);
+            }
+            return default(T);
+        }
+
+        public override List<InteropBlock> ReadAllBlocks(string platformName, string chainName)
+        {
+            var blockList = new List<InteropBlock>();
+            var keyStore = _keyValueStore[platformName + StorageConst.Block] as KeyValueStore<string, InteropBlock>;
+
+            keyStore.Visit((key, value) =>
+    		{
+                blockList.Add(value);
+    		});
+
+    		return blockList;
+        }
+
+        public override string GetCurrentHeight(string platformName, string chainName)
+        {
+            var storageKey = StorageConst.CurrentHeight + platformName + chainName;
+            var keyStore = _keyValueStore[platformName + StorageConst.CurrentHeight] as KeyValueStore<string, string>;
+            if (keyStore.TryGet(storageKey, out string height))
+            {
+                return height; 
+            }
+
+            return "";
+        }
+
+        public override void SetCurrentHeight(string platformName, string chainName, string height)
+        {
+            var storageKey = StorageConst.CurrentHeight + platformName + chainName;
+            var keyStore = _keyValueStore[platformName + StorageConst.CurrentHeight] as KeyValueStore<string, string>;
+
+            keyStore.Set(storageKey, height);
+        }
+
+        private bool Persist<T>(string platform, string chainName, Hash hash, StorageConst type, T data)
+        {
+            var storageKey = type + chainName + hash.ToString();
+            var keyStore = _keyValueStore[platform + type] as KeyValueStore<string, T>;
+
+            if(!keyStore.ContainsKey(storageKey))
+            {
+                keyStore.Set(storageKey, data);
+                return true;
+            }
+
+            logger.Error("storageKey " + storageKey + " failed!");
+            return false;
+        }
+
+        protected override Phantasma.Numerics.BigInteger PullFee(Timestamp time, string platform)
+        {
+            platform = platform.ToLower();
+
+            switch (platform)
+            {
+                case NeoWallet.NeoPlatform:
+                    return Phantasma.Numerics.UnitConversion.ToBigInteger(0.1m, DomainSettings.FiatTokenDecimals);
+
+                case EthereumWallet.EthereumPlatform:
+
+                    CachedFee fee;
+                    if (_feeCache.TryGetValue(platform, out fee))
+                    {
+                        if ((Timestamp.Now - fee.Time) < 60)
+                        {
+                            return fee.Value;
+                        }
+                    }
+
+                    var newFee = EthereumInterop.GetNormalizedFee(_cli.Settings.Oracle.EthFeeURLs.ToArray());
+                    fee = new CachedFee(Timestamp.Now, UnitConversion.ToBigInteger(newFee, 2)); // fixed to 2 decimal places for now
+                    _feeCache[platform] = fee;
+
+                    return fee.Value;
+
+                default:
+                    throw new OracleException($"Support for {platform} fee not implemented in this node");
+            }
         }
 
         protected override decimal PullPrice(Timestamp time, string symbol)
         {
-            if (!string.IsNullOrEmpty(CLI.cryptoCompareAPIKey))
+            var apiKey = _cli.CryptoCompareAPIKey;
+            if (!string.IsNullOrEmpty(apiKey))
             {
                 if (symbol == DomainSettings.FuelTokenSymbol)
                 {
                     var result = PullPrice(time, DomainSettings.StakingTokenSymbol);
                     return result / 5;
                 }
-             
-                var price = CryptoCompareUtils.GetCoinRate(symbol, DomainSettings.FiatTokenSymbol, CLI.cryptoCompareAPIKey);
+
+                var price = CryptoCompareUtils.GetCoinRate(symbol, DomainSettings.FiatTokenSymbol, apiKey);
                 return price;
             }
 
             throw new OracleException("No support for oracle prices in this node");
         }
 
-        protected override InteropBlock PullPlatformBlock(string platformName, string chainName, Hash hash)
+        protected override InteropBlock PullPlatformBlock(string platformName, string chainName, Hash hash, NativeBigInt height = new NativeBigInt())
         {
-            InteropBlock block;
-            byte[] bytes;
-
-            var fileName = GetCacheFileName(platformName, chainName, hash.ToString(), "blk");
-            if (File.Exists(fileName))
+            if (hash == null && height == null)
             {
-                bytes = File.ReadAllBytes(fileName);
-                block = Serialization.Unserialize<InteropBlock>(bytes);
+                throw new OracleException($"Fetching block not possible without hash or height");
+            }
+
+            InteropBlock block = Read<InteropBlock>(platformName, chainName, hash, StorageConst.Block);
+
+            if (height == null && block.Hash != null && block.Hash != Hash.Null)
+            {
                 return block;
             }
 
+            Tuple<InteropBlock, InteropTransaction[]> interopTuple;
             switch (platformName)
             {
                 case NeoWallet.NeoPlatform:
-                    block = CLI.neoScanAPI.ReadBlock(hash);
+
+                    NeoBlock neoBlock;
+
+                    if (height == 0)
+                    {
+                        neoBlock = _cli.NeoAPI.GetBlock(new UInt256(LuxUtils.ReverseHex(hash.ToString()).HexToBytes()));
+                    }
+                    else
+                    {
+                        neoBlock = _cli.NeoAPI.GetBlock(height);
+                    }
+
+                    if (neoBlock == null)
+                    {
+                        throw new OracleException($"Neo block is null");
+                    }
+
+                    interopTuple = NeoInterop.MakeInteropBlock(logger, neoBlock, _cli.NeoAPI, _cli.TokenSwapper.SwapAddresses[platformName]);
+                    break;
+                case EthereumWallet.EthereumPlatform:
+
+                    //BlockWithTransactions ethBlock;
+                    //if (height == 0)
+                    //{
+                    //    //TODO MakeInteropBlock for a full block not done yet
+                    //    //ethBlock = _cli.EthAPI.GetBlock(hash.ToString());
+                    //    //interopTuple = EthereumInterop.MakeInteropBlock(logger, ethBlock, _cli.EthAPI, _cli.TokenSwapper.swapAddress);
+                    //}
+                    //else
+                    //{
+                    //}
+                    
+                    var hashes = _cli.Nexus.GetPlatformTokenHashes(EthereumWallet.EthereumPlatform, _cli.Nexus.RootStorage)
+                        .Select(x => x.ToString().Substring(0, 40)).ToArray();
+                
+                    interopTuple = EthereumInterop.MakeInteropBlock(_cli.Nexus, logger, _cli.EthAPI, height,
+                            hashes, _cli.Settings.Oracle.EthConfirmations, _cli.TokenSwapper.SwapAddresses[platformName]);
                     break;
 
                 default:
                     throw new OracleException("Uknown oracle platform: " + platformName);
             }
 
-            bytes = Serialization.Serialize(block);
-            File.WriteAllBytes(fileName, bytes);
+            if (interopTuple.Item1.Hash != Hash.Null)
+            {
 
-            return block;
+                var persisted = Persist<InteropBlock>(platformName, chainName, interopTuple.Item1.Hash, StorageConst.Block,
+                        interopTuple.Item1);
+
+                if (persisted)
+                {
+                    var transactions = interopTuple.Item2;
+
+                    foreach (var tx in transactions)
+                    {
+                        var txPersisted = Persist<InteropTransaction>(platformName, chainName, tx.Hash, StorageConst.Transaction, tx);
+                    }
+                }
+                else 
+                {
+                    logger.Error($"Persisting oracle block { interopTuple.Item1.Hash } on platform { platformName } failed!");
+                }
+            }
+
+            return interopTuple.Item1;
         }
 
         protected override InteropTransaction PullPlatformTransaction(string platformName, string chainName, Hash hash)
         {
-            InteropTransaction tx;
-            byte[] bytes;
-
-            var fileName = GetCacheFileName(platformName, chainName, hash.ToString(), "tx");
-            if (File.Exists(fileName))
+            logger.Message("pull tx: " + hash);
+            InteropTransaction tx = Read<InteropTransaction>(platformName, chainName, hash, StorageConst.Transaction);
+            if (tx != null && tx.Hash != null)
             {
-                bytes = File.ReadAllBytes(fileName);
-                tx = Serialization.Unserialize<InteropTransaction>(bytes);
                 return tx;
             }
 
             switch (platformName)
             {
                 case NeoWallet.NeoPlatform:
-                    tx = CLI.neoScanAPI.ReadTransaction(hash);
+                    NeoTx neoTx;
+                    UInt256 uHash = new UInt256(LuxUtils.ReverseHex(hash.ToString()).HexToBytes());
+                    neoTx = _cli.NeoAPI.GetTransaction(uHash);
+                    tx = NeoInterop.MakeInteropTx(logger, neoTx, _cli.NeoAPI, _cli.TokenSwapper.SwapAddresses[platformName]);
+                    break;
+                case EthereumWallet.EthereumPlatform:
+                    var txRcpt = _cli.EthAPI.GetTransactionReceipt(hash.ToString());
+                    tx = EthereumInterop.MakeInteropTx(_cli.Nexus, logger, txRcpt, _cli.EthAPI, _cli.TokenSwapper.SwapAddresses[platformName]);
                     break;
 
                 default:
                     throw new OracleException("Uknown oracle platform: " + platformName);
             }
 
-            bytes = Serialization.Serialize(tx);
-            File.WriteAllBytes(fileName, bytes);
+            if (!Persist<InteropTransaction>(platformName, chainName, tx.Hash, StorageConst.Transaction, tx))
+            {
+                logger.Error($"Persisting oracle transaction { hash } on platform { platformName } failed!");
+            }
 
             return tx;
         }
 
-        protected override byte[] PullData(Timestamp time, string url)
+        protected override T PullData<T>(Timestamp time, string url)
         {
             throw new OracleException("unknown oracle url");
         }
+    }
 
-        private string GetCacheFileName(string platform, string chain, string hash, string extension)
+    struct CachedFee
+    {
+        public Timestamp Time;
+        public BigInteger Value;
+
+        public CachedFee(Timestamp time, BigInteger value)
         {
-            var fileName = $"{cachePath}/{platform}_{chain}_{hash}.{extension}";
-            return fileName;
+            this.Time = time;
+            this.Value = value;
         }
     }
 }

@@ -2,9 +2,7 @@
 using System.Linq;
 using Phantasma.Numerics;
 using Phantasma.Cryptography;
-using Phantasma.Spook.Oracles;
 using Phantasma.Core.Log;
-using Phantasma.Core.Utils;
 using Phantasma.Neo.Core;
 using Phantasma.Blockchain;
 using Phantasma.Domain;
@@ -18,14 +16,20 @@ using Phantasma.API;
 using Phantasma.Storage.Context;
 using Phantasma.Storage;
 using Phantasma.Storage.Utils;
+using Phantasma.Spook.Interop;
 using System.IO;
+using System.Reflection;
 using System.Threading;
-using Phantasma.Neo.Cryptography;
+using Phantasma.Spook.Chains;
+using EthereumKey = Phantasma.Ethereum.EthereumKey;
+using Nethereum.RPC.Eth.DTOs;
+using System.Threading.Tasks;
 
 namespace Phantasma.Spook.Swaps
 {
     public enum SwapStatus
     {
+        InProgress,
         Settle,
         Confirm,
         Finished
@@ -96,13 +100,14 @@ namespace Phantasma.Spook.Swaps
         public readonly TokenSwapper Swapper;
         public readonly string LocalAddress;
 
-        private readonly string wif;
-
         protected ChainWatcher(TokenSwapper swapper, string wif, string platformName)
         {
             Swapper = swapper;
             this.PlatformName = platformName;
             this.LocalAddress = swapper.FindAddress(platformName);
+
+            // for testing with mainnet swap address
+            //this.LocalAddress = "AbFdbvacCeBrncvwYnPEtfKqyr5KU9SWAU"; //swapper.FindAddress(platformName);
 
             if (string.IsNullOrEmpty(LocalAddress))
             {
@@ -112,7 +117,7 @@ namespace Phantasma.Spook.Swaps
             var localKeys = GetAvailableAddress(wif);
             if (localKeys == LocalAddress)
             {
-                Swapper.logger.Message($"Listening for {platformName} swaps at address {LocalAddress}");
+                Swapper.logger.Message($"Listening for {platformName} swaps at address {LocalAddress.ToLower()}");
             }
             else
             {
@@ -126,6 +131,7 @@ namespace Phantasma.Spook.Swaps
 
     public class TokenSwapper : ITokenSwapper
     {
+        private readonly SpookSettings _settings;
         public readonly NexusAPI NexusAPI;
         public Nexus Nexus => NexusAPI.Nexus;
         public readonly Logger logger;
@@ -133,7 +139,10 @@ namespace Phantasma.Spook.Swaps
         internal readonly PhantasmaKeys SwapKeys;
         private readonly BigInteger MinimumFee;
         private readonly NeoAPI neoAPI;
-        private readonly NeoScanAPI neoscanAPI;
+        private readonly EthAPI ethAPI;
+        private OracleReader OracleReader;
+        private readonly string _txIdentifier;
+        public Dictionary<string, string> SwapAddresses = new Dictionary<string,string>();
 
         private readonly Dictionary<string, BigInteger> interopBlocks;
         private PlatformInfo[] platforms;
@@ -142,231 +151,51 @@ namespace Phantasma.Spook.Swaps
 
         private Dictionary<string, ChainWatcher> _finders = new Dictionary<string, ChainWatcher>();
 
-        public TokenSwapper(PhantasmaKeys swapKey, NexusAPI nexusAPI, NeoScanAPI neoscanAPI, NeoAPI neoAPI, BigInteger minFee, Logger logger, Arguments arguments)
+        public TokenSwapper(SpookSettings settings, PhantasmaKeys swapKey, NexusAPI nexusAPI, NeoAPI neoAPI, EthAPI ethAPI, BigInteger minFee, Logger logger)
         {
+            this._settings = settings;
             this.SwapKeys = swapKey;
             this.NexusAPI = nexusAPI;
+            this.OracleReader = Nexus.GetOracleReader();
             this.MinimumFee = minFee;
-
             this.neoAPI = neoAPI;
-            this.neoscanAPI = neoscanAPI;
+            this.ethAPI = ethAPI;
+            this._txIdentifier = "SPK" + Assembly.GetAssembly(typeof(CLI)).GetVersion();
+
             this.logger = logger;
 
             this.Storage = new KeyStoreStorage(Nexus.CreateKeyStoreAdapter("swaps"));
 
             this.interopBlocks = new Dictionary<string, BigInteger>();
 
-            interopBlocks["phantasma"] = BigInteger.Parse(arguments.GetString("interop.phantasma.height", "0"));
-            interopBlocks["neo"] = BigInteger.Parse(arguments.GetString("interop.neo.height", "4261049"));
+            interopBlocks["phantasma"] = BigInteger.Parse(_settings.Oracle.PhantasmaInteropHeight);
+            interopBlocks["neo"] = BigInteger.Parse(_settings.Oracle.NeoInteropHeight);
+            interopBlocks["ethereum"] = BigInteger.Parse(_settings.Oracle.EthInteropHeight);
 
-            VerifyPastSwaps();
-            //interopBlocks["ethereum"] = BigInteger.Parse(arguments.GetString("interop.ethereum.height", "4261049"));
-
-            InitWIF("neo", arguments);
-
-            /*
-            foreach (var entry in interopBlocks)
-            {
-                BigInteger blockHeight = entry.Value;
-
-                ChainInterop interop;
-
-                switch (entry.Key)
-                {
-                    case "phantasma":
-                        interop = new PhantasmaInterop(this, swapKey, blockHeight, nexusAPI);
-                        break;
-
-                    case "neo":
-                        interop = new NeoInterop(this, swapKey, blockHeight, neoAPI, neoscanAPI);
-                        break;
-
-                    case "ethereum":
-                        interop = new EthereumInterop(this, swapKey, blockHeight);
-                        break;
-
-                    default:
-                        interop = null;
-                        break;
-                }
-
-                if (interop != null)
-                {
-                    bool shouldAdd = true;
-
-                    if (!(interop is PhantasmaInterop))
-                    {
-                        logger.Message($"{interop.Name}.Swap.Private: {interop.PrivateKey}");
-                        logger.Message($"{interop.Name}.Swap.{interop.Name}: {interop.LocalAddress}");
-                        logger.Message($"{interop.Name}.Swap.Phantasma: {interop.ExternalAddress}");
-
-                        for (int i = 0; i < platforms.Length; i++)
-                        {
-                            var temp = platforms[i];
-                            if (temp.platform == interop.Name)
-                            {
-                                if (temp.address != interop.LocalAddress)
-                                {
-                                    logger.Error($"{interop.Name} address mismatch, should be {temp.address}. Make sure you are using the proper swap seed.");
-                                    shouldAdd = false;
-                                }
-                            }
-                        }
-                    }
-
-                    if (shouldAdd)
-                    {
-                        AddInterop(interop);
-                    }
-                }
-            }*/
+            InitWIF("neo");
+            InitWIF("ethereum");
         }
 
-        private void VerifyPastSwaps()
-        {
-            var settlements = new StorageMap(SettlementTag, this.Storage);
-            settlements.Visit((key, value) =>
-            {
-                try
-                {
-                    var keyHash = Serialization.Unserialize<Hash>(key);
-                    var valueHash = Serialization.Unserialize<Hash>(value);
-                    var tx = Nexus.FindTransactionByHash(valueHash);
-                    bool found = false;
-                    if (tx != null)
-                    {
-                        //Console.WriteLine($"{hash} is Phantasma hash");
-                        found = true;
-                    }
-                    else
-                    {
-                        var temp = this.neoAPI.GetTransaction(UInt256.Parse(valueHash.ToString()));
-                        if (temp != null)
-                        {
-                            //Console.WriteLine($"{hash} is Neo hash");
-                            found = true;
-                        }
-                    }
-
-                    if (!found)
-                    {
-                        logger.Message($"key: {keyHash}");
-                        logger.Message($"value: {valueHash}");
-                        ChainSwap swap = default(ChainSwap);
-                        Blockchain.Transaction swaptx = null;
-                        try
-                        {
-                            swap = Nexus.RootChain.GetSwap(Nexus.RootStorage, keyHash);
-                            swaptx = Nexus.FindTransactionByHash(keyHash);
-                        }
-                        catch
-                        {
-                            try
-                            {
-                                swap = Nexus.RootChain.GetSwap(Nexus.RootStorage, valueHash);
-                                swaptx = Nexus.FindTransactionByHash(valueHash);
-                            }
-                            catch
-                            {
-                                logger.Message($"Swap not stored, key: {keyHash}, value {valueHash}");
-                            }
-                        }
-
-                        if (swaptx != null)
-                        {
-                            var block = Nexus.FindBlockByTransaction(swaptx);
-                            logger.Message($"valueHash: {valueHash} keyHash: {keyHash} platform from: {swap.sourcePlatform} platform to: {swap.destinationPlatform} ");
-                            WriteToFile($"valueHash: {valueHash} keyHash: {keyHash} from: {swap.sourcePlatform} to: {swap.destinationPlatform} ");
-                            logger.Message($"sourceHash: {swap.sourceHash} destinationHash: {swap.destinationHash}");
-                            WriteToFile($"sourceHash: {swap.sourceHash} destinationHash: {swap.destinationHash}");
-                            // hash gets written to a file, which is later read and picked up again
-                            WriteHashToFile(swap.sourceHash.ToString());
-
-                            var events =block.GetEventsForTransaction(swaptx.Hash);
-                            foreach (var evt in events)
-                            {
-                                if (evt.Kind == EventKind.TokenSend || evt.Kind == EventKind.TokenReceive)
-                                {
-                                    var data = evt.GetContent<TokenEventData>();
-                                    logger.Message($"kind: {evt.Kind} symbol: {data.Symbol} amount: {data.Value}");
-                                    WriteToFile($"kind: {evt.Kind} symbol: {data.Symbol} amount: {data.Value}");
-                                }
-                            }
-                        }
-                    }
-                }
-                catch
-                {
-                    //nothing
-                }
-            });
-
-            try
-            {
-                var file = new StreamReader(@"/tmp/failed_swap_hashes.txt");
-                string line;
-                while((line = file.ReadLine()) != null)
-                {
-                    System.Console.WriteLine($"found failed hash: {line}");
-                }
-                
-                file.Close();
-            }
-            catch
-            {
-
-            }
-
-            logger.Message("Done checking for failed swaps");
-        }
-
-        private void ResettleSwap()
-        {
-            try
-            {
-                var settlements = new StorageMap(SettlementTag, this.Storage);
-                var file = new StreamReader(@"/tmp/failed_swap_hashes.txt");
-                string line;
-                while((line = file.ReadLine()) != null)
-                {
-                    System.Console.WriteLine($"found failed hash: {line}");
-                    var hash = Hash.Parse(line);
-                    settlements.Remove<Hash>(hash);
-
-                    //settle swap
-                    var settleHash = SettleSwapToNeo(hash);
-                }
-                
-                file.Close();
-
-                // clear file
-                File.WriteAllText(@"/tmp/failed_swap_hashes.txt", string.Empty);
-            }
-            catch (Exception e)
-            {
-                logger.Warning("Resettle failed!" + e);
-            }
-        }
-
-        private void WriteToFile(string txt)
-        {
-            File.AppendAllText(@"/tmp/failed_swaps.txt", txt + Environment.NewLine);
-        }
-
-        private void WriteHashToFile(string hash)
-        {
-            File.AppendAllText(@"/tmp/failed_swap_hashes.txt", hash + Environment.NewLine);
-        }
-
-        private void InitWIF(string platformName, Arguments arguments)
+        private void InitWIF(string platformName)
         {
             var genesisHash = Nexus.GetGenesisHash(Nexus.RootStorage);
             var interopKeys = InteropUtils.GenerateInteropKeys(SwapKeys, genesisHash, platformName);
             var defaultWif = interopKeys.ToWIF();
 
-            var wif = arguments.GetString($"{platformName}.wif", defaultWif);
+            var wif = _settings.Oracle.NeoWif;
+            var ethwif = _settings.Oracle.EthWif;
 
-            wifs[platformName] = wif;
+            switch (platformName)
+            {
+                case "neo":
+                    wifs[platformName] = (wif == null) ? defaultWif : wif;
+                    break;
+                case "ethereum":
+                    wifs[platformName] = (ethwif == null) ? defaultWif : ethwif;
+                    break;
+                default:
+                    break;
+            }
         }
 
         internal IToken FindTokenByHash(string asset, string platform)
@@ -393,11 +222,13 @@ namespace Phantasma.Spook.Swaps
 
         private const string SettlementTag = ".settled";
         private const string PendingTag = ".pending";
+        private const string InProgressTag = ".inprogress";
 
         private Dictionary<Hash, PendingSwap> _pendingSwaps = new Dictionary<Hash, PendingSwap>();
         private Dictionary<Address, List<Hash>> _swapAddressMap = new Dictionary<Address, List<Hash>>();
        // private Dictionary<Hash, Hash> _settlements = new Dictionary<Hash, Hash>();    
         //private List<PendingSettle> _pendingSettles = new List<PendingSettle>();
+        private Dictionary<string, Task<IEnumerable<PendingSwap>>> taskList = new Dictionary<string, Task<IEnumerable<PendingSwap>>>();
 
         private void MapSwap(Address address, Hash hash)
         {
@@ -418,74 +249,150 @@ namespace Phantasma.Spook.Swaps
 
         public void Update()
         {
-            if (this.platforms == null)
+            try
             {
-                if (!Nexus.HasGenesis)
+                if (this.platforms == null)
                 {
-                    return;
-                }
+                    if (!Nexus.HasGenesis)
+                    {
+                        return;
+                    }
 
-                var platforms = Nexus.GetPlatforms(Nexus.RootStorage);
-                this.platforms = platforms.Select(x => Nexus.GetPlatformInfo(Nexus.RootStorage, x)).ToArray();
+                    var platforms = Nexus.GetPlatforms(Nexus.RootStorage);
+                    this.platforms = platforms.Select(x => Nexus.GetPlatformInfo(Nexus.RootStorage, x)).ToArray();
+
+                    if (this.platforms.Length == 0)
+                    {
+                        logger.Warning("No interop platforms found. Make sure that the Nexus was created correctly.");
+                        return;
+                    }
+
+                    _finders["neo"] = new NeoInterop(this, neoAPI, wifs["neo"], interopBlocks["neo"], OracleReader,
+                            _settings.Oracle.NeoQuickSync, logger);
+                    SwapAddresses["neo"] = _finders["neo"].LocalAddress;
+
+                    _finders["ethereum"] = new EthereumInterop(this, ethAPI, wifs["ethereum"], interopBlocks["ethereum"],
+                            OracleReader, Nexus.GetPlatformTokenHashes("ethereum", Nexus.RootStorage).Select(x => x.ToString().Substring(0, 40)).ToArray(), _settings.Oracle.EthConfirmations,
+                            Nexus, logger);
+                    SwapAddresses["ethereum"] = _finders["ethereum"].LocalAddress;
+                }
 
                 if (this.platforms.Length == 0)
                 {
-                    logger.Warning("No interop platforms found. Make sure that the Nexus was created correctly.");
                     return;
-                }
-
-                _finders["neo"] = new NeoInterop(this, wifs["neo"], interopBlocks["neo"], neoscanAPI, logger);
-            }
-
-            if (this.platforms.Length == 0)
-            {
-                return;
-            }
-
-            // check for failed swaps, should be a command in dev branch later on.
-            ResettleSwap();
-
-            var pendingList = new StorageList(PendingTag, this.Storage);
-            int i = 0;
-            var count = pendingList.Count();
-            while (i < count)
-            {
-                var settlement = pendingList.Get<PendingSettle>(i);
-                if (UpdatePendingSettle(pendingList, i))
-                {
-                    pendingList.RemoveAt<PendingSettle>(i);
-                    count--;
                 }
                 else
                 {
-                    i++;
+                    if (taskList.Count == 0)
+                    {
+                        foreach (var platform in this.platforms)
+                        {
+                            taskList.Add(platform.Name, null);
+                        }
+                    }
+                }
+
+                var pendingList = new StorageList(PendingTag, this.Storage);
+                int i = 0;
+                var count = pendingList.Count();
+                while (i < count)
+                {
+                    var settlement = pendingList.Get<PendingSettle>(i);
+                    if (UpdatePendingSettle(pendingList, i))
+                    {
+                        pendingList.RemoveAt<PendingSettle>(i);
+                        count--;
+                    }
+                    else
+                    {
+                        i++;
+                    }
+                }
+
+                ProcessCompletedTasks();
+
+                for (var j = 0; j < taskList.Count; j++)
+                {
+                    var platform = taskList.Keys.ElementAt(j);
+                    var task = taskList[platform];
+                    if (task == null)
+                    {
+                        ChainWatcher finder;
+                        if (_finders.TryGetValue(platform, out finder))
+                        {
+                            taskList[platform] = new Task<IEnumerable<PendingSwap>>(() =>
+                                                    {
+                                                        return finder.Update();
+                                                    });
+                        }
+                    }
+                }
+
+                // start new tasks
+                foreach (var entry in taskList)
+                {
+                    var task = entry.Value;
+                    if (task != null && !task.Status.Equals(TaskStatus.Running))
+                    {
+                        task.Start();
+                    }
                 }
             }
-
-            foreach (var finder in _finders.Values)
+            catch (Exception e)
             {
-                var swaps = finder.Update();
-
-                foreach (var swap in swaps)
+                var logMessage = "TokenSwapper.Update() exception caught:\n" + e.Message;
+                var inner = e.InnerException;
+                while (inner != null)
                 {
-                    if (_pendingSwaps.ContainsKey(swap.hash))
+                    logMessage += "\n---> " + inner.Message + "\n\n" + inner.StackTrace;
+                    inner = inner.InnerException;
+                }
+                logMessage += "\n\n" + e.StackTrace;
+
+                logger.Error(logMessage);
+            }
+        }
+
+        public void ProcessCompletedTasks()
+        {
+            for (var i = 0; i < taskList.Count; i++)
+            {
+                var platform = taskList.Keys.ElementAt(i);
+                var task = taskList[platform];
+                if (task != null && task.IsCompleted)
+                {
+                    var swaps = task.Result;
+                    foreach (var swap in swaps)
                     {
+                        if (_pendingSwaps.ContainsKey(swap.hash))
+                        {
 
-                        logger.Message($"Already known swap, ignore {finder.PlatformName} swap: {swap.source} => {swap.destination}");
-                        continue;
+                            logger.Message($"Already known swap, ignore {swap.platform} swap: {swap.source} => {swap.destination}");
+                            continue;
+                        }
+
+                        logger.Message($"Detected {swap.platform} swap: {swap.source} => {swap.destination} hash: {swap.hash}");
+                        _pendingSwaps[swap.hash] = swap;
+                        MapSwap(swap.source, swap.hash);
+                        MapSwap(swap.destination, swap.hash);
                     }
-
-                    logger.Message($"Detected {finder.PlatformName} swap: {swap.source} => {swap.destination} hash: {swap.hash}");
-                    _pendingSwaps[swap.hash] = swap;
-                    MapSwap(swap.source, swap.hash);
-                    MapSwap(swap.destination, swap.hash);
+                    
+                    // remove all completed tasks
+                    taskList[platform] = null;
                 }
             }
         }
 
         public Hash SettleSwap(string sourcePlatform, string destPlatform, Hash sourceHash)
         {
+            logger.Message("settleSwap called " + sourceHash);
+            logger.Message("dest platform " + destPlatform);
+            logger.Message("src platform " + sourcePlatform);
+
+
             var settleHash = GetSettleHash(sourcePlatform, sourceHash);
+            logger.Message("settleHash in settleswap: " + settleHash);
+
             if (settleHash != Hash.Null)
             {
                 return settleHash;
@@ -505,6 +412,8 @@ namespace Phantasma.Spook.Swaps
             {
                 case NeoWallet.NeoPlatform:
                     return SettleSwapToNeo(sourceHash);
+                case EthereumWallet.EthereumPlatform:
+                    return SettleSwapToEth(sourceHash);
 
                 default:
                     return Hash.Null;
@@ -547,7 +456,7 @@ namespace Phantasma.Spook.Swaps
                 SpendGas(SwapKeys.Address).
                 EndScript();
 
-            var tx = new Blockchain.Transaction(Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5), CLI.Identifier);
+            var tx = new Blockchain.Transaction(Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5), _txIdentifier);
             tx.Sign(SwapKeys);
 
             var bytes = tx.ToByteArray(true);
@@ -630,9 +539,94 @@ namespace Phantasma.Spook.Swaps
             return dict.Values;
         }
 
+        private Hash VerifyEthTx(Hash sourceHash, string txHash)
+        {
+            TransactionReceipt txr = null;
+            try
+            {
+                txr = ethAPI.PollForReceipt(txHash);
+            }
+            catch (Exception e)
+            {
+                logger.Error($"Exception during polling for receipt: {e}");
+                return Hash.Null;
+            }
+
+            if (txr.Status.Value == 0) // Status == 0 = error
+            {
+                // remove from settleMap because tx has failed.
+                var settleMap = new StorageMap(InProgressTag, this.Storage);
+                settleMap.Remove<Hash>(sourceHash);
+                logger.Error($"EthAPI error, tx {txr.TransactionHash} ");
+                return Hash.Null;
+            }
+
+            return Hash.Parse(txr.TransactionHash.Substring(2));
+        }
+
+        private Hash SettleSwapToEth(Hash sourceHash)
+        {
+            return SettleSwapToExternal(EthereumWallet.EthereumPlatform, sourceHash, (sourceHash, destination, token, amount) =>
+            {
+                // check if tx was sent but not minded yet
+                Hash txHash = Hash.Null;
+                string tx = null;
+                var settleMap = new StorageMap(InProgressTag, this.Storage);
+                if (settleMap.ContainsKey<Hash>(sourceHash))
+                {
+                    tx = settleMap.Get<Hash, string>(sourceHash);
+                    if (!string.IsNullOrEmpty(tx))
+                    {
+                        txHash = VerifyEthTx(sourceHash, tx);
+
+                        if (txHash == null)
+                        {
+                            return Hash.Null;
+                        }
+
+                        return txHash;
+                    }
+                }
+                else
+                {
+                    // SettleSwap called for the first time 
+                    settleMap.Set<Hash, string>(sourceHash, null);
+                }
+
+                var total = UnitConversion.ToDecimal(amount, token.Decimals);
+
+                var wif = wifs["ethereum"];
+                var ethKeys = EthereumKey.FromWIF(wif);
+
+                var destAddress = EthereumWallet.DecodeAddress(destination);
+
+                try
+                {
+                    logger.Message($"ETHSWAP: Trying transfer of {total} {token.Symbol} from {ethKeys.Address} to {destAddress}");
+                    tx = ethAPI.TransferAsset(token.Symbol, destAddress, total, token.Decimals);
+                    settleMap.Set<Hash, string>(sourceHash, tx);
+                }
+                catch (Exception e)
+                {
+                    logger.Error($"Exception during transfer: {e}");
+                    settleMap.Remove<Hash>(sourceHash);
+                    return Hash.Null;
+                }
+
+                txHash = VerifyEthTx(sourceHash, tx);
+
+                if (txHash == null)
+                {
+                    return Hash.Null;
+                }
+
+                return txHash;
+            });
+        }
+
         private Hash SettleSwapToNeo(Hash sourceHash)
         {
-            return SettleSwapToExternal(NeoWallet.NeoPlatform, sourceHash, (destination, token, amount) =>
+            return SettleSwapToExternal(NeoWallet.NeoPlatform, sourceHash, (sourceHash, destination, token, amount) =>
             {
                 var total = UnitConversion.ToDecimal(amount, token.Decimals);
 
@@ -670,6 +664,10 @@ namespace Phantasma.Spook.Swaps
                 {
                     Thread.Sleep(15 * 1000); // wait 15 seconds
 
+                    if (strHash.StartsWith("0x"))
+                    {
+                        strHash = strHash.Substring(2);
+                    }
                     var temp = this.neoAPI.GetTransactionHeight(strHash);
 
                     int height;
@@ -692,11 +690,10 @@ namespace Phantasma.Spook.Swaps
             });
         }
 
-        private Hash SettleSwapToExternal(string destinationPlatform, Hash sourceHash, Func<Address, IToken, BigInteger, Hash> generator)
+        private Hash SettleSwapToExternal(string destinationPlatform, Hash sourceHash, Func<Hash, Address, IToken, BigInteger, Hash> generator)
         {
-            var oracleReader = Nexus.CreateOracleReader();
-            var swap = oracleReader.ReadTransaction(DomainSettings.PlatformName, DomainSettings.RootChainName, sourceHash);
 
+            var swap = OracleReader.ReadTransaction(DomainSettings.PlatformName, DomainSettings.RootChainName, sourceHash);
             var transfers = swap.Transfers.Where(x => x.destinationAddress.IsInterop).ToArray();
 
             // TODO not support yet
@@ -710,12 +707,15 @@ namespace Phantasma.Spook.Swaps
 
             var token = Nexus.GetTokenInfo(Nexus.RootStorage, transfer.Symbol);
 
-            var destHash = generator(transfer.destinationAddress, token, transfer.Value);
+            var destHash = generator(sourceHash, transfer.destinationAddress, token, transfer.Value);
             if (destHash != Hash.Null)
             {
                 var pendingList = new StorageList(PendingTag, this.Storage);
                 var settle = new PendingSettle() { sourceHash = sourceHash, destinationHash = destHash, settleHash = Hash.Null, time = DateTime.UtcNow, status = SwapStatus.Settle };
                 pendingList.Add<PendingSettle>(settle);
+                // We have a pending settle now, so we don't care about the settleList entry anymore.
+                var settleMap = new StorageMap(InProgressTag, this.Storage);
+                settleMap.Remove<Hash>(sourceHash);
             }
 
             return destHash;

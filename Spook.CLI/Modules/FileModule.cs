@@ -1,10 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using Phantasma.CodeGen.Core;
 using Phantasma.VM.Utils;
-using Phantasma.VM;
-using Phantasma.CodeGen.Assembler;
 using Phantasma.Cryptography;
 using Phantasma.Blockchain;
 using Phantasma.API;
@@ -15,6 +11,7 @@ using Phantasma.Core.Types;
 using System.Threading;
 using Phantasma.Blockchain.Contracts;
 using Phantasma.Domain;
+using Phantasma.Spook.Command;
 
 namespace Phantasma.Spook.Modules
 {
@@ -23,7 +20,7 @@ namespace Phantasma.Spook.Modules
     {
         public static Logger logger => ModuleLogger.Instance;
 
-        public static void Upload(PhantasmaKeys source, NexusAPI api, string[] args)
+        public static void Upload(string txIdentifier, PhantasmaKeys source, NexusAPI api, string[] args)
         {
             if (args.Length != 1)
             {
@@ -47,11 +44,11 @@ namespace Phantasma.Spook.Modules
                 CallContract("storage", "UploadFile", source.Address, fileName, fileContent.Length, contentMerkle, ArchiveFlags.None, new byte[0]).
                 SpendGas(source.Address).
                 EndScript();
-            var tx = new Transaction(api.Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5), CLI.Identifier);
+            var tx = new Transaction(api.Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5), txIdentifier);
             tx.Sign(source);
             var rawTx = tx.ToByteArray(true);
 
-            logger.Message($"Uploading {fileName}...");
+            logger.Shell($"Uploading {fileName}...");
             try
             {
                 api.SendRawTransaction(Base16.Encode(rawTx));
@@ -102,7 +99,7 @@ namespace Phantasma.Spook.Modules
                 api.WriteArchive(archiveHash, i, Base16.Encode(blockContent));
             }
 
-            logger.Success($"File uploaded successfully!");
+            logger.Shell($"File uploaded successfully!");
         }
     }
 }

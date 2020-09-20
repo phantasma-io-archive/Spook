@@ -6,6 +6,8 @@ using Phantasma.VM.Utils;
 using Phantasma.VM;
 using Phantasma.CodeGen.Assembler;
 using Phantasma.Core.Log;
+using Phantasma.Spook.Command;
+
 
 namespace Phantasma.Spook.Modules
 {
@@ -14,6 +16,7 @@ namespace Phantasma.Spook.Modules
     {
         public static Logger logger => ModuleLogger.Instance;
 
+        [ConsoleCommand("disassemble file", "script", "Disassemble file")]
         public static void DisassembleFile(string[] args)
         {
             string sourceFilePath = null;
@@ -63,6 +66,7 @@ namespace Phantasma.Spook.Modules
             }
         }
 
+        [ConsoleCommand("assemble file", "script", "Assemble file")]
         public static void AssembleFile(string[] args)
         {
             string sourceFilePath = null;
@@ -103,7 +107,7 @@ namespace Phantasma.Spook.Modules
             {
                 foreach (var entry in semantemes)
                 {
-                    Console.WriteLine($"{entry}");
+                    logger.Message($"{entry}");
                     entry.Process(sb);
                 }
                 script = sb.ToScript();
@@ -126,6 +130,7 @@ namespace Phantasma.Spook.Modules
             }
         }
 
+        [ConsoleCommand("compile file", "script", "Compile file")]
         public static void CompileFile(string[] args)
         {
             string sourceFilePath = null;

@@ -55,7 +55,7 @@ namespace Phantasma.Spook.Oracles
                     return json;
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 logger.Error("Neoscan request failed: " + url);
                 return null;

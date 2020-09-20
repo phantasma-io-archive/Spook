@@ -2,10 +2,7 @@ using System;
 using System.Net.Sockets;
 using System.Linq;
 using System.Collections.Generic;
-using System.Collections;
-using System.Text;
 using System.Threading;
-using System.Reflection;
 using System.IO;
 
 using LunarLabs.Parser.JSON;
@@ -13,7 +10,6 @@ using LunarLabs.WebServer.Core;
 
 using Phantasma.Blockchain;
 using Phantasma.Cryptography;
-using Phantasma.Core.Utils;
 using Phantasma.Numerics;
 using Phantasma.Core.Types;
 using Phantasma.Spook.GUI;
@@ -21,22 +17,28 @@ using Phantasma.API;
 using Phantasma.Network.P2P;
 using Phantasma.Spook.Modules;
 using Phantasma.Spook.Plugins;
+using Phantasma.Spook.Utils;
 using Phantasma.Blockchain.Contracts;
 using Phantasma.Simulator;
-using Phantasma.CodeGen.Assembler;
 using Phantasma.VM.Utils;
 using Phantasma.Core;
 using Phantasma.Network.P2P.Messages;
 using Phantasma.RocksDB;
-using Phantasma.Spook.Dapps;
 using Phantasma.Storage;
-using Phantasma.Storage.Context;
 using Phantasma.Spook.Oracles;
 using Phantasma.Spook.Swaps;
 using Phantasma.Domain;
 using Logger = Phantasma.Core.Log.Logger;
 using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
 using System.Globalization;
+using NeoAPI = Phantasma.Neo.Core.NeoAPI;
+using System.Reflection;
+using Phantasma.Spook.Shell;
+using Phantasma.Spook.Command;
+using Phantasma.Spook.Chains;
+using System.Threading.Tasks;
+using EthAccount = Nethereum.Web3.Accounts.Account;
+using Nethereum.Hex.HexConvertors.Extensions;
 
 namespace Phantasma.Spook
 {
@@ -59,139 +61,45 @@ namespace Phantasma.Spook
 
     public class CLI
     {
-        public const string SpookVersion = "1.1.2";
-        public static readonly string Identifier = "SPK" + SpookVersion;
+        public static readonly string Identifier = "SPK" + Assembly.GetAssembly(typeof(CLI)).GetVersion();
 
-        static void Main(string[] args)
-        {
-            new CLI(args);
-        }
-
-        private readonly Node node;
-        private readonly Logger logger;
-        private readonly Mempool mempool;
-        private bool running = false;
-        private bool nodeReady = false;
-
-        public NeoScanAPI neoScanAPI { get; private set; }
-        public Neo.Core.NeoAPI neoAPI { get; private set; }
-
-        public int rpcPort { get; private set; }
-        public int restPort { get; private set; }
-
-        private Nexus nexus;
-        private NexusAPI nexusApi;
-
-        private int restartTime;
-
-        private ConsoleGUI gui;
-
-        private NexusSimulator simulator;
-        private bool useSimulator;
-
+        private SpookSettings _settings;
+        private Logger logger;
+        private ConsoleGUI _gui;
         private List<IPlugin> plugins = new List<IPlugin>();
+        private Nexus nexus;
+        private NexusAPI _nexusApi;
+        private bool _running;
+        private Mempool _mempool = null;
+        private PeerCaps _peerCaps;
+        private PhantasmaKeys _nodeKeys;
+        private Node _node;
+        private bool _nodeReady = false;
+        private List<string> _seeds = new List<string>();
+        private NeoAPI _neoAPI;
+        private EthAPI _ethAPI;
+        private NeoScanAPI _neoScanAPI;
+        private CommandDispatcher _commandDispatcher;
+        private TokenSwapper _tokenSwapper;
 
-        public string cryptoCompareAPIKey { get; private set; } = null;
+        private NexusSimulator _simulator;
 
-        private bool showWebLogs;
+        private string _cryptoCompareAPIKey = null;
 
-        private static BigInteger FetchBalance(JSONRPC_Client rpc, Logger logger, string host, Address address)
-        {
-            var response = rpc.SendRequest(logger, host, "getAccount", address.ToString());
-            if (response == null)
-            {
-                logger.Error($"Error fetching balance of {address}...");
-                return 0;
-            }
-
-            var balances = response["balances"];
-            if (balances == null)
-            {
-                logger.Error($"Error fetching balance of {address}...");
-                return 0;
-            }
-
-            BigInteger total = 0;
-
-            foreach (var entry in balances.Children)
-            {
-                var chain = entry.GetString("chain");
-                var symbol = entry.GetString("symbol");
-
-                if (symbol == DomainSettings.FuelTokenSymbol)
-                {
-                    total += BigInteger.Parse(entry.GetString("amount"));
-                }
-            }
-
-            return total;
-        }
-
-        private static Hash SendTransfer(JSONRPC_Client rpc, Logger logger, string nexusName, string host, PhantasmaKeys from, Address to, BigInteger amount)
-        {
-            Throw.IfNull(rpc, nameof(rpc));
-            Throw.IfNull(logger, nameof(logger));
-
-            var script = ScriptUtils.BeginScript().AllowGas(from.Address, Address.Null, 1, 9999).TransferTokens("SOUL", from.Address, to, amount).SpendGas(from.Address).EndScript();
-
-            var tx = new Transaction(nexusName, "main", script, Timestamp.Now + TimeSpan.FromMinutes(30));
-            tx.Sign(from);
-
-            var bytes = tx.ToByteArray(true);
-
-            //log.Debug("RAW: " + Base16.Encode(bytes));
-
-            var response = rpc.SendRequest(logger, host, "sendRawTransaction", Base16.Encode(bytes));
-            if (response == null)
-            {
-                logger.Error($"Error sending {amount} {DomainSettings.FuelTokenSymbol} from {from.Address} to {to}...");
-                return Hash.Null;
-            }
-
-            if (response.HasNode("error"))
-            {
-                var error = response.GetString("error");
-                logger.Error("Error: " + error);
-                return Hash.Null;
-            }
-
-            var hash = response.Value;
-            return Hash.Parse(hash);
-        }
-
-        private static bool ConfirmTransaction(JSONRPC_Client rpc, Logger logger, string host, Hash hash, int maxTries = 99999)
-        {
-            var hashStr = hash.ToString();
-
-            int tryCount = 0;
-
-            int delay = 250;
-            do
-            {
-                var response = rpc.SendRequest(logger, host, "getConfirmations", hashStr);
-                if (response == null)
-                {
-                    logger.Error("Transfer request failed");
-                    return false;
-                }
-
-                var confirmations = response.GetInt32("confirmations");
-                if (confirmations > 0)
-                {
-                    logger.Success("Confirmations: " + confirmations);
-                    return true;
-                }
-
-                tryCount--;
-                if (tryCount >= maxTries)
-                {
-                    return false;
-                }
-
-                Thread.Sleep(delay);
-                delay *= 2;
-            } while (true);
-        }
+        public NexusAPI NexusAPI { get { return _nexusApi; } }
+        public Nexus Nexus { get { return nexus; } }
+        public NeoAPI NeoAPI { get { return _neoAPI; } }
+        public EthAPI EthAPI { get { return _ethAPI; } }
+        public NeoScanAPI NeoScanAPI { get { return _neoScanAPI; } }
+        public SpookSettings Settings { get { return _settings; } }
+        public string CryptoCompareAPIKey  { get { return _cryptoCompareAPIKey; } }
+        public TokenSwapper TokenSwapper { get { return _tokenSwapper; } }
+        public ConsoleGUI GUI { get { return _gui; } }
+        public Mempool Mempool { get { return _mempool; } }
+        public Node Node { get { return _node; } }
+        public NexusSimulator Simulator { get { return _simulator; } }
+        public PhantasmaKeys NodeKeys { get { return _nodeKeys; } }
+        public Logger Logger { get { return logger; } }
 
         private void SenderSpawn(int ID, PhantasmaKeys masterKeys, string nexusName, string host, BigInteger initialAmount, int addressesListSize)
         {
@@ -217,14 +125,14 @@ namespace Phantasma.Spook
             var rpc = new JSONRPC_Client();
             {
                 logger.Message($"#{ID}: Sending funds to address {peerKey.Address.Text}");
-                var hash = SendTransfer(rpc, logger, nexusName, host, masterKeys, peerKey.Address, initialAmount);
+                var hash = WalletUtils.SendTransfer(rpc, logger, nexusName, host, masterKeys, peerKey.Address, initialAmount);
                 if (hash == Hash.Null)
                 {
                     logger.Error($"#{ID}:Stopping, fund transfer failed");
                     return;
                 }
 
-                if (!ConfirmTransaction(rpc, logger, host, hash))
+                if (!WalletUtils.ConfirmTransaction(rpc, logger, host, hash))
                 {
                     logger.Error($"#{ID}:Stopping, fund confirmation failed");
                     return;
@@ -308,7 +216,7 @@ namespace Phantasma.Spook
                 {
                     if (shouldConfirm)
                     {
-                        var confirmation = ConfirmTransaction(rpc, logger, host, txs.Last().Hash);
+                        var confirmation = WalletUtils.ConfirmTransaction(rpc, logger, host, txs.Last().Hash);
                         if (!confirmation)
                         {
                             logger.Error($"#{ID}:Confirmation failed, aborting...");
@@ -337,10 +245,10 @@ namespace Phantasma.Spook
         {
             logger.Message("Running in sender mode.");
 
-            running = true;
+            _running = true;
             Console.CancelKeyPress += delegate
             {
-                running = false;
+                _running = false;
                 logger.Message("Stopping sender...");
             };
 
@@ -348,7 +256,7 @@ namespace Phantasma.Spook
 
             var rpc = new JSONRPC_Client();
             logger.Message($"Fetch initial balance from {masterKeys.Address}...");
-            BigInteger initialAmount = FetchBalance(rpc, logger, host, masterKeys.Address);
+            BigInteger initialAmount = WalletUtils.FetchBalance(rpc, logger, host, masterKeys.Address);
             if (initialAmount <= 0)
             {
                 logger.Message($"Could not obtain funds");
@@ -382,19 +290,19 @@ namespace Phantasma.Spook
 
         private void WebLogMapper(string channel, LogLevel level, string text)
         {
-            if (!showWebLogs)
+            if (!_settings.Node.WebLogs)
             {
                 return;
             }
 
-            if (gui != null)
+            if (_gui != null)
             {
                 switch (level)
                 {
-                    case LogLevel.Debug: gui.WriteToChannel(channel, Core.Log.LogEntryKind.Debug, text); break;
-                    case LogLevel.Error: gui.WriteToChannel(channel, Core.Log.LogEntryKind.Error, text); break;
-                    case LogLevel.Warning: gui.WriteToChannel(channel, Core.Log.LogEntryKind.Warning, text); break;
-                    default: gui.WriteToChannel(channel, Core.Log.LogEntryKind.Message, text); break;
+                    case LogLevel.Debug: _gui.WriteToChannel(channel, Core.Log.LogEntryKind.Debug, text); break;
+                    case LogLevel.Error: _gui.WriteToChannel(channel, Core.Log.LogEntryKind.Error, text); break;
+                    case LogLevel.Warning: _gui.WriteToChannel(channel, Core.Log.LogEntryKind.Warning, text); break;
+                    default: _gui.WriteToChannel(channel, Core.Log.LogEntryKind.Message, text); break;
                 }
 
                 return;
@@ -421,488 +329,226 @@ namespace Phantasma.Spook
             return path;
         }
 
-        static bool CompareArchive(Archive a1, Archive a2)
+        public void Start()
         {
-            return a1.Hash.Equals(a2.Hash);
-        }
-
-        static bool CompareBA(byte[] ba1, byte[] ba2)
-        {
-            return StructuralComparisons.StructuralEqualityComparer.Equals(ba1, ba2);
-        }
-
-        public CLI(string[] args)
-        {
-            var culture = new CultureInfo("en-US");
-            Thread.CurrentThread.CurrentCulture = culture;
-            CultureInfo.DefaultThreadCurrentCulture = culture;
-
-            var seeds = new List<string>();
-
-            var settings = new Arguments(args);
-
-            var useGUI = settings.GetBool("gui.enabled", true);
-
-            if (useGUI)
+            Console.CancelKeyPress += delegate
             {
-                gui = new ConsoleGUI();
-                logger = gui;
+                this.Terminate();
+            };
+
+            ValidateConfig();
+
+            _nodeKeys = SetupNodeKeys();
+
+            _running = SetupNexus();
+
+            SetupOracleApis();
+
+            if (_settings.Node.HasMempool)
+            {
+                _mempool = SetupMempool();
+            }
+
+            _peerCaps = SetupPeerCaps();
+
+            _node = SetupNode();
+
+            _nexusApi = SetupNexusApi();
+
+
+            if (_node != null && _settings.App.NodeStart)
+            {
+                _node.Start();
+            }
+
+            // TODO move to own function
+            if (_settings.App.UseGui)
+            {
+                int pluginInterval = _settings.Plugins.PluginInterval; // in seconds
+
+                if (_settings.Plugins.TPSPlugin)
+                {
+                    RegisterPlugin(new TPSPlugin(logger, pluginInterval));
+                }
+
+                if (_settings.Plugins.RAMPlugin)
+                {
+                    RegisterPlugin(new RAMPlugin(logger, pluginInterval));
+                }
+
+                if (_settings.Plugins.MempoolPlugin)
+                {
+                    RegisterPlugin(new MempoolPlugin(_mempool, logger, pluginInterval));
+                }
+            }
+
+            _commandDispatcher = SetupCommandDispatcher();
+
+            if (_settings.Simulator.Enabled)
+            {
+                StartSimulator(_commandDispatcher);
             }
             else
             {
-                gui = null;
-                logger = new ConsoleLogger();
+                MakeReady(_commandDispatcher);
             }
 
-            string mode = settings.GetString("node.mode", "default");
-
-            restartTime = settings.GetInt("node.reboot", 0);
-
-            showWebLogs = settings.GetBool("web.log", false);
-            bool apiLog = settings.GetBool("api.log", true);
-
-            string apiProxyURL = settings.GetString("api.proxy", "");
-
-            bool hasSync = settings.GetBool("sync.enabled", true);
-            bool hasMempool = settings.GetBool("mempool.enabled", true);
-            bool hasEvents = settings.GetBool("events.enabled", true);
-            bool hasRelay = settings.GetBool("relay.enabled", true);
-            bool hasArchive = settings.GetBool("archive.enabled", true);
-            bool hasRPC = settings.GetBool("rpc.enabled", false);
-            bool hasREST = settings.GetBool("rest.enabled", false);
-           
-            var nexusName = settings.GetString("nexus.name", "simnet");
-
-            string profilePath = settings.GetString("mempool.profile", "");
-            if (string.IsNullOrEmpty(profilePath))
-                profilePath = null;
-
-            bool isValidator = false;
-
-            bool convertStorage = settings.GetBool("convert.storage", false);
-
-            switch (mode)
+            if (_settings.Oracle.Swaps)
             {
-                case "sender":
-                    {
-                        string host = settings.GetString("sender.host");
-                        int threadCount = settings.GetInt("sender.threads", 8);
-                        int addressesPerSender = settings.GetInt("sender.addressCount", 100);
-
-                        string wif = settings.GetString("node.wif");
-                        RunSender(wif, nexusName, host, threadCount, addressesPerSender);
-                        Console.WriteLine("Sender finished operations.");
-                        return;
-                    }
-
-                case "validator": isValidator = true; break;
-                case "node": isValidator = false; break;
-                case "default": break;
-
-                default:
-                    {
-                        logger.Error("Unknown mode: " + mode);
-                        return;
-                    }
+                _tokenSwapper = StartTokenSwapper();
             }
 
-            int port = settings.GetInt("node.port", 7073);
-            var defaultStoragePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/Storage";
-            var defaultDbStoragePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/Storage/db";
-            var defaultOraclePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/Oracle";
-            var storagePath = FixPath(settings.GetString("storage.path", defaultStoragePath));
-            var verifyStoragePath = FixPath(settings.GetString("verify.path", defaultStoragePath));
-            var dbstoragePath = FixPath(settings.GetString("dbstorage.path", defaultDbStoragePath));
-            var oraclePath = FixPath(settings.GetString("storage.oracle", defaultOraclePath));
-            var storageBackend = settings.GetString("storage.backend", "file");
-            bool randomSwapData = settings.GetBool("random.data", false);
+            this.Run();
+        }
 
-            logger.Message("Storage backend: " + storageBackend);
+        private TokenSwapper StartTokenSwapper()
+        {
+            var minimumFee = _settings.Node.MinimumFee;
+            var oracleSettings = _settings.Oracle;
+            var tokenSwapper = new TokenSwapper(_settings, _nodeKeys, _nexusApi, _neoAPI, _ethAPI, minimumFee, logger);
+            _nexusApi.TokenSwapper = tokenSwapper;
 
-            var storageFix = settings.GetBool("storage.fix", false);
-
-            if (convertStorage)
+            new Thread(() =>
             {
-                Func<string, IKeyValueStoreAdapter> fileStorageFactory  = (name) => new BasicDiskStore(storagePath + name + ".csv");
-                Func<string, IKeyValueStoreAdapter> dbStorageFactory    = (name) => new DBPartition(dbstoragePath + name);
-
-                Func<string, IKeyValueStoreAdapter> verificationStorageFactory  = (name) => new BasicDiskStore(verifyStoragePath + name + ".csv");
-
-                KeyValueStore<Hash, Archive> fileStorageArchives = new KeyValueStore<Hash, Archive>(fileStorageFactory("archives"));
-                KeyValueStore<Hash, byte[]> fileStorageContents = new KeyValueStore<Hash, byte[]>(fileStorageFactory("contents"));
-                KeyStoreStorage fileStorageRoot     = new KeyStoreStorage(fileStorageFactory("chain.main"));
-                KeyStoreStorage fileStorageSwaps    = new KeyStoreStorage(fileStorageFactory("swaps"));
-
-                KeyValueStore<Hash, Archive> dbStorageArchives = new KeyValueStore<Hash, Archive>(dbStorageFactory("archives"));
-                KeyValueStore<Hash, byte[]> dbStorageContents = new KeyValueStore<Hash, byte[]>(dbStorageFactory("contents"));
-                KeyStoreStorage dbStorageRoot    = new KeyStoreStorage(dbStorageFactory("chain.main"));
-                KeyStoreStorage dbStorageSwaps    = new KeyStoreStorage(dbStorageFactory("swaps"));
-
-                KeyValueStore<Hash, Archive> fileStorageArchiveVerify = new KeyValueStore<Hash, Archive>(verificationStorageFactory("archives.verify"));
-                KeyValueStore<Hash, byte[]> fileStorageContentVerify = new KeyValueStore<Hash, byte[]>(verificationStorageFactory("contents.verify"));
-                KeyStoreStorage fileStorageRootVerify = new KeyStoreStorage(verificationStorageFactory("chain.main.verify"));
-                KeyStoreStorage fileStorageSwapVerify = new KeyStoreStorage(verificationStorageFactory("swaps.verify"));
-
-                int count = 0;
-                /////////////////////////////////////////////////////////////////////////////////////////////////////////
-                ///THIS IS FOR TESTING ONLY, needs to get removed after 
-                if (randomSwapData)
+                logger.Message("Running token swapping service...");
+                while (_running)
                 {
-                    logger.Message("Create random data now");
-                    string SettlementTag = ".settled";
-                    string PendingTag = ".pending";
-
-                    var settlements = new StorageMap(SettlementTag, fileStorageSwaps);
-                    var pendingList = new StorageList(PendingTag, fileStorageSwaps);
-
-                    for (var i = 0; i < 1000; i++)
+                    //Thread.Sleep(5000);
+                    //Thread.Sleep(8000);
+                    Task.Delay(5000).Wait();
+                    if (_nodeReady)
                     {
-                        settlements.Set<Hash, Hash>(Hash.FromString("TESTDATA_"+i), Hash.FromString("TESTVALUE_"+i));
+                        tokenSwapper.Update();
                     }
 
-                    for (var i = 0; i < 1000; i++)
-                    {
-                        var settle = new PendingSettle() { sourceHash = Hash.FromString("TESTDATA_"+i)
-                            , destinationHash = Hash.FromString("TESTVALUE_"+i), settleHash = Hash.Null, time = DateTime.UtcNow, status = SwapStatus.Settle };
-                        pendingList.Add<PendingSettle>(settle);
-                    }
+                }
+            }).Start();
 
+            return tokenSwapper;
+        }
 
-                    PendingSettle[] psArray = pendingList.All<PendingSettle>();
-                    for (var i = 0; i < psArray.Length; i++)
-                    {
-                        Console.WriteLine(psArray[i].sourceHash);
-                    }
+        private void StartSimulator(CommandDispatcher dispatcher)
+        {
+            new Thread(() =>
+            {
+                logger.Message("Initializing simulator...");
+                _simulator = new NexusSimulator(this.nexus, _nodeKeys, 1234);
+                _simulator.MinimumFee = _settings.Node.MinimumFee;
 
-                    fileStorageSwaps.Visit((key, value) =>
+                /*
+                logger.Message("Bootstrapping validators");
+                simulator.BeginBlock();
+                for (int i = 1; i < validatorWIFs.Length; i++)
+                {
+                    simulator.GenerateTransfer(node_keys, Address.FromWIF(validatorWIFs[i]), this.nexus.RootChain, DomainSettings.StakingTokenSymbol, UnitConversion.ToBigInteger(50000, DomainSettings.StakingTokenDecimals));
+                }
+                simulator.EndBlock();*/
+
+                string[] dapps = _settings.Simulator.Dapps.ToArray();
+
+                //DappServer.InitDapps(nexus, _simulator, _nodeKeys, dapps, _settings.Node.MinimumFee, logger);
+
+                bool genBlocks = _settings.Simulator.Blocks;
+                if (genBlocks)
+                {
+                    int blockNumber = 0;
+                    while (_running)
                     {
-                        count++;
-                        StorageKey stKey = new StorageKey(key);
-                        dbStorageSwaps.Put(stKey, value);
-                        logger.Message("COUNT: " + count);
-                        var val = dbStorageSwaps.Get(stKey);
-                        if (!CompareBA(val, value))
+                        Thread.Sleep(5000);
+                        blockNumber++;
+                        logger.Message("Generating sim block #" + blockNumber);
+                        try
                         {
-                            logger.Message($"ROOT: NewValue: {Encoding.UTF8.GetString(val)} and oldValue: {Encoding.UTF8.GetString(value)} differ, fail now!");
+                            _simulator.CurrentTime = DateTime.UtcNow;
+                            _simulator.GenerateRandomBlock();
+                        }
+                        catch (Exception e)
+                        {
+                            logger.Error("Fatal error: " + e.ToString());
                             Environment.Exit(-1);
                         }
-                    });
-
-                    count = 0;
-
-                    dbStorageSwaps.Visit((key, value) =>
-                    {
-                        count++;
-                        StorageKey stKey = new StorageKey(key);
-                        fileStorageSwapVerify.Put(stKey, value);
-                        logger.Message ($"Swap wrote: {count}");
-                    });
-                    logger.Message("Done creating random data");
-                    Environment.Exit(0);
-                }
-                count = 0;
-                /////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-                logger.Message("Starting copying archives...");
-                fileStorageArchives.Visit((key, value) =>
-                {
-                    count++;
-                    dbStorageArchives.Set(key, value);
-                    var val = dbStorageArchives.Get(key);
-                    if (!CompareArchive(val, value))
-                    {
-                        logger.Message($"Archives: NewValue: {value.Hash} and oldValue: {val.Hash} differ, fail now!");
-                        Environment.Exit(-1);
-                    }
-                });
-                logger.Message($"Finished copying {count} archives...");
-                count = 0;
-
-                logger.Message("Starting copying content items...");
-                fileStorageContents.Visit((key, value) =>
-                {
-                    count++;
-                    dbStorageContents.Set(key, value);
-                    var val = dbStorageContents.Get(key);
-                    logger.Message("COUNT: " + count);
-                    if (!CompareBA(val, value))
-                    {
-                        logger.Message($"CONTENTS: NewValue: {Encoding.UTF8.GetString(val)} and oldValue: {Encoding.UTF8.GetString(value)} differ, fail now!");
-                        Environment.Exit(-1);
-                    }
-                });
-
-                logger.Message($"Finished copying {count} content items...");
-                count = 0;
-                logger.Message("Starting copying swaps...");
-                fileStorageSwaps.Visit((key, value) =>
-                {
-                    count++;
-                    StorageKey stKey = new StorageKey(key);
-                    dbStorageSwaps.Put(stKey, value);
-                    logger.Message("COUNT: " + count);
-                    var val = dbStorageSwaps.Get(stKey);
-                    if (!CompareBA(val, value))
-                    {
-                        logger.Message($"ROOT: NewValue: {Encoding.UTF8.GetString(val)} and oldValue: {Encoding.UTF8.GetString(value)} differ, fail now!");
-                        Environment.Exit(-1);
-                    }
-                });
-                logger.Message($"Finished copying {count} swap items...");
-
-                logger.Message("Starting copying root...");
-                fileStorageRoot.Visit((key, value) =>
-                {
-                    count++;
-                    StorageKey stKey = new StorageKey(key);
-                    dbStorageRoot.Put(stKey, value);
-                    logger.Message("COUNT: " + count);
-                    var val = dbStorageRoot.Get(stKey);
-                    if (!CompareBA(val, value))
-                    {
-                        logger.Message($"ROOT: NewValue: {Encoding.UTF8.GetString(val)} and oldValue: {Encoding.UTF8.GetString(value)} differ, fail now!");
-                        Environment.Exit(-1);
-                    }
-                });
-                logger.Message($"Finished copying {count} root items...");
-                count = 0;
-
-                logger.Message($"Create verification stores");
-
-                logger.Message("Start writing verify archives...");
-                dbStorageArchives.Visit((key, value) =>
-                {
-                    count++;
-                    // very ugly and might not always work, but should be ok for now
-                    byte[] bytes = value.Size.ToUnsignedByteArray();
-                    if (BitConverter.IsLittleEndian)
-                        Array.Reverse(bytes);
-                    int size = BitConverter.ToInt32(bytes, 0);
-
-                    var ms = new MemoryStream(new byte[size]);
-                    var bw = new BinaryWriter(ms);
-                    value.SerializeData(bw);
-                    fileStorageContentVerify.Set(key, ms.ToArray());
-                });
-                logger.Message($"Finished writing {count} archives...");
-                count = 0;
-
-                logger.Message("Start writing content items...");
-                dbStorageContents.Visit((key, value) =>
-                {
-                    count++;
-                    fileStorageContentVerify.Set(key, value);
-                });
-                logger.Message($"Finished writing {count} content items...");
-                count = 0;
-
-                logger.Message("Starting writing swaps...");
-                dbStorageSwaps.Visit((key, value) =>
-                {
-                    count++;
-                    StorageKey stKey = new StorageKey(key);
-                    fileStorageSwapVerify.Put(stKey, value);
-                    logger.Message ($"Swap wrote: {count}");
-                });
-                logger.Message($"Finished writing {count} swap items...");
-
-                logger.Message("Starting writing root...");
-                dbStorageRoot.Visit((key, value) =>
-                {
-                    count++;
-                    StorageKey stKey = new StorageKey(key);
-                    fileStorageRootVerify.Put(stKey, value);
-                    logger.Message ($"Wrote: {count}");
-                });
-                logger.Message($"Finished writing {count} root items...");
-
-                Environment.Exit(0);
-            }
-
-            // TODO remove this later
-            if (storageFix)
-            {
-                if (Directory.Exists(storagePath))
-                {
-                    logger.Warning("Storage fix enabled... Cleaning up all storage...");
-                    var di = new DirectoryInfo(storagePath);
-                    foreach (FileInfo file in di.EnumerateFiles())
-                    {
-                        file.Delete();
                     }
                 }
-            }
 
-            logger.Message("Storage path: " + storagePath);
-            logger.Message("Oracle path: " + oraclePath);
+                MakeReady(dispatcher);
+            }).Start();
+        }
 
-            switch (storageBackend)
+        private CommandDispatcher SetupCommandDispatcher()
+        {
+            var dispatcher = new CommandDispatcher(this);
+            ModuleLogger.Init(logger, _gui);
+            return dispatcher;
+        }
+
+        public void MakeReady(CommandDispatcher dispatcher)
+        {
+            var nodeMode = _settings.Node.NodeMode;
+            logger.Success($"Node is now running in {nodeMode} mode!");
+            _nodeReady = true;
+            _gui?.MakeReady(dispatcher);
+        }
+
+        private void SetupOracleApis()
+        {
+            var neoScanURL = _settings.Oracle.NeoscanUrl;
+
+            var neoRpcList = _settings.Oracle.NeoRpcNodes;
+            this._neoAPI = new Neo.Core.RemoteRPCNode(neoScanURL, neoRpcList.ToArray());
+            this._neoAPI.SetLogger((s) => logger.Message(s));
+
+            var ethRpcList = _settings.Oracle.EthRpcNodes;
+            var interopKeys = InteropUtils.GenerateInteropKeys(_nodeKeys, Nexus.GetGenesisHash(Nexus.RootStorage), "ethereum");
+
+            this._ethAPI = new EthAPI(this.Nexus, this._settings, new EthAccount(interopKeys.PrivateKey.ToHex()));
+            this._ethAPI.SetLogger((s) => logger.Message(s));
+
+            this._neoScanAPI = new NeoScanAPI(neoScanURL, logger, nexus, _nodeKeys);
+
+            this._cryptoCompareAPIKey = _settings.Oracle.CryptoCompareAPIKey;
+            if (!string.IsNullOrEmpty(this._cryptoCompareAPIKey))
             {
-
-                case "file":
-                    nexus = new Nexus(logger,
-                            (name) => new BasicDiskStore(storagePath + name + ".csv"),
-                            (n) => new SpookOracle(this, n, oraclePath)
-                            );
-                    break;
-
-                case "db":
-                    nexus = new Nexus(logger,
-                            (name) => new DBPartition(dbstoragePath + name),
-                            (n) => new SpookOracle(this, n, oraclePath)
-                            );
-                    break;
-                default:
-                    throw new Exception("Backend has to be set to either \"db\" or \"file\"");
+                logger.Message($"CryptoCompare API enabled...");
             }
+        }
 
-
-            running = true;
-
-            // mempool setup
-            int blockTime = settings.GetInt("node.blocktime", Mempool.MinimumBlockTime);
-
-            int minimumFee;
-            try
+        private Node SetupNode()
+        {
+            Node node = null;
+            if (_settings.Node.HasSync)
             {
-                minimumFee = settings.GetInt("mempool.fee", 100000);
-                if (minimumFee < 1)
+                if (this._mempool != null)
                 {
-                    logger.Error("Invalid mempool fee value. Expected a positive value.");
-                }
-            }
-            catch (Exception e)
-            {
-                logger.Error("Invalid mempool fee value. Expected something in fixed point format.");
-                return;
-            }
-
-            int minimumPow;
-            try
-            {
-                minimumPow = settings.GetInt("mempool.pow", 0);
-                int maxPow = 5;
-                if (minimumPow < 0 || minimumPow > maxPow)
-                {
-                    logger.Error($"Invalid mempool pow value. Expected a value between 0 and {maxPow}.");
-                }
-            }
-            catch (Exception e)
-            {
-                logger.Error("Invalid mempool fee value. Expected something in fixed point format.");
-                return;
-            }
-
-            if (!string.IsNullOrEmpty(apiProxyURL))
-            {
-                if (isValidator)
-                {
-                    logger.Error("A validator node cannot have a proxy url specified.");
-                    return;
+                    this._mempool.SetKeys(_nodeKeys);
                 }
 
-                hasMempool = false;
-                hasSync = false;
-                hasEvents = false;
-                hasRelay = false;
-                hasArchive = false;
-
-                if (!hasRPC && !hasREST)
-                {
-                    logger.Error("API proxy must have REST or RPC enabled.");
-                    return;
-                }
-            }
-
-            if (hasMempool)
-            {
-                this.mempool = new Mempool(nexus, blockTime, minimumFee, System.Text.Encoding.UTF8.GetBytes(Identifier), 0, logger, profilePath);
-
-                var mempoolLogging = settings.GetBool("mempool.log", true);
-                if (mempoolLogging)
-                {
-                    mempool.OnTransactionFailed += Mempool_OnTransactionFailed;
-                    mempool.OnTransactionAdded += (hash) => logger.Message($"Received transaction {hash}");
-                    mempool.OnTransactionCommitted += (hash) => logger.Message($"Commited transaction {hash}");
-                    mempool.OnTransactionDiscarded += (hash) => logger.Message($"Discarded transaction {hash}");
-                }
-
-                mempool.Start(ThreadPriority.AboveNormal);
-            }
-            else
-            {
-                this.mempool = null;
-            }
-
-            if (!isValidator && !hasSync && string.IsNullOrEmpty(apiProxyURL))
-            {
-                logger.Warning("Non-validator nodes require sync feature to be enabled, auto enabled now");
-                hasSync = true;
-            }
-
-            PeerCaps caps = PeerCaps.None;
-            if (hasSync) { caps |= PeerCaps.Sync; }
-            if (hasMempool) { caps |= PeerCaps.Mempool; }
-            if (hasEvents) { caps |= PeerCaps.Events; }
-            if (hasRelay) { caps |= PeerCaps.Relay; }
-            if (hasArchive) { caps |= PeerCaps.Archive; }
-            if (hasRPC) { caps |= PeerCaps.RPC; }
-            if (hasREST) { caps |= PeerCaps.REST; }
-
-            var possibleCaps = Enum.GetValues(typeof(PeerCaps)).Cast<PeerCaps>().ToArray();
-            foreach (var cap in possibleCaps)
-            {
-                if (cap != PeerCaps.None && caps.HasFlag(cap))
-                {
-                    logger.Message("Feature enabled: " + cap);
-                }
-            }
-
-            PhantasmaKeys node_keys = null;
-            bool bootstrap = false;
-            string nodeWif = settings.GetString("node.wif");
-            node_keys = PhantasmaKeys.FromWIF(nodeWif);
-            WalletModule.Keys = PhantasmaKeys.FromWIF(nodeWif);
-
-            if (hasSync)
-            {
-                try
-                {
-                    if (this.mempool != null)
-                    {
-                        this.mempool.SetKeys(node_keys);
-                    }
-
-                    this.node = new Node("Spook v" + SpookVersion, nexus, mempool, node_keys, port, caps, seeds, logger);
-                }
-                catch (Exception e)
-                {
-                    logger.Error(e.Message);
-                    return;
-                }
+                node = new Node("Spook v" + Assembly.GetAssembly(typeof(CLI)).GetVersion()
+                        , nexus
+                        , _mempool
+                        , _nodeKeys
+                        , _settings.Node.NodePort
+                        , _peerCaps
+                        , _settings.Node.Seeds
+                        , logger);
 
                 if (!nexus.HasGenesis)
                 {
-                    Console.WriteLine("isValidator: " + isValidator);
-                    if (isValidator)
+                    if (_settings.Node.Validator)
                     {
-                        if (settings.GetBool("nexus.bootstrap"))
+                        var nexusName = _settings.Node.NexusName;
+                        if (_settings.Node.NexusBootstrap)
                         {
                             if (!ValidationUtils.IsValidIdentifier(nexusName))
                             {
                                 logger.Error("Invalid nexus name: " + nexusName);
-                                Console.WriteLine("Invalid nexus name: " + nexusName);
                                 this.Terminate();
-                                return;
                             }
 
-                            logger.Debug($"Boostraping {nexusName} nexus using {node_keys.Address}...");
-                            Console.WriteLine($"Boostraping {nexusName} nexus using {node_keys.Address}...");
+                            logger.Debug($"Boostraping {nexusName} nexus using {_nodeKeys.Address}...");
 
-                            var genesisTimestamp = new Timestamp(settings.GetUInt("genesis.timestamp", Timestamp.Now.Value));
+                            var genesisTimestamp = _settings.Node.GenesisTimestamp;
 
-                            bootstrap = true;
-                            if (!nexus.CreateGenesisBlock(nexusName, node_keys, genesisTimestamp))
+                            if (!nexus.CreateGenesisBlock(_nodeKeys, genesisTimestamp))
                             {
                                 throw new ChainException("Genesis block failure");
                             }
@@ -915,300 +561,298 @@ namespace Phantasma.Spook
                             this.Terminate();
                         }
                     }
+                    else
+                    {
+                        _mempool.SubmissionCallback = (tx, chain) =>
+                        {
+                            logger.Message($"Relaying tx {tx.Hash} to other node");
+                            //this.node.
+                        };
+                    }
                 }
                 else
                 {
                     var genesisAddress = nexus.GetGenesisAddress(nexus.RootStorage);
-                    if (isValidator && node_keys.Address != genesisAddress)
+                    if (_settings.Node.Validator && _nodeKeys.Address != genesisAddress)
                     {
-                        logger.Error("Specified node key does not match genesis address " + genesisAddress.Text);
-                        return;
+                        throw new Exception("Specified node key does not match genesis address " + genesisAddress.Text);
                     }
                     else
                     {
                         logger.Success("Loaded Nexus with genesis " + nexus.GetGenesisHash(nexus.RootStorage));
-                        //seeds.Add("127.0.0.1:7073");
                     }
                 }
             }
-            else
-            {
-                this.node = null;
-            }
 
-            if (mempool != null)
+            return node;
+        }
+
+        private PhantasmaKeys SetupNodeKeys()
+        {
+            Console.WriteLine("NodeWif: " + _settings.Node.NodeWif);
+            PhantasmaKeys nodeKeys = PhantasmaKeys.FromWIF(_settings.Node.NodeWif);;
+            //TODO wallet module?
+
+            return nodeKeys;
+        }
+
+        private PeerCaps SetupPeerCaps()
+        {
+            PeerCaps caps = PeerCaps.None;
+            if (_settings.Node.HasSync) { caps |= PeerCaps.Sync; }
+            if (_settings.Node.HasMempool) { caps |= PeerCaps.Mempool; }
+            if (_settings.Node.HasEvents) { caps |= PeerCaps.Events; }
+            if (_settings.Node.HasRelay) { caps |= PeerCaps.Relay; }
+            if (_settings.Node.HasArchive) { caps |= PeerCaps.Archive; }
+            if (_settings.Node.HasRpc) { caps |= PeerCaps.RPC; }
+            if (_settings.Node.HasRest) { caps |= PeerCaps.REST; }
+
+            var possibleCaps = Enum.GetValues(typeof(PeerCaps)).Cast<PeerCaps>().ToArray();
+            foreach (var cap in possibleCaps)
             {
-                if (isValidator)
+                if (cap != PeerCaps.None && caps.HasFlag(cap))
                 {
-                    this.mempool.SetKeys(node_keys);
-                }
-                else
-                {
-                    this.mempool.SubmissionCallback = (tx, chain) =>
-                    {
-                        logger.Message($"Relaying tx {tx.Hash} to other node");
-                        //this.node.
-                    };
+                    logger.Message("Feature enabled: " + cap);
                 }
             }
 
-            var useAPICache = settings.GetBool("api.cache", true);
+            return caps;
+        }
 
-            if (!string.IsNullOrEmpty(apiProxyURL))
+        private bool SetupNexus()
+        {
+            var storagePath = _settings.Node.StoragePath;
+            var oraclePath = _settings.Node.OraclePath;
+            var dbstoragePath = _settings.Node.DbStoragePath; // maybe we can get rid of dbstoragepath?
+            var nexusName = _settings.Node.NexusName;
+
+            switch (_settings.Node.StorageBackend)
             {
-                useAPICache = true;
+                case "file":
+                    nexus = new Nexus(nexusName, logger, (name) => new BasicDiskStore(storagePath + name + ".csv"));
+                    break;
+
+                case "db":
+                    nexus = new Nexus(nexusName, logger, (name) => new DBPartition(logger, dbstoragePath + name));
+                    break;
+                default:
+                    throw new Exception("Backend has to be set to either \"db\" or \"file\"");
             }
 
-            logger.Message($"API cache is {(useAPICache ? "enabled" : "disabled")}.");
-            nexusApi = new NexusAPI(nexus, useAPICache, apiLog ? logger : null);
-            nexusApi.Mempool = mempool;
+            nexus.SetOracleReader(new SpookOracle(this, nexus, logger));
 
-            if (!string.IsNullOrEmpty(apiProxyURL))
+            return true;
+        }
+
+        private Mempool SetupMempool()
+        {
+            var mempool = new Mempool(nexus
+                    , _settings.Node.BlockTime
+                    , _settings.Node.MinimumFee
+                    , System.Text.Encoding.UTF8.GetBytes(Identifier)
+                    , 0
+                    , logger
+                    , _settings.Node.ProfilerPath
+                    );
+
+            if (_settings.Node.MempoolLog)
+            {
+                mempool.OnTransactionFailed += Mempool_OnTransactionFailed;
+                mempool.OnTransactionAdded += (hash) => logger.Message($"Received transaction {hash}");
+                mempool.OnTransactionCommitted += (hash) => logger.Message($"Commited transaction {hash}");
+                mempool.OnTransactionDiscarded += (hash) => logger.Message($"Discarded transaction {hash}");
+            }
+            if (_settings.App.NodeStart)
+            {
+                mempool.Start(ThreadPriority.AboveNormal);
+            }
+            return mempool;
+
+        }
+
+        private void Mempool_OnTransactionFailed(Hash hash)
+        {
+            if (!_running || _mempool == null)
+            {
+                return;
+            }
+
+            var status = _mempool.GetTransactionStatus(hash, out string reason);
+            logger.Warning($"Rejected transaction {hash} => " + reason);
+        }
+
+        private NexusAPI SetupNexusApi()
+        {
+            var apiCache = _settings.Node.ApiCache;
+            var apiLog = _settings.Node.ApiLog;
+            var apiProxyURL = _settings.Node.ApiProxyUrl;
+            var readOnlyMode = _settings.Node.Readonly;
+            var hasRPC = _settings.Node.HasRpc;
+            var hasREST = _settings.Node.HasRest;
+
+            NexusAPI nexusApi = new NexusAPI(nexus, apiCache, apiLog ? logger : null);
+            nexusApi.Mempool = _mempool;
+
+            if (apiProxyURL != null)
             {
                 nexusApi.ProxyURL = apiProxyURL;
                 logger.Message($"API will be acting as proxy for {apiProxyURL}");
+
+                if (readOnlyMode)
+                {
+                    nexusApi.acceptTransactions = false;
+                    logger.Warning($"Node will be running in read-only mode.");
+                }
             }
             else
             {
-                nexusApi.Node = node;
-            }
-
-            var readOnlyMode = settings.GetBool("readonly", false);
-
-            if (!string.IsNullOrEmpty(apiProxyURL))
-            {
-                readOnlyMode = true;
-            }
-
-            if (readOnlyMode)
-            {
-                logger.Warning($"Node will be running in read-only mode.");
-                nexusApi.acceptTransactions = false;
+                nexusApi.Node = _node;
             }
 
             // RPC setup
             if (hasRPC)
             {
-                rpcPort = settings.GetInt("rpc.port", 7077);
+                var rpcPort = _settings.Node.RpcPort;
                 logger.Message($"RPC server listening on port {rpcPort}...");
                 var rpcServer = new RPCServer(nexusApi, "/rpc", rpcPort, (level, text) => WebLogMapper("rpc", level, text));
                 rpcServer.Start(ThreadPriority.AboveNormal);
-            }
-            else
-            {
-                rpcPort = 0;
             }
 
             // REST setup
             if (hasREST)
             {
-                restPort = settings.GetInt("rest.port", 7078);
+                var restPort = _settings.Node.RestPort;
                 logger.Message($"REST server listening on port {restPort}...");
                 var restServer = new RESTServer(nexusApi, "/api", restPort, (level, text) => WebLogMapper("rest", level, text));
                 restServer.Start(ThreadPriority.AboveNormal);
             }
-            else
+
+            return nexusApi;
+        }
+
+        private void ValidateConfig()
+        {
+            if (_settings.Node.ApiProxyUrl != null)
             {
-                restPort = 0;
-            }
-
-            if (node != null)
-            {
-                var neoScanURL = settings.GetString("neoscan.url", "https://api.neoscan.io");
-
-                var rpcList = settings.GetString("neo.rpc", "http://seed6.ngd.network:10332,http://seed.neoeconomy.io:10332");
-                var neoRpcURLs = rpcList.Split(',');
-                this.neoAPI = new Neo.Core.RemoteRPCNode(neoScanURL, neoRpcURLs);
-                this.neoAPI.SetLogger((s) => logger.Message(s));
-
-                this.neoScanAPI = new NeoScanAPI(neoScanURL, logger, nexus, node_keys);
-
-                cryptoCompareAPIKey = settings.GetString("cryptocompare.apikey", "");
-                if (!string.IsNullOrEmpty(cryptoCompareAPIKey))
+                if (!_settings.Node.ApiCache)
                 {
-                    logger.Message($"CryptoCompare API enabled...");
+                    throw new Exception("A proxy node must have api cache enabled.");
                 }
 
-                node.Start();
-            }
-
-            if (gui != null)
-            {
-                int pluginPeriod = settings.GetInt("plugin.refresh", 1); // in seconds
-
-                if (settings.GetBool("plugin.tps", false))
+                if (_settings.Node.Validator)
                 {
-                    RegisterPlugin(new TPSPlugin(logger, pluginPeriod));
+                    throw new Exception("A validator node cannot have a proxy url specified.");
                 }
 
-                if (settings.GetBool("plugin.ram", false))
+                if (!_settings.Node.HasRpc && !_settings.Node.HasRest)
                 {
-                    RegisterPlugin(new RAMPlugin(logger, pluginPeriod));
+                    throw new Exception("API proxy must have REST or RPC enabled.");
                 }
-
-                if (settings.GetBool("plugin.mempool", false))
-                {
-                    RegisterPlugin(new MempoolPlugin(mempool, logger, pluginPeriod));
-                }
-            }
-
-            Console.CancelKeyPress += delegate
-            {
-                Terminate();
-            };
-
-            useSimulator = settings.GetBool("simulator.enabled", false);
-
-            var dispatcher = new CommandDispatcher();
-            SetupCommands(dispatcher);
-
-            if (settings.GetBool("swaps.enabled"))
-            {
-                var tokenSwapper = new TokenSwapper(node_keys, nexusApi, neoScanAPI, neoAPI, minimumFee, logger, settings);
-                nexusApi.TokenSwapper = tokenSwapper;
-
-                new Thread(() =>
-                {
-                    logger.Message("Running token swapping service...");
-                    while (running)
-                    {
-                        Thread.Sleep(5000);
-
-                        if (nodeReady)
-                        {
-                            tokenSwapper.Update();
-                        }
-                    }
-                }).Start();
-            }
-
-            Console.WriteLine($" useSim : {useSimulator} bootstrap: {bootstrap}");
-            if (useSimulator && bootstrap)
-            {
-                new Thread(() =>
-                {
-                    logger.Message("Initializing simulator...");
-                    simulator = new NexusSimulator(this.nexus, node_keys, 1234);
-                    simulator.MinimumFee = minimumFee;
-
-                    /*
-                    logger.Message("Bootstrapping validators");
-                    simulator.BeginBlock();
-                    for (int i = 1; i < validatorWIFs.Length; i++)
-                    {
-                        simulator.GenerateTransfer(node_keys, Address.FromWIF(validatorWIFs[i]), this.nexus.RootChain, DomainSettings.StakingTokenSymbol, UnitConversion.ToBigInteger(50000, DomainSettings.StakingTokenDecimals));
-                    }
-                    simulator.EndBlock();*/
-
-                    string[] dapps = settings.GetString("dapps", "").Split(',');
-
-                    DappServer.InitDapps(nexus, simulator, node_keys, dapps, minimumFee, logger);
-
-                    bool genBlocks = settings.GetBool("simulator.blocks", false);
-                    if (genBlocks)
-                    {
-                        int blockNumber = 0;
-                        while (running)
-                        {
-                            Thread.Sleep(5000);
-                            blockNumber++;
-                            logger.Message("Generating sim block #" + blockNumber);
-                            try
-                            {
-                                simulator.CurrentTime = DateTime.UtcNow;
-                                simulator.GenerateRandomBlock();
-                            }
-                            catch (Exception e)
-                            {
-                                logger.Error("Fatal error: " + e.ToString());
-                                Environment.Exit(-1);
-                            }
-                        }
-                    }
-
-                    MakeReady(dispatcher);
-                }).Start();
-
             }
             else
             {
-                MakeReady(dispatcher);
+                if (!_settings.Node.Validator && !_settings.Node.HasSync )
+                {
+                    throw new Exception("Non-validator nodes require sync to be enabled");
+                }
             }
 
-            this.Run();
-        }
-
-        private void MakeReady(CommandDispatcher dispatcher)
-        {
-            logger.Success("Node is ready");
-            nodeReady = true;
-            gui?.MakeReady(dispatcher);
-        }
-
-        private void Mempool_OnTransactionFailed(Hash hash)
-        {
-            if (!running)
+            if (!_settings.Node.Validator && _settings.Oracle.Swaps) 
             {
-                return;
+                    throw new Exception("Non-validator nodes cannot have swaps enabled");
             }
 
-            var status = mempool.GetTransactionStatus(hash, out string reason);
-            logger.Warning($"Rejected transaction {hash} => " + reason);
+
+            // TODO to be continued...
+        }
+
+        public CLI(string[] args, SpookSettings settings)
+        {
+            var culture = new CultureInfo("en-US");
+            Thread.CurrentThread.CurrentCulture = culture;
+            CultureInfo.DefaultThreadCurrentCulture = culture;
+            this._settings = settings;
+
+            if (_settings.App.UseShell)
+            {
+                logger = new ShellLogger(Path.GetTempPath() + settings.App.LogFile);
+            }
+            else
+            if (_settings.App.UseGui)
+            {
+                _gui = new ConsoleGUI(_settings.App.UseGui); // if we use GUI we want to update
+                logger = _gui;
+            }
+            else
+            {
+                logger = new ConsoleLogger();
+            }
+
+            if (!_settings.App.UseShell)
+            {
+                this.Start();
+            }
         }
 
         private void Run()
         {
-            var startTime = DateTime.UtcNow;
-
-            while (running)
+            // UI thread
+            new Thread(() =>
             {
-                if (gui != null)
+                while (_running)
                 {
-                    gui.Update();
-                }
-                else
-                {
-                    Thread.Sleep(1000);
-                }
-                this.plugins.ForEach(x => x.Update());
-
-                if (restartTime > 0)
-                {
-                    var diff = DateTime.UtcNow - startTime;
-                    if (diff.TotalMinutes >= restartTime)
+                    if (_gui != null)
                     {
-                        this.Terminate();
+                        _gui.Update();
                     }
+                    else
+                    {
+                        Thread.Sleep(1000);
+                    }
+                    this.plugins.ForEach(x => x.Update());
                 }
-            }
+            }).Start();
         }
 
-        private void Terminate()
+        public void Stop()
         {
-            if (!running)
-            {
-                logger.Message("Termination in progress...");
-                return;
-            }
-
-            running = false;
+            _running = false;
 
             logger.Message("Termination started...");
 
-            if (mempool != null && mempool.IsRunning)
+            if (_mempool != null && _mempool.IsRunning)
             {
                 logger.Message("Stopping mempool...");
-                mempool.Stop();
+                _mempool.Stop();
             }
 
-            if (node != null && node.IsRunning)
+            if (_node != null && _node.IsRunning)
             {
                 logger.Message("Stopping node...");
-                node.Stop();
+                _node.Stop();
+            }
+        }
+
+        public void Terminate()
+        {
+            if (!_running)
+            {
+                logger.Message("Termination already in progress...");
             }
 
+            if (Prompt.running)
+            {
+                Prompt.running = false;
+            }
+
+            this.Stop();
+
+            //Thread.Sleep(3000);
+            if (Prompt.running)
+            {
+                Prompt.running = false;
+            }
             logger.Message("Termination complete...");
-            Thread.Sleep(3000);
             Environment.Exit(0);
         }
 
@@ -1216,7 +860,7 @@ namespace Phantasma.Spook
         {
             var name = plugin.GetType().Name.Replace("Plugin", "");
 
-            if (this.gui == null)
+            if (_gui == null)
             {
                 logger.Warning("GUI mode required, plugin disabled: " + name);
                 return;
@@ -1235,149 +879,27 @@ namespace Phantasma.Spook
             }
         }
 
-        private void ExecuteAPI(string name, string[] args)
+        public string ExecuteAPIR(string name, string[] args)
         {
-            var result = nexusApi.Execute(name, args);
+            var result = _nexusApi.Execute(name, args);
+            if (result == null)
+            {
+                return "";
+            }
+
+            return result;
+        }
+
+        public void ExecuteAPI(string name, string[] args)
+        {
+            var result = _nexusApi.Execute(name, args);
             if (result == null)
             {
                 logger.Warning("API returned null value...");
                 return;
             }
 
-            logger.Message(result);
-        }
-
-        private void SetupCommands(CommandDispatcher dispatcher)
-        {
-            ModuleLogger.Init(logger, gui);
-
-            var minimumFee = this.mempool != null ? mempool.MinimumFee : 1;
-
-            dispatcher.RegisterCommand("quit", "Stops the node and exits", (args) => Terminate());
-
-            if (gui != null)
-            {
-                dispatcher.RegisterCommand("gui.log", "Switches the gui to log view", (args) => gui.ShowLog(args));
-                dispatcher.RegisterCommand("gui.graph", "Switches the gui to graph view", (args) => gui.ShowGraph(args));
-            }
-
-            dispatcher.RegisterCommand("help", "Lists available commands", (args) => dispatcher.Commands.ToList().ForEach(x => logger.Message($"{x.Name}\t{x.Description}")));
-
-            foreach (var method in nexusApi.Methods)
-            {
-                dispatcher.RegisterCommand("api." + method.Name, "API CALL", (args) => ExecuteAPI(method.Name, args));
-            }
-
-            dispatcher.RegisterCommand("script.assemble", "Assembles a .asm file into Phantasma VM script format",
-                (args) => ScriptModule.AssembleFile(args));
-
-            dispatcher.RegisterCommand("script.disassemble", $"Disassembles a {ScriptFormat.Extension} file into readable Phantasma assembly",
-                (args) => ScriptModule.DisassembleFile(args));
-
-            dispatcher.RegisterCommand("script.compile", "Compiles a .sol file into Phantasma VM script format",
-                (args) => ScriptModule.CompileFile(args));
-
-            dispatcher.RegisterCommand("wallet.open", "Opens a wallet from a WIF key",
-            (args) => WalletModule.Open(args));
-
-            dispatcher.RegisterCommand("wallet.create", "Creates new a wallet",
-            (args) => WalletModule.Create(args));
-
-            dispatcher.RegisterCommand("wallet.balance", "Shows the current wallet balance",
-                (args) => WalletModule.Balance(nexusApi, restPort, neoScanAPI, args));
-
-            dispatcher.RegisterCommand("wallet.transfer", "Generates a new transfer transaction",
-                (args) => WalletModule.Transfer(nexusApi, minimumFee, neoAPI, args));
-
-            dispatcher.RegisterCommand("wallet.stake", $"Stakes {DomainSettings.StakingTokenSymbol}",
-                (args) => WalletModule.Stake(nexusApi, args));
-
-            dispatcher.RegisterCommand("wallet.airdrop", "Does a batch transfer from a .csv",
-                (args) => WalletModule.Airdrop(args, nexusApi, minimumFee));
-
-            dispatcher.RegisterCommand("wallet.migrate", "Migrates a validator to another address ",
-                (args) =>
-                {
-                    WalletModule.Migrate(args, nexusApi, minimumFee);
-                    if (mempool != null)
-                    {
-                        mempool.SetKeys(WalletModule.Keys);
-                    }
-                });
-
-            dispatcher.RegisterCommand("file.upload", "Uploads a file into Phantasma",
-                (args) => FileModule.Upload(WalletModule.Keys, nexusApi, args));
-
-            dispatcher.RegisterCommand("oracle.read", "Read transaction from oracle",
-            (args) =>
-            {
-                var hash = Hash.Parse(args[0]);
-                var reader = nexus.CreateOracleReader();
-                var tx = reader.ReadTransaction("neo", "neo", hash);
-                logger.Message(tx.Transfers[0].interopAddress.Text);
-            });
-
-            if (mempool != null)
-            {
-                dispatcher.RegisterCommand("mempool.list", "Shows mempool pending transaction list",
-                    (args) =>
-                    {
-                        var txs = mempool.GetTransactions();
-                        foreach (var tx in txs)
-                        {
-                            logger.Message(tx.ToString());
-                        }
-                    });
-            }
-
-            dispatcher.RegisterCommand("neo.deploy", "Deploys a contract into NEO",
-            (args) =>
-            {
-                if (args.Length != 2)
-                {
-                    throw new CommandException("Expected: WIF avm_path");
-                }
-                var avmPath = args[1];
-                if (!File.Exists(avmPath))
-                {
-                    throw new CommandException("path for avm not found");
-                }
-
-                var keys = Neo.Core.NeoKeys.FromWIF(args[0]);
-                var script = File.ReadAllBytes(avmPath);
-                var scriptHash = Neo.Utils.CryptoUtils.ToScriptHash(script);
-                logger.Message("Deploying contract " + scriptHash);
-
-                try
-                {
-                    var tx = neoAPI.DeployContract(keys, script, Base16.Decode("0710"), 0x05, Neo.Core.ContractProperties.HasStorage | Neo.Core.ContractProperties.Payable, "Contract", "1.0", "Author", "email@gmail.com", "Description");
-                    logger.Success("Deployed contract via transaction: " + tx.Hash);
-                }
-                catch (Exception e)
-                {
-                    logger.Error("Failed to deploy contract: " + e.Message);
-                }
-            });
-
-            dispatcher.RegisterCommand("exit", "Terminates the node", (args) =>
-            {
-                this.Terminate();
-            });
-
-            if (useSimulator)
-            {
-                dispatcher.RegisterCommand("simulator.timeskip", $"Skips minutse in simulator",
-                    (args) =>
-                    {
-                        if (args.Length != 1)
-                        {
-                            throw new CommandException("Expected: minutes");
-                        }
-                        var minutes = int.Parse(args[0]);
-                        simulator.CurrentTime += TimeSpan.FromMinutes(minutes);
-                        logger.Success($"Simulator time advanced by {minutes}");
-                    });
-            }
+            logger.Shell(result);
         }
     }
 }

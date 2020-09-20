@@ -1,8 +1,8 @@
-﻿using Phantasma.Blockchain;
+﻿using System;
+using System.Threading;
+using Phantasma.Blockchain;
 using Phantasma.Core.Log;
 using Phantasma.Spook.GUI;
-using System;
-using System.Threading;
 
 namespace Phantasma.Spook.Plugins
 {
@@ -57,6 +57,11 @@ namespace Phantasma.Spook.Plugins
                     logger.Message(str);
                 }
             }
+        }
+
+        public override void OnBlock(Chain chain, Block block)
+        {
+            // do nothing
         }
     }
 }
