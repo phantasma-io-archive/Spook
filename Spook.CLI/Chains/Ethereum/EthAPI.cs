@@ -197,7 +197,7 @@ namespace Phantasma.Spook.Chains
                     swapIn.Gas = _settings.Oracle.EthGasLimit;
                     var bytes = Nexus.GetOracleReader().Read<byte[]>(DateTime.Now, Domain.DomainExtensions.GetOracleFeeURL("ethereum"));
                     var fees = Phantasma.Numerics.BigInteger.FromUnsignedArray(bytes, true);
-                    swapIn.GasPrice = new System.Numerics.BigInteger(Numerics.UnitConversion.ToDecimal(fees, 2 /* 2 decimals hardcoded in oracle */)) / swapIn.Gas;
+                    swapIn.GasPrice = Nethereum.Util.UnitConversion.Convert.ToWei(new System.Numerics.BigInteger(Numerics.UnitConversion.ToDecimal(fees, 2 /* 2 decimals hardcoded in oracle */)), Nethereum.Util.UnitConversion.EthUnit.Gwei) / swapIn.Gas;
 
                     Console.WriteLine($"Eth TransferAsset()/SwapIn fees: Gas price: {swapIn.GasPrice}, GAS limit: {swapIn.Gas}, calculated fee: {fees}"); // Remove later.
 
