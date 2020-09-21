@@ -170,7 +170,7 @@ namespace Phantasma.Spook.Chains
             {
                 var bytes = Nexus.GetOracleReader().Read<byte[]>(DateTime.Now, Domain.DomainExtensions.GetOracleFeeURL("ethereum"));
                 var fees = Phantasma.Numerics.BigInteger.FromUnsignedArray(bytes, true);
-                var gasPrice = Numerics.UnitConversion.ToDecimal(fees / _settings.Oracle.EthGasLimit, 8);
+                var gasPrice = Numerics.UnitConversion.ToDecimal(fees / _settings.Oracle.EthGasLimit, 9);
 
                 Console.WriteLine($"Eth TransferAsset()/ETH fees: Gas price: {gasPrice}, GAS limit: {_settings.Oracle.EthGasLimit}, calculated fee: {fees}"); // Remove later.
 

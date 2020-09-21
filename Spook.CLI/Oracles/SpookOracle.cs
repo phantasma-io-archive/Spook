@@ -189,7 +189,7 @@ namespace Phantasma.Spook.Oracles
                     }
 
                     var newFee = EthereumInterop.GetNormalizedFee(_cli.Settings.Oracle.EthFeeURLs.ToArray());
-                    fee = new CachedFee(Timestamp.Now, UnitConversion.ToBigInteger(newFee, 8)); // 8 for GWEI
+                    fee = new CachedFee(Timestamp.Now, UnitConversion.ToBigInteger(newFee, 9)); // 9 for GWEI
                     _feeCache[platform] = fee;
 
                     var logMessage2 = $"PullFee({platform}): New fee pulled: {fee.Value}, GAS limit: {_cli.Settings.Oracle.EthGasLimit}, calculated fee: {fee.Value * _cli.Settings.Oracle.EthGasLimit}";
