@@ -79,6 +79,62 @@ namespace Phantasma.Spook.Command
             }
         }
 
+        [ConsoleCommand("set value", Category = "Node", Description = "Set governance value")]
+        protected void OnSetValue(string[] args)
+        {
+            var chain = _cli.Nexus.GetChainByName(_cli.Nexus.RootChain.Name);
+            var fuelToken = _cli.Nexus.GetTokenInfo(_cli.Nexus.RootStorage, DomainSettings.FuelTokenSymbol);
+            var balance = chain.GetTokenBalance(chain.Storage, fuelToken, _cli.NodeKeys.Address);
+
+            if (balance == 0)
+            {
+                Console.WriteLine("Node wallet needs gas to create a platform token!");
+                return;
+            }
+
+            var key = args[0];
+
+            if (string.IsNullOrEmpty(key)) 
+            {
+                Console.WriteLine("Key has to be set!");
+                return;
+            }
+
+            Phantasma.Numerics.BigInteger value;
+            try
+            {
+                value = Phantasma.Numerics.BigInteger.Parse(args[1]);
+            }
+            catch
+            {
+                Console.WriteLine("Value has to be set!");
+                return;
+            }
+
+            var script = ScriptUtils.BeginScript()
+                .AllowGas(_cli.NodeKeys.Address, Address.Null, 100000, 1500)
+                .CallContract("governance", "SetValue", key, value)
+                .SpendGas(_cli.NodeKeys.Address).EndScript();
+
+            var expire = Timestamp.Now + TimeSpan.FromMinutes(2);
+            var tx = new Phantasma.Blockchain.Transaction(_cli.Nexus.Name, _cli.Nexus.RootChain.Name, script, expire, CLI.Identifier);
+
+            tx.Mine((int)ProofOfWork.Minimal);
+            tx.Sign(_cli.NodeKeys);
+
+            if (_cli.Mempool != null)
+            {
+                _cli.Mempool.Submit(tx);
+            }
+            else
+            {
+                Console.WriteLine("No mempool available");
+                return;
+            }
+
+            Console.WriteLine($"SetValue {key}:{value}.");
+        }
+
         [ConsoleCommand("create token", Category = "Node", Description = "Bounce a node to reload configuration")]
         protected void OnCreatePlatformToken(string[] args)
         {
@@ -102,14 +158,14 @@ namespace Phantasma.Spook.Command
             }
 
             var platform = args[1];
-            if (string.IsNullOrEmpty(symbol)) 
+            if (string.IsNullOrEmpty(platform)) 
             {
                 Console.WriteLine("Platform has to be set!");
                 return;
             }
 
             var hashStr = args[2];
-            if (string.IsNullOrEmpty(symbol)) 
+            if (string.IsNullOrEmpty(hashStr)) 
             {
                 Console.WriteLine("Hash has to be set!");
                 return;

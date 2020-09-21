@@ -573,7 +573,7 @@ namespace Phantasma.Spook
                 else
                 {
                     var genesisAddress = nexus.GetGenesisAddress(nexus.RootStorage);
-                    if (_settings.Node.Validator && _nodeKeys.Address != genesisAddress)
+                    if (_settings.Node.Validator && _nodeKeys.Address != genesisAddress && !_settings.Node.Readonly)
                     {
                         throw new Exception("Specified node key does not match genesis address " + genesisAddress.Text);
                     }

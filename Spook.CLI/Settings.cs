@@ -210,6 +210,7 @@ namespace Phantasma.Spook
         public string NeoWif { get; }
         public string EthWif { get; }
         public uint EthConfirmations { get; }
+        public uint EthGasLimit { get; }
         public bool NeoQuickSync { get; } = true;
 
         public OracleSettings(Arguments settings, IConfigurationSection section)
@@ -242,6 +243,7 @@ namespace Phantasma.Spook
             var sectionEthContracts = section.GetSection("eth.contracts");
 
             this.EthConfirmations = settings.GetUInt("eth.block.confirmations", section.GetValue<uint>("eth.block.confirmations"));
+            this.EthGasLimit = settings.GetUInt("eth.gas.limit", section.GetValue<uint>("eth.gas.limit"));
             this.CryptoCompareAPIKey = settings.GetString("crypto.compare.key", section.GetValue<string>("crypto.compare.key"));
             this.Swaps = settings.GetBool("swaps.enabled", section.GetValue<bool>("swaps.enabled"));
             this.PhantasmaInteropHeight = settings.GetString("phantasma.interop.height", section.GetValue<string>("phantasma.interop.height"));

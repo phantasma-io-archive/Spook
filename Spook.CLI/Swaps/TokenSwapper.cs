@@ -67,7 +67,7 @@ namespace Phantasma.Spook.Swaps
         }
     }
 
-    public struct PendingSettle : ISerializable
+    public struct PendingFee : ISerializable
     {
         public Hash sourceHash;
         public Hash destinationHash;
@@ -297,10 +297,10 @@ namespace Phantasma.Spook.Swaps
                 var count = pendingList.Count();
                 while (i < count)
                 {
-                    var settlement = pendingList.Get<PendingSettle>(i);
+                    var settlement = pendingList.Get<PendingFee>(i);
                     if (UpdatePendingSettle(pendingList, i))
                     {
-                        pendingList.RemoveAt<PendingSettle>(i);
+                        pendingList.RemoveAt<PendingFee>(i);
                         count--;
                     }
                     else
@@ -433,7 +433,7 @@ namespace Phantasma.Spook.Swaps
             var count = pendingList.Count();
             for (int i = 0; i < count; i++)
             {
-                var settlement = pendingList.Get<PendingSettle>(i);
+                var settlement = pendingList.Get<PendingFee>(i);
                 if (settlement.sourceHash == sourceHash)
                 {
                     return settlement.destinationHash;
@@ -708,12 +708,15 @@ namespace Phantasma.Spook.Swaps
             var token = Nexus.GetTokenInfo(Nexus.RootStorage, transfer.Symbol);
 
             var destHash = generator(sourceHash, transfer.destinationAddress, token, transfer.Value);
+
+            // if the asset transfer was sucessfull, we prepare a fee settlement on the mainnet
             if (destHash != Hash.Null)
             {
                 var pendingList = new StorageList(PendingTag, this.Storage);
-                var settle = new PendingSettle() { sourceHash = sourceHash, destinationHash = destHash, settleHash = Hash.Null, time = DateTime.UtcNow, status = SwapStatus.Settle };
-                pendingList.Add<PendingSettle>(settle);
-                // We have a pending settle now, so we don't care about the settleList entry anymore.
+                var settle = new PendingFee() { sourceHash = sourceHash, destinationHash = destHash, settleHash = Hash.Null, time = DateTime.UtcNow, status = SwapStatus.Settle };
+                pendingList.Add<PendingFee>(settle);
+            
+                // We have a pending fee settle now, so we don't care about the settleMap entry anymore.
                 var settleMap = new StorageMap(InProgressTag, this.Storage);
                 settleMap.Remove<Hash>(sourceHash);
             }
@@ -723,7 +726,7 @@ namespace Phantasma.Spook.Swaps
 
         private bool UpdatePendingSettle(StorageList list, int index)
         {
-            var swap = list.Get<PendingSettle>(index);
+            var swap = list.Get<PendingFee>(index);
             var prevStatus = swap.status;
             switch (swap.status)
             {
@@ -775,7 +778,7 @@ namespace Phantasma.Spook.Swaps
 
             if (swap.status != prevStatus)
             {
-                list.Replace<PendingSettle>(index, swap);
+                list.Replace<PendingFee>(index, swap);
             }
 
             return false;
