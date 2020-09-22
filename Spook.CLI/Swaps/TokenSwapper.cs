@@ -709,7 +709,8 @@ namespace Phantasma.Spook.Swaps
                         counter++;
                         if (counter > 5)
                         {
-                            return Hash.Null;
+                            settleMap.Remove<Hash>(sourceHash);
+			    return Hash.Null;
                         }
                     }
 
