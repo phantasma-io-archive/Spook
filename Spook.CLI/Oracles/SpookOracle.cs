@@ -51,24 +51,24 @@ namespace Phantasma.Spook.Oracles
                 Update(nexus, nexus.RootStorage);
             }
 
-            platforms.Visit((key, _) =>
-    		{
-                logger.Message("Adding: " + key);
-                _keyValueStore.Add(key + StorageConst.Block, new KeyValueStore<string, InteropBlock>(
-                                                    CreateKeyStoreAdapter(key + StorageConst.Block)
-                                                )
-                                            );
+            //platforms.Visit((key, _) =>
+    		//{
+            //    logger.Message("Adding: " + key);
+            //    _keyValueStore.Add(key + StorageConst.Block, new KeyValueStore<string, InteropBlock>(
+            //                                        CreateKeyStoreAdapter(key + StorageConst.Block)
+            //                                    )
+            //                                );
 
-                _keyValueStore.Add(key + StorageConst.Transaction, new KeyValueStore<string, InteropTransaction>(
-                                                    CreateKeyStoreAdapter(key + StorageConst.Transaction)
-                                                )
-                                            );
+            //    _keyValueStore.Add(key + StorageConst.Transaction, new KeyValueStore<string, InteropTransaction>(
+            //                                        CreateKeyStoreAdapter(key + StorageConst.Transaction)
+            //                                    )
+            //                                );
 
-                _keyValueStore.Add(key + StorageConst.CurrentHeight, new KeyValueStore<string, string>(
-                                                    CreateKeyStoreAdapter(key + StorageConst.CurrentHeight)
-                                                )
-                                            );
-    		});
+            //    _keyValueStore.Add(key + StorageConst.CurrentHeight, new KeyValueStore<string, string>(
+            //                                        CreateKeyStoreAdapter(key + StorageConst.CurrentHeight)
+            //                                    )
+            //                                );
+    		//});
         }
 
         public void Update(INexus nexus, StorageContext storage)
