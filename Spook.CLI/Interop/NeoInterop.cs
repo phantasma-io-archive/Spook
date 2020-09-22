@@ -26,7 +26,6 @@ namespace Phantasma.Spook.Interop
     {
         private Logger logger;
         private NeoAPI neoAPI;
-        private BigInteger _interopBlockHeight;
         private OracleReader oracleReader;
         private DateTime lastScan;
         private static bool initialStart = true;
@@ -45,13 +44,12 @@ namespace Phantasma.Spook.Interop
                 : base(swapper, wif, "neo")
         {
             string lastBlockHeight = oracleReader.GetCurrentHeight("neo", "neo");
+            if (string.IsNullOrEmpty(lastBlockHeight))
+                oracleReader.SetCurrentHeight("neo", "neo", new BigInteger(interopBlockHeight.ToUnsignedByteArray()).ToString());
 
-            this._interopBlockHeight = (!string.IsNullOrEmpty(lastBlockHeight)) 
-                                       ? BigInteger.Parse(lastBlockHeight) 
-                                       : new BigInteger(interopBlockHeight.ToUnsignedByteArray());
             this.quickSync = quickSync;
 
-            logger.Message($"interopHeight: {_interopBlockHeight}");
+            logger.Message($"interopHeight: {oracleReader.GetCurrentHeight("neo", "neo")}");
             this.neoAPI = neoAPI;
 
             this.oracleReader = oracleReader;
@@ -73,6 +71,8 @@ namespace Phantasma.Spook.Interop
             {
                 var result = new List<PendingSwap>();
 
+                var _interopBlockHeight = BigInteger.Parse(oracleReader.GetCurrentHeight("neo", "neo"));
+
                 // initial start, we have to verify all processed swaps
                 if (initialStart)
                 {
@@ -93,7 +93,7 @@ namespace Phantasma.Spook.Interop
                     if (quickSync)
                     {
                         // if quick sync is active, we can use a specific plugin installed on the nodes (EventTracker)
-                        var blockIds = neoAPI.GetSwapBlocks("ed07cffad18f1308db51920d99a2af60ac66a7b3", LocalAddress, this._interopBlockHeight.ToString());
+                        var blockIds = neoAPI.GetSwapBlocks("ed07cffad18f1308db51920d99a2af60ac66a7b3", LocalAddress, _interopBlockHeight.ToString());
 
                         List<InteropBlock> blockList = new List<InteropBlock>();
                         foreach (var entry in blockIds)
@@ -176,6 +176,8 @@ namespace Phantasma.Spook.Interop
             List<Task<InteropBlock>> taskList = new List<Task<InteropBlock>>();
             if (blockIds == null)
             {
+                var _interopBlockHeight = BigInteger.Parse(oracleReader.GetCurrentHeight("neo", "neo"));
+
                 var nextCurrentBlockHeight = _interopBlockHeight + batchCount;
                 
                 for (var i = _interopBlockHeight; i < nextCurrentBlockHeight; i++)
