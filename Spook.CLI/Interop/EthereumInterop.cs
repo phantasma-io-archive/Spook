@@ -27,7 +27,6 @@ namespace Phantasma.Spook.Interop
     {
         private Logger logger;
         private EthAPI ethAPI;
-        private BigInteger _interopBlockHeight;
         private OracleReader oracleReader;
         private Nexus _nexus;
         private List<string> contracts;
@@ -39,12 +38,10 @@ namespace Phantasma.Spook.Interop
                 : base(swapper, wif, EthereumWallet.EthereumPlatform)
         {
             string lastBlockHeight = oracleReader.GetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform);
+            if(string.IsNullOrEmpty(lastBlockHeight))
+                oracleReader.SetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, new BigInteger(interopBlockHeight.ToSignedByteArray()).ToString());
 
-            this._interopBlockHeight = (!string.IsNullOrEmpty(lastBlockHeight)) 
-                                       ? BigInteger.Parse(lastBlockHeight) 
-                                       : new BigInteger(interopBlockHeight.ToSignedByteArray());
-
-            logger.Message($"interopHeight: {_interopBlockHeight}");
+            logger.Message($"interopHeight: {oracleReader.GetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform)}");
 
             this.contracts = contracts.ToList();
 
@@ -91,6 +88,7 @@ namespace Phantasma.Spook.Interop
                     }
 
                     var currentHeight = ethAPI.GetBlockHeight();
+                    var _interopBlockHeight = BigInteger.Parse(oracleReader.GetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform));
                     logger.Message($"current eth height: {currentHeight} interop eth height {_interopBlockHeight}");
 
                     var blockDifference = currentHeight - _interopBlockHeight;
@@ -179,6 +177,7 @@ namespace Phantasma.Spook.Interop
             List<Task<InteropBlock>> taskList = new List<Task<InteropBlock>>();
             if (blockIds == null)
             {
+                var _interopBlockHeight = BigInteger.Parse(oracleReader.GetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform));
                 var nextCurrentBlockHeight = _interopBlockHeight + batchCount;
 
                 if (nextCurrentBlockHeight > currentHeight)
