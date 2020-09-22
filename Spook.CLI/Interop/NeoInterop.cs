@@ -76,6 +76,7 @@ namespace Phantasma.Spook.Interop
                 // initial start, we have to verify all processed swaps
                 if (initialStart)
                 {
+                    logger.Message($"Read all blocks neo blocks now.");
                     // TODO check if quick sync nodes are configured, if so use quick sync
                     // we need to find a better solution for that though
                     var allInteropBlocks = oracleReader.ReadAllBlocks("neo", "neo");

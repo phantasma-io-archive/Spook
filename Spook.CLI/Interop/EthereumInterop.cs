@@ -72,6 +72,7 @@ namespace Phantasma.Spook.Interop
                     // initial start, we have to verify all processed swaps
                     if (initialStart)
                     {
+                        logger.Message($"Read all ethereum blocks now.");
                         var allInteropBlocks = oracleReader.ReadAllBlocks(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform);
 
                         logger.Message($"Found {allInteropBlocks.Count} blocks");
