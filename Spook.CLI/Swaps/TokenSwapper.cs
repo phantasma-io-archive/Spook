@@ -628,6 +628,29 @@ namespace Phantasma.Spook.Swaps
         {
             return SettleSwapToExternal(NeoWallet.NeoPlatform, sourceHash, (sourceHash, destination, token, amount) =>
             {
+                Hash txHash = Hash.Null;
+                string txStr = null;
+                var settleMap = new StorageMap(InProgressTag, this.Storage);
+                if (settleMap.ContainsKey<Hash>(sourceHash))
+                {
+                    txStr = settleMap.Get<Hash, string>(sourceHash);
+                    if (!string.IsNullOrEmpty(txStr))
+                    {
+                        txHash = VerifyEthTx(sourceHash, txStr);
+
+                        if (txHash == null)
+                        {
+                            return Hash.Null;
+                        }
+
+                        return txHash;
+                    }
+                }
+                else
+                {
+                    // SettleSwap called for the first time 
+                    settleMap.Set<Hash, string>(sourceHash, null);
+                }
                 var total = UnitConversion.ToDecimal(amount, token.Decimals);
 
                 var wif = wifs["neo"];
@@ -650,9 +673,12 @@ namespace Phantasma.Spook.Swaps
                     tx = nep5.Transfer(neoKeys, destAddress, total, nonce);
                 }
 
+                logger.Message("broadcasted neo tx: " + tx);
+
                 if (tx == null)
                 {
                     logger.Error("NeoAPI error: " + neoAPI.LastError);
+                    settleMap.Remove<Hash>(sourceHash);
                     return Hash.Null;
                 }
 
@@ -669,12 +695,13 @@ namespace Phantasma.Spook.Swaps
                         strHash = strHash.Substring(2);
                     }
                     var temp = this.neoAPI.GetTransactionHeight(strHash);
+                    logger.Message("neo tx included in block: " + temp);
 
                     int height;
 
                     if (int.TryParse(temp, out height) && height > 0)
                     {
-                        var txHash = Hash.Parse(strHash);
+                        txHash = Hash.Parse(strHash);
                         return txHash;
                     }
                     else
