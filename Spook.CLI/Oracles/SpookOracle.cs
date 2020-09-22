@@ -46,6 +46,11 @@ namespace Phantasma.Spook.Oracles
             this.logger = logger;
 
             logger.Message("Platform count: " + platforms.Count);
+            if (platforms.Count == 0)
+            {
+                Update(nexus, nexus.RootStorage);
+            }
+
             platforms.Visit((key, _) =>
     		{
                 logger.Message("Adding: " + key);
