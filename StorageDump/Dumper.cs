@@ -108,7 +108,7 @@ namespace StorageDump
 
                     Console.WriteLine($"{addr.Text},{symbol},{s}");
                 }
-            });
+            }, uint.MaxValue, new byte[0]);
 
             /*
             if (symbol == DomainSettings.StakingTokenSymbol)
@@ -160,7 +160,7 @@ namespace StorageDump
                 var name = Encoding.UTF8.GetString(key);
                 Console.WriteLine(name);
                 Console.ReadKey();
-            });
+            }, uint.MaxValue, new byte[0]);
             /*
             DumpBalances("SOUL", DomainSettings.StakingTokenDecimals);
             DumpBalances("NEO", 0);
