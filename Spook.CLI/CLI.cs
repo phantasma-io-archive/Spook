@@ -697,16 +697,16 @@ namespace Phantasma.Spook
             {
                 nexusApi.ProxyURL = apiProxyURL;
                 logger.Message($"API will be acting as proxy for {apiProxyURL}");
-
-                if (readOnlyMode)
-                {
-                    nexusApi.acceptTransactions = false;
-                    logger.Warning($"Node will be running in read-only mode.");
-                }
             }
             else
             {
                 nexusApi.Node = _node;
+            }
+
+            if (readOnlyMode)
+            {
+                nexusApi.acceptTransactions = false;
+                logger.Warning($"Node will be running in read-only mode.");
             }
 
             // RPC setup
