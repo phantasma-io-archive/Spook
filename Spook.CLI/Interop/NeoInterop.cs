@@ -76,7 +76,7 @@ namespace Phantasma.Spook.Interop
                 // initial start, we have to verify all processed swaps
                 if (initialStart)
                 {
-                    logger.Message($"Read all blocks neo blocks now.");
+                    logger.Message($"Read all neo blocks now.");
                     // TODO check if quick sync nodes are configured, if so use quick sync
                     // we need to find a better solution for that though
                     var allInteropBlocks = oracleReader.ReadAllBlocks("neo", "neo");
@@ -90,12 +90,14 @@ namespace Phantasma.Spook.Interop
 
                     initialStart = false;
 
+                    logger.Message($"QuickSync: " + quickSync);
                     // quick sync is only done once after startup
                     if (quickSync)
                     {
                         // if quick sync is active, we can use a specific plugin installed on the nodes (EventTracker)
                         var blockIds = neoAPI.GetSwapBlocks("ed07cffad18f1308db51920d99a2af60ac66a7b3", LocalAddress, _interopBlockHeight.ToString());
 
+                        logger.Message($"Found {blockIds.Count} blocks to process ");
                         List<InteropBlock> blockList = new List<InteropBlock>();
                         foreach (var entry in blockIds)
                         {
