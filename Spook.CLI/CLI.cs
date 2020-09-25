@@ -590,7 +590,6 @@ namespace Phantasma.Spook
 
         private PhantasmaKeys SetupNodeKeys()
         {
-            Console.WriteLine("NodeWif: " + _settings.Node.NodeWif);
             PhantasmaKeys nodeKeys = PhantasmaKeys.FromWIF(_settings.Node.NodeWif);;
             //TODO wallet module?
 

@@ -502,9 +502,7 @@ namespace Phantasma.Spook.Interop
                     var doc = JsonDocument.Parse(json);
                     if (doc.RootElement.TryGetProperty("standard", out var prop)) // TODO config?
                     {
-                        Console.WriteLine("GetFee: prop: " + prop); // Remove after testing
                         fee = decimal.Parse(prop.ToString().Replace(',', '.'), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture);
-                        Console.WriteLine("GetFee: fee: " + fee); // Remove after testing
                     }
                 }
             }

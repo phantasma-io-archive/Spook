@@ -107,8 +107,6 @@ namespace Phantasma.Spook.Chains
                             interopTransfers.Add(block.BlockHash, new Dictionary<string, List<InteropTransfer>>());
                         }
                     }
-                    //System.Console.WriteLine("SwapEvents: " + swapEvents.Count);
-                    System.Console.WriteLine("TransferEvents: " + transferEvents.Count);
 
                     if (transferEvents.Count > 0)
                     {

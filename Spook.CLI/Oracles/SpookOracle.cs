@@ -177,7 +177,6 @@ namespace Phantasma.Spook.Oracles
                         {
                             var logMessage = $"PullFee({platform}): Cached fee pulled: {fee.Value}, GAS limit: {_cli.Settings.Oracle.EthGasLimit}, calculated fee: {fee.Value * _cli.Settings.Oracle.EthGasLimit}";
                             logger.Message(logMessage);
-                            Console.WriteLine(logMessage); // Remove later when fees are fixed.
 
                             return fee.Value * _cli.Settings.Oracle.EthGasLimit;
                         }
@@ -189,7 +188,6 @@ namespace Phantasma.Spook.Oracles
 
                     var logMessage2 = $"PullFee({platform}): New fee pulled: {fee.Value}, GAS limit: {_cli.Settings.Oracle.EthGasLimit}, calculated fee: {fee.Value * _cli.Settings.Oracle.EthGasLimit}";
                     logger.Message(logMessage2);
-                    Console.WriteLine(logMessage2); // Remove later when fees are fixed.
 
                     return fee.Value * _cli.Settings.Oracle.EthGasLimit;
 
