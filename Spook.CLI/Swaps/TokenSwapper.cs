@@ -389,7 +389,6 @@ namespace Phantasma.Spook.Swaps
             logger.Message("dest platform " + destPlatform);
             logger.Message("src platform " + sourcePlatform);
 
-
             var settleHash = GetSettleHash(sourcePlatform, sourceHash);
             logger.Message("settleHash in settleswap: " + settleHash);
 
@@ -539,6 +538,39 @@ namespace Phantasma.Spook.Swaps
             return dict.Values;
         }
 
+        private Hash VerifyNeoTx(Hash sourceHash, string txHash)
+        {
+            var counter = 0;
+            do {
+                Thread.Sleep(15 * 1000); // wait 15 seconds
+
+                if (txHash.StartsWith("0x"))
+                {
+                    txHash = txHash.Substring(2);
+                }
+                var temp = this.neoAPI.GetTransactionHeight(txHash);
+                logger.Message("neo tx included in block: " + temp);
+
+                int height;
+
+                if (int.TryParse(temp, out height) && height > 0)
+                {
+                    return Hash.Parse(txHash);
+                }
+                else
+                {
+                    counter++;
+                    if (counter > 5)
+                    {
+                        var settleMap = new StorageMap(InProgressTag, this.Storage);
+                        settleMap.Remove<Hash>(sourceHash);
+			            return Hash.Null;
+                    }
+                }
+
+            } while (true);
+        }
+
         private Hash VerifyEthTx(Hash sourceHash, string txHash)
         {
             TransactionReceipt txr = null;
@@ -577,14 +609,7 @@ namespace Phantasma.Spook.Swaps
                     tx = settleMap.Get<Hash, string>(sourceHash);
                     if (!string.IsNullOrEmpty(tx))
                     {
-                        txHash = VerifyEthTx(sourceHash, tx);
-
-                        if (txHash == null)
-                        {
-                            return Hash.Null;
-                        }
-
-                        return txHash;
+                        return VerifyEthTx(sourceHash, tx);
                     }
                 }
                 else
@@ -613,14 +638,7 @@ namespace Phantasma.Spook.Swaps
                     return Hash.Null;
                 }
 
-                txHash = VerifyEthTx(sourceHash, tx);
-
-                if (txHash == null)
-                {
-                    return Hash.Null;
-                }
-
-                return txHash;
+                return VerifyEthTx(sourceHash, tx);
             });
         }
 
@@ -636,14 +654,7 @@ namespace Phantasma.Spook.Swaps
                     txStr = settleMap.Get<Hash, string>(sourceHash);
                     if (!string.IsNullOrEmpty(txStr))
                     {
-                        txHash = VerifyEthTx(sourceHash, txStr);
-
-                        if (txHash == null)
-                        {
-                            return Hash.Null;
-                        }
-
-                        return txHash;
+                        return VerifyNeoTx(sourceHash, txStr);
                     }
                 }
                 else
@@ -684,37 +695,8 @@ namespace Phantasma.Spook.Swaps
 
                 var strHash = tx.Hash.ToString();
 
-                int counter = 0;
+                return VerifyNeoTx(sourceHash, strHash);
 
-                do
-                {
-                    Thread.Sleep(15 * 1000); // wait 15 seconds
-
-                    if (strHash.StartsWith("0x"))
-                    {
-                        strHash = strHash.Substring(2);
-                    }
-                    var temp = this.neoAPI.GetTransactionHeight(strHash);
-                    logger.Message("neo tx included in block: " + temp);
-
-                    int height;
-
-                    if (int.TryParse(temp, out height) && height > 0)
-                    {
-                        txHash = Hash.Parse(strHash);
-                        return txHash;
-                    }
-                    else
-                    {
-                        counter++;
-                        if (counter > 5)
-                        {
-                            settleMap.Remove<Hash>(sourceHash);
-			    return Hash.Null;
-                        }
-                    }
-
-                } while (true);
             });
         }
 
