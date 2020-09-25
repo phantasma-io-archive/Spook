@@ -63,6 +63,9 @@ namespace Phantasma.Spook.Interop
 
         public override IEnumerable<PendingSwap> Update()
         {
+            // wait another 10s to execute eth interop
+            Task.Delay(10000).Wait();
+            logger.Message("Running eth interop update now");
             try
             {
                 lock (String.Intern("PendingSetCurrentHeight_" + EthereumWallet.EthereumPlatform))
