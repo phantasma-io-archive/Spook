@@ -125,6 +125,7 @@ namespace Phantasma.Spook.Command
             if (_cli.Mempool != null)
             {
                 _cli.Mempool.Submit(tx);
+                Console.WriteLine($"Transaction {tx.Hash} submitted to mempool.");
             }
             else
             {
@@ -132,7 +133,7 @@ namespace Phantasma.Spook.Command
                 return;
             }
 
-            Console.WriteLine($"SetValue {key}:{value}.");
+            Console.WriteLine($"SetValue {key}:{value} ts: {tx.Hash}");
         }
 
         [ConsoleCommand("create token", Category = "Node", Description = "Bounce a node to reload configuration")]
