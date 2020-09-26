@@ -488,31 +488,32 @@ namespace Phantasma.Spook.Interop
                             {
                                 // found a swap, call getapplicationlog now to get transaction details and verify the tx was actually processed.
                                 ApplicationLog[] appLogs = api.GetApplicationLog(tx.Hash);
-                                for (var i = 0; i < appLogs.Length; i++)
-                                {
-                                    //logger.Message("appLogs[i].contract" + appLogs[i].contract);
-                                    var token = FindSymbolFromAsset(appLogs[i].contract);
-                                    //logger.Message("TOKEN::::::::::::::::::: " + token);
-                                    //logger.Message("amount: " + appLogs[i].amount + " " + token);
-                                    var sadd = NeoWallet.EncodeByteArray(appLogs[i].sourceAddress.ToArray());
-                                    var tadd = NeoWallet.EncodeByteArray(appLogs[i].targetAddress.ToArray());
+                                if(appLogs != null)
+                                    for (var i = 0; i < appLogs.Length; i++)
+                                    {
+                                        //logger.Message("appLogs[i].contract" + appLogs[i].contract);
+                                        var token = FindSymbolFromAsset(appLogs[i].contract);
+                                        //logger.Message("TOKEN::::::::::::::::::: " + token);
+                                        //logger.Message("amount: " + appLogs[i].amount + " " + token);
+                                        var sadd = NeoWallet.EncodeByteArray(appLogs[i].sourceAddress.ToArray());
+                                        var tadd = NeoWallet.EncodeByteArray(appLogs[i].targetAddress.ToArray());
 
 
-                                    interopTransfers.Add
-                                    (
-                                        new InteropTransfer
+                                        interopTransfers.Add
                                         (
-                                            "neo", // todo Pay.Chains.NeoWallet.NeoPlatform
-                                            //NeoWallet.EncodeByteArray(appLogs[i].sourceAddress.ToArray()),
-                                            sourceAddress,
-                                            DomainSettings.PlatformName,
-                                            targetAddress,
-                                            interopAddress, // interop address
-                                            token,
-                                            appLogs[i].amount
-                                        )
-                                    );
-                                }
+                                            new InteropTransfer
+                                            (
+                                                "neo", // todo Pay.Chains.NeoWallet.NeoPlatform
+                                                //NeoWallet.EncodeByteArray(appLogs[i].sourceAddress.ToArray()),
+                                                sourceAddress,
+                                                DomainSettings.PlatformName,
+                                                targetAddress,
+                                                interopAddress, // interop address
+                                                token,
+                                                appLogs[i].amount
+                                            )
+                                        );
+                                    }
                             }
                         }
                         else
