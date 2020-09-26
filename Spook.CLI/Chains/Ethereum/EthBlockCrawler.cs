@@ -115,6 +115,14 @@ namespace Phantasma.Spook.Chains
 
                         foreach(var evt in transferEvents)
                         {
+                            var targetAddress = EthereumWallet.EncodeAddress(evt.Event.To);
+
+                            // If it's not our address, skip immediatly, don't log it
+                            if (targetAddress != nodeSwapAddress)
+                            {
+                                continue;
+                            }
+
                             logger.Message($"Found ERC20 swap: {blockId} hash: {hash} to: {evt.Event.To} from: {evt.Event.From} value: {evt.Event.Value}");
                             var asset = EthUtils.FindSymbolFromAsset(nexus, evt.Log.Address);
                             logger.Message("asset: " + asset);
@@ -124,7 +132,7 @@ namespace Phantasma.Spook.Chains
                                 continue;
                             }
 
-                            var targetAddress = EthereumWallet.EncodeAddress(evt.Event.To);
+                            
                             var sourceAddress = EthereumWallet.EncodeAddress(evt.Event.From);
                             var amount = PBigInteger.Parse(evt.Event.Value.ToString());
 
@@ -132,11 +140,6 @@ namespace Phantasma.Spook.Chains
                             logger.Message("sourceAddress: " + sourceAddress);
                             logger.Message("targetAddress: " + targetAddress);
                             logger.Message("amount: " + amount);
-
-                            if (targetAddress != nodeSwapAddress)
-                            {
-                                continue;
-                            }
 
                             if (!interopTransfers[block.BlockHash].ContainsKey(evt.Log.TransactionHash))
                             {
