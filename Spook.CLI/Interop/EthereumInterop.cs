@@ -95,57 +95,64 @@ namespace Phantasma.Spook.Interop
                     var _interopBlockHeight = BigInteger.Parse(oracleReader.GetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform));
                     logger.Message($"current eth height: {currentHeight} interop eth height {_interopBlockHeight}");
 
-                    var blockDifference = currentHeight - _interopBlockHeight;
-                    if (blockDifference < confirmations)
+                    var blocksProcessedInOneBatch = 0;
+                    while (blocksProcessedInOneBatch < 50)
                     {
-                        // no need to query the node yet
-                        return result;
+                        blocksProcessedInOneBatch++;
+
+                        var blockDifference = currentHeight - _interopBlockHeight;
+                        if (blockDifference < confirmations)
+                        {
+                            // no need to query the node yet
+                            break;
+                        }
+
+                        //TODO quick sync not done yet, requieres a change to the oracle impl to fetch multiple blocks
+                        //var nextHeight = (blockDifference > 50) ? 50 : blockDifference; //TODO
+
+                        //var transfers = new Dictionary<string, Dictionary<string, List<InteropTransfer>>>();
+
+                        //if (nextHeight > 1)
+                        //{
+                        //    var blockCrawler = new EthBlockCrawler(logger, contracts.ToArray(), 0/*confirmations*/, ethAPI); //TODO settings confirmations
+
+                        //    blockCrawler.Fetch(currentHeight, nextHeight);
+                        //    transfers = blockCrawler.ExtractInteropTransfers(logger, LocalAddress);
+                        //    foreach (var entry in transfers)
+                        //    {
+                        //        foreach (var txInteropTransfer in entry.Value)
+                        //        {
+                        //            foreach (var interopTransfer in txInteropTransfer.Value)
+                        //            {
+                        //                result.Add(new PendingSwap(
+                        //                    this.PlatformName
+                        //                    ,Hash.Parse(entry.Key)
+                        //                    ,interopTransfer.sourceAddress
+                        //                    ,interopTransfer.interopAddress)
+                        //                );
+                        //            }
+                        //        }
+                        //    }
+
+                        //    _interopBlockHeight = nextHeight;
+                        //    oracleReader.SetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, _interopBlockHeight.ToString());
+                        //}
+                        //else
+                        //{
+
+                        /* Future improvement, implement oracle call to fetch multiple blocks */
+                        var url = DomainExtensions.GetOracleBlockURL(
+                                EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, PBigInteger.FromUnsignedArray(_interopBlockHeight.ToByteArray(), true));
+
+                        var interopBlock = oracleReader.Read<InteropBlock>(DateTime.Now, url);
+
+                        ProcessBlock(interopBlock, ref result);
+
+                        _interopBlockHeight++;
+                        //}
                     }
 
-                    //TODO quick sync not done yet, requieres a change to the oracle impl to fetch multiple blocks
-                    //var nextHeight = (blockDifference > 50) ? 50 : blockDifference; //TODO
-
-                    //var transfers = new Dictionary<string, Dictionary<string, List<InteropTransfer>>>();
-
-                    //if (nextHeight > 1)
-                    //{
-                    //    var blockCrawler = new EthBlockCrawler(logger, contracts.ToArray(), 0/*confirmations*/, ethAPI); //TODO settings confirmations
-
-                    //    blockCrawler.Fetch(currentHeight, nextHeight);
-                    //    transfers = blockCrawler.ExtractInteropTransfers(logger, LocalAddress);
-                    //    foreach (var entry in transfers)
-                    //    {
-                    //        foreach (var txInteropTransfer in entry.Value)
-                    //        {
-                    //            foreach (var interopTransfer in txInteropTransfer.Value)
-                    //            {
-                    //                result.Add(new PendingSwap(
-                    //                    this.PlatformName
-                    //                    ,Hash.Parse(entry.Key)
-                    //                    ,interopTransfer.sourceAddress
-                    //                    ,interopTransfer.interopAddress)
-                    //                );
-                    //            }
-                    //        }
-                    //    }
-
-                    //    _interopBlockHeight = nextHeight;
-                    //    oracleReader.SetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, _interopBlockHeight.ToString());
-                    //}
-                    //else
-                    //{
-
-                    /* Future improvement, implement oracle call to fetch multiple blocks */
-                    var url = DomainExtensions.GetOracleBlockURL(
-                            EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, PBigInteger.FromUnsignedArray(_interopBlockHeight.ToByteArray(), true));
-
-                    var interopBlock = oracleReader.Read<InteropBlock>(DateTime.Now, url);
-
-                    ProcessBlock(interopBlock, ref result);
-
-                    _interopBlockHeight++;
                     oracleReader.SetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, _interopBlockHeight.ToString());
-                    //}
 
                     logger.Message($"found { result.Count() } swaps");
                     return result;
