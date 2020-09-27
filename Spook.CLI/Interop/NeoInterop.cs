@@ -313,7 +313,7 @@ namespace Phantasma.Spook.Interop
 
         public static InteropTransaction MakeInteropTx(Logger logger, NeoTx tx, NeoAPI api, string swapAddress)
         {
-            //logger.Message("checking tx: " + tx.Hash);
+            logger.Message("checking tx: " + tx.Hash);
 
             List<InteropTransfer> interopTransfers = new List<InteropTransfer>();
 
@@ -340,10 +340,10 @@ namespace Phantasma.Spook.Interop
             var sourceAddress = NeoWallet.EncodeByteArray(sourceScriptHash);
             var interopSwapAddress = NeoWallet.EncodeAddress(swapAddress);
 
-            //logger.Message("interop address: " + interopAddress);
-            //logger.Message("xswapAddress: " + swapAddress);
-            //logger.Message("interop sourceAddress: " + sourceAddress);
-            //logger.Message("neo sourceAddress: " + NeoWallet.DecodeAddress(sourceAddress));
+            logger.Message("interop address: " + interopAddress);
+            logger.Message("xswapAddress: " + swapAddress);
+            logger.Message("interop sourceAddress: " + sourceAddress);
+            logger.Message("neo sourceAddress: " + NeoWallet.DecodeAddress(sourceAddress));
 
             if (tx.attributes != null && tx.attributes.Length > 0)
             {
@@ -369,16 +369,16 @@ namespace Phantasma.Spook.Interop
             {
                 foreach (var output in tx.outputs)
                 {
-                    //logger.Message("have outputs");
+                    logger.Message("have outputs");
                     var targetAddress = NeoWallet.EncodeByteArray(output.scriptHash.ToArray());
-                    //logger.Message("interop targetAddress : " + targetAddress);
-                    //logger.Message("neo targetAddress: " + NeoWallet.DecodeAddress(targetAddress));
-                    //logger.Message("interopSwapAddress: " + interopSwapAddress);
-                    //logger.Message("targetAddress: " + targetAddress);
+                    logger.Message("interop targetAddress : " + targetAddress);
+                    logger.Message("neo targetAddress: " + NeoWallet.DecodeAddress(targetAddress));
+                    logger.Message("interopSwapAddress: " + interopSwapAddress);
+                    logger.Message("targetAddress: " + targetAddress);
 
                     var swpAddress = NeoWallet.EncodeAddress(swapAddress);
-                    //logger.Message("interop swpAddress: " + swpAddress);
-                    //logger.Message("neo swpAddress: " + NeoWallet.DecodeAddress(swpAddress));
+                    logger.Message("interop swpAddress: " + swpAddress);
+                    logger.Message("neo swpAddress: " + NeoWallet.DecodeAddress(swpAddress));
                     //if (targetAddress.ToString() == swapAddress)
                     if (interopSwapAddress == targetAddress)
                     {
@@ -479,22 +479,24 @@ namespace Phantasma.Spook.Interop
                         if (pos ==2)
                         {
                             var targetScriptHash = new UInt160(entry.data);
-                            //logger.Message("neo targetAddress: " + targetScriptHash.ToAddress());
+                            logger.Message("neo targetAddress: " + targetScriptHash.ToAddress());
                             var targetAddress = NeoWallet.EncodeByteArray(entry.data);
-                            //logger.Message("targetAddress : " + targetAddress);
-                            //logger.Message("targetAddress2: " + interopSwapAddress);
-                            //logger.Message("ySwapAddress: " + swapAddress);
+                            logger.Message("targetAddress : " + targetAddress);
+                            logger.Message("interopSwapAddress: " + interopSwapAddress);
+                            logger.Message("SwapAddress: " + swapAddress);
                             if (interopSwapAddress == targetAddress)
                             {
                                 // found a swap, call getapplicationlog now to get transaction details and verify the tx was actually processed.
+                                logger.Message("Found a swap, call GetApplicationLog now to get transaction details and verify the tx was actually processed.");
                                 ApplicationLog[] appLogs = api.GetApplicationLog(tx.Hash);
-                                if(appLogs != null)
+                                if (appLogs != null)
+                                {
                                     for (var i = 0; i < appLogs.Length; i++)
                                     {
-                                        //logger.Message("appLogs[i].contract" + appLogs[i].contract);
+                                        logger.Message("appLogs[i].contract" + appLogs[i].contract);
                                         var token = FindSymbolFromAsset(appLogs[i].contract);
-                                        //logger.Message("TOKEN::::::::::::::::::: " + token);
-                                        //logger.Message("amount: " + appLogs[i].amount + " " + token);
+                                        logger.Message("TOKEN::::::::::::::::::: " + token);
+                                        logger.Message("amount: " + appLogs[i].amount + " " + token);
                                         var sadd = NeoWallet.EncodeByteArray(appLogs[i].sourceAddress.ToArray());
                                         var tadd = NeoWallet.EncodeByteArray(appLogs[i].targetAddress.ToArray());
 
@@ -504,7 +506,7 @@ namespace Phantasma.Spook.Interop
                                             new InteropTransfer
                                             (
                                                 "neo", // todo Pay.Chains.NeoWallet.NeoPlatform
-                                                //NeoWallet.EncodeByteArray(appLogs[i].sourceAddress.ToArray()),
+                                                       //NeoWallet.EncodeByteArray(appLogs[i].sourceAddress.ToArray()),
                                                 sourceAddress,
                                                 DomainSettings.PlatformName,
                                                 targetAddress,
@@ -514,6 +516,11 @@ namespace Phantasma.Spook.Interop
                                             )
                                         );
                                     }
+                                }
+                                else
+                                {
+                                    logger.Message("Neo swap is found but application log is not available for tx " + tx.Hash);
+                                }
                             }
                         }
                         else
