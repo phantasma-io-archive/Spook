@@ -1,5 +1,11 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System;
+using System.IO;
+using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
+
 using Phantasma.Numerics;
 using Phantasma.Cryptography;
 using Phantasma.Core.Log;
@@ -11,21 +17,16 @@ using Phantasma.VM.Utils;
 using Phantasma.Blockchain.Contracts;
 using Phantasma.Contracts.Native;
 using Phantasma.Core.Types;
-using System;
+
 using Phantasma.API;
 using Phantasma.Storage.Context;
 using Phantasma.Storage;
 using Phantasma.Storage.Utils;
-using Phantasma.Spook.Interop;
-using System.IO;
-using System.Reflection;
-using System.Threading;
 using Phantasma.Spook.Chains;
 using EthereumKey = Phantasma.Ethereum.EthereumKey;
 using Nethereum.RPC.Eth.DTOs;
-using System.Threading.Tasks;
 
-namespace Phantasma.Spook.Swaps
+namespace Phantasma.Spook.Interop
 {
     public enum SwapStatus
     {
@@ -178,24 +179,8 @@ namespace Phantasma.Spook.Swaps
 
         private void InitWIF(string platformName)
         {
-            var genesisHash = Nexus.GetGenesisHash(Nexus.RootStorage);
-            var interopKeys = InteropUtils.GenerateInteropKeys(SwapKeys, genesisHash, platformName);
-            var defaultWif = interopKeys.ToWIF();
-
-            var wif = _settings.Oracle.NeoWif;
-            var ethwif = _settings.Oracle.EthWif;
-
-            switch (platformName)
-            {
-                case "neo":
-                    wifs[platformName] = (wif == null) ? defaultWif : wif;
-                    break;
-                case "ethereum":
-                    wifs[platformName] = (ethwif == null) ? defaultWif : ethwif;
-                    break;
-                default:
-                    break;
-            }
+            var wif = _settings.GetInteropWif(this.Nexus, this.SwapKeys, platformName);
+            wifs[platformName] = wif;
         }
 
         internal IToken FindTokenByHash(string asset, string platform)

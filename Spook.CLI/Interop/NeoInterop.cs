@@ -13,7 +13,7 @@ using Phantasma.Domain;
 using Phantasma.Pay;
 using Phantasma.Pay.Chains;
 using Phantasma.Cryptography;
-using Phantasma.Spook.Swaps;
+using Phantasma.Spook.Interop;
 using Phantasma.Core.Log;
 using System.Linq;
 using System.Threading.Tasks;
@@ -41,7 +41,7 @@ namespace Phantasma.Spook.Interop
 
         public NeoInterop(TokenSwapper swapper, NeoAPI neoAPI, string wif, PBigInteger interopBlockHeight
             ,OracleReader oracleReader, bool quickSync, Logger logger)
-                : base(swapper, wif, "neo")
+                : base(swapper, wif, NeoWallet.NeoPlatform)
         {
             string lastBlockHeight = oracleReader.GetCurrentHeight("neo", "neo");
             if (string.IsNullOrEmpty(lastBlockHeight))

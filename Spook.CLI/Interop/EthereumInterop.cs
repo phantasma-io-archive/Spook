@@ -6,7 +6,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using Phantasma.Blockchain;
-using Phantasma.Spook.Swaps;
+using Phantasma.Spook.Interop;
 using Phantasma.Core.Log;
 using Phantasma.Spook.Chains;
 using Phantasma.Cryptography;
@@ -295,7 +295,7 @@ namespace Phantasma.Spook.Interop
             {
                 accountSenderRecovered = Nethereum.Signer.EthECKey.RecoverFromSignature(transaction.Signature, transaction.RawHash);
             }
-            var pubKey = accountSenderRecovered.GetPubKey(true);
+            var pubKey = accountSenderRecovered.GetPubKey();
 
             var bytes = new byte[34];
             bytes[0] = (byte)AddressKind.User;
