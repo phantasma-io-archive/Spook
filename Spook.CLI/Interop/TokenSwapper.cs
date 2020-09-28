@@ -317,7 +317,7 @@ namespace Phantasma.Spook.Interop
                 foreach (var entry in taskList)
                 {
                     var task = entry.Value;
-                    if (task != null && !task.Status.Equals(TaskStatus.Running))
+                    if (task != null && task.Status.Equals(TaskStatus.Created))
                     {
                         task.Start();
                     }
