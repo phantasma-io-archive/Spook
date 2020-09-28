@@ -301,10 +301,11 @@ namespace Phantasma.Spook.Oracles
 
         protected override InteropTransaction PullPlatformTransaction(string platformName, string chainName, Hash hash)
         {
-            logger.Message("pull tx: " + hash);
+            logger.Message($"{platformName} pull tx: {hash}");
             InteropTransaction tx = Read<InteropTransaction>(platformName, chainName, hash, StorageConst.Transaction);
             if (tx != null && tx.Hash != null)
             {
+                logger.Message($"Found tx {hash} in oracle storage");
                 return tx;
             }
 
