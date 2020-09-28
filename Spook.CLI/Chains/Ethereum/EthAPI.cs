@@ -9,6 +9,7 @@ using Nethereum.Web3;
 using Nethereum.Web3.Accounts;
 using Nethereum.Hex.HexTypes;
 using Nethereum.RPC.TransactionReceipts;
+using System.Threading;
 
 namespace Phantasma.Spook.Chains
 {
@@ -132,6 +133,8 @@ namespace Phantasma.Spook.Chains
             while (receipt == null)
             {
                 receipt = EthUtils.RunSync(() => GetWeb3Client().Eth.Transactions.GetTransactionReceipt.SendRequestAsync(tx));
+                // wait 5s before checking again
+                Thread.Sleep(5000);
             }
 
             return receipt;
