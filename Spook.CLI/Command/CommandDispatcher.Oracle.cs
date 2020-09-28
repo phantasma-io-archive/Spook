@@ -1,6 +1,11 @@
 using System;
 using Phantasma.Cryptography;
-
+using Phantasma.Neo.Utils;
+using Phantasma.Pay.Chains;
+using Phantasma.Blockchain.Contracts;
+using Phantasma.Spook.Modules;
+using Phantasma.VM.Utils;
+using Phantasma.Contracts.Native;
 
 namespace Phantasma.Spook.Command
 {
@@ -50,6 +55,37 @@ namespace Phantasma.Spook.Command
                 var entry = platform.InteropAddresses[i];
                 Console.WriteLine($"#{i} => {entry.LocalAddress} / {entry.ExternalAddress}");
             }
+        }
+
+        [ConsoleCommand("platform address add", Category = "Oracle", Description = "Add swap address to platform")]
+        protected void OnPlatformAddressAdd(string[] args)
+        {
+            var platform = args[0];
+            var externalAddress = args[1];
+
+            Address localAddress;
+
+            switch (platform)
+            {
+                case NeoWallet.NeoPlatform:
+                    localAddress = NeoWallet.EncodeAddress(externalAddress);
+                    break;
+
+                case EthereumWallet.EthereumPlatform:
+                    localAddress = EthereumWallet.EncodeAddress(externalAddress);
+                    break;
+
+                default:
+                    throw new Exception("Unknown platform: " + platform);
+            }
+
+            var minimumFee = _cli.Settings.Node.MinimumFee;
+            var script = new VM.Utils.ScriptBuilder()
+                .AllowGas(_cli.NodeKeys.Address, Address.Null, minimumFee, 500)
+                .CallContract("interop", nameof(InteropContract.RegisterAddress), _cli.NodeKeys.Address, platform, localAddress, externalAddress)
+                .SpendGas(_cli.NodeKeys.Address).ToScript();
+
+            WalletModule.ExecuteTransaction(_cli.NexusAPI, script, ProofOfWork.None, _cli.NodeKeys);
         }
 
     }
