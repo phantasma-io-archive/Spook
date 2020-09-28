@@ -17,6 +17,7 @@ namespace Phantasma.Spook.Command
             // not sure if that's exactly what we want, probably needs more output...
             Console.WriteLine(tx.Transfers[0].interopAddress.Text);
         }
+
         [ConsoleCommand("platform height get", Category = "Oracle", Description = "Get platform height")]
         protected void OnPlatformHeightGet(string[] args)
         {
@@ -24,6 +25,7 @@ namespace Phantasma.Spook.Command
 
             Console.WriteLine($"Platform {args[0]} [chain {args[1]}] current height: {reader.GetCurrentHeight(args[0], args[1])}");
         }
+
         [ConsoleCommand("platform height set", Category = "Oracle", Description = "Set platform height")]
         protected void OnPlatformHeightSet(string[] args)
         {
@@ -37,5 +39,18 @@ namespace Phantasma.Spook.Command
                 _cli.Logger.Message($"Height {args[2]} is set for platform {args[0]}, chain {args[1]}");
             }
         }
+
+        [ConsoleCommand("platform address list", Category = "Oracle", Description = "Get list of swap addresses for platform")]
+        protected void OnPlatformAddressList(string[] args)
+        {
+            var platform = _cli.Nexus.GetPlatformInfo(_cli.Nexus.RootStorage, args[0]);
+
+            for (int i=0; i<platform.InteropAddresses.Length; i++)
+            {
+                var entry = platform.InteropAddresses[i];
+                Console.WriteLine($"#{i} => {entry.LocalAddress} / {entry.ExternalAddress}");
+            }
+        }
+
     }
 }
