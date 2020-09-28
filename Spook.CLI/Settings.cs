@@ -8,6 +8,7 @@ using Phantasma.Blockchain;
 using Phantasma.Core.Types;
 using Phantasma.Core.Utils;
 using Phantasma.Cryptography;
+using Phantasma.Numerics;
 using Phantasma.Simulator;
 
 namespace Phantasma.Spook
@@ -60,7 +61,15 @@ namespace Phantasma.Spook
                     break;
             }
 
-            return string.IsNullOrEmpty(customWIF) ? defaultWif : customWIF;
+            var result = !string.IsNullOrEmpty(customWIF) ? customWIF: defaultWif;
+
+            if (result != null && result.Length == 64)
+            {
+                var temp = new PhantasmaKeys(Base16.Decode(result));
+                result = temp.ToWIF();
+            }
+
+            return result;
         }
     }
 
