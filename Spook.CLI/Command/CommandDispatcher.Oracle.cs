@@ -1,11 +1,11 @@
 using System;
 using Phantasma.Cryptography;
-using Phantasma.Neo.Utils;
 using Phantasma.Pay.Chains;
 using Phantasma.Blockchain.Contracts;
 using Phantasma.Spook.Modules;
 using Phantasma.VM.Utils;
 using Phantasma.Contracts.Native;
+using Phantasma.Core.Types;
 
 namespace Phantasma.Spook.Command
 {
@@ -80,13 +80,29 @@ namespace Phantasma.Spook.Command
             }
 
             var minimumFee = _cli.Settings.Node.MinimumFee;
-            var script = new VM.Utils.ScriptBuilder()
-                .AllowGas(_cli.NodeKeys.Address, Address.Null, minimumFee, 500)
+            var script = ScriptUtils.BeginScript()
+                .AllowGas(_cli.NodeKeys.Address, Address.Null, minimumFee, 1500)
                 .CallContract("interop", nameof(InteropContract.RegisterAddress), _cli.NodeKeys.Address, platform, localAddress, externalAddress)
-                .SpendGas(_cli.NodeKeys.Address).ToScript();
+                .SpendGas(_cli.NodeKeys.Address).EndScript();
 
-            WalletModule.ExecuteTransaction(_cli.NexusAPI, script, ProofOfWork.None, _cli.NodeKeys);
+            var expire = Timestamp.Now + TimeSpan.FromMinutes(2);
+            var tx = new Phantasma.Blockchain.Transaction(_cli.Nexus.Name, _cli.Nexus.RootChain.Name, script, expire, CLI.Identifier);
+
+            tx.Mine((int)ProofOfWork.Minimal);
+            tx.Sign(_cli.NodeKeys);
+
+            if (_cli.Mempool != null)
+            {
+                _cli.Mempool.Submit(tx);
+                Console.WriteLine($"Transaction {tx.Hash} submitted to mempool.");
+            }
+            else
+            {
+                Console.WriteLine("No mempool available");
+                return;
+            }
+            Console.WriteLine($"Added address {externalAddress} to {platform}");
+            _cli.Logger.Message($"Added address {externalAddress} to {platform}");
         }
-
     }
 }
