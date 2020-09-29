@@ -314,12 +314,19 @@ namespace Phantasma.Spook.Interop
             var combinedAddresses = contracts.ToList();
             combinedAddresses.Add(swapAddress);
 
-            var crawler = new EthBlockCrawler(logger, combinedAddresses.ToArray(), confirmations, api);
+            Dictionary<string, Dictionary<string, List<InteropTransfer>>> transfers = null;
+            try
+            {
+                var crawler = new EthBlockCrawler(logger, combinedAddresses.ToArray(), confirmations, api);
+                // fetch blocks
+                crawler.Fetch(height);
+                transfers = crawler.ExtractInteropTransfers(nexus, logger, swapAddress);
 
-            // fetch blocks
-            crawler.Fetch(height);
-
-            var transfers = crawler.ExtractInteropTransfers(nexus, logger, swapAddress);
+            }
+            catch (Exception e)
+            {
+                logger.Message("Failed to fetch eth blocks: " + e.Message);
+            }
 
             if (transfers.Count == 0)
             {
@@ -357,8 +364,16 @@ namespace Phantasma.Spook.Interop
             logger.Message($"get interop transfers for tx {txr.TransactionHash}");
             var interopTransfers = new Dictionary<string, List<InteropTransfer>>();
 
-            // tx to get the eth transfer if any
-            var tx = api.GetTransaction(txr.TransactionHash);
+            Nethereum.RPC.Eth.DTOs.Transaction tx = null;
+            try
+            {
+                // tx to get the eth transfer if any
+                tx = api.GetTransaction(txr.TransactionHash);
+            }
+            catch (Exception e)
+            {
+                logger.Message("Getting eth tx failed: " + e.Message);
+            }
 
             logger.Message("Transaction status: " + txr.Status.Value);
             // check if tx has failed
