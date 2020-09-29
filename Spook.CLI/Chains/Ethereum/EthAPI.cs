@@ -9,6 +9,7 @@ using Nethereum.Web3;
 using Nethereum.Web3.Accounts;
 using Nethereum.Hex.HexTypes;
 using Nethereum.RPC.TransactionReceipts;
+using System.Threading;
 
 namespace Phantasma.Spook.Chains
 {
@@ -132,6 +133,8 @@ namespace Phantasma.Spook.Chains
             while (receipt == null)
             {
                 receipt = EthUtils.RunSync(() => GetWeb3Client().Eth.Transactions.GetTransactionReceipt.SendRequestAsync(tx));
+                // wait 5s before checking again
+                Thread.Sleep(5000);
             }
 
             return receipt;
@@ -165,15 +168,11 @@ namespace Phantasma.Spook.Chains
 
         public string TransferAsset(string symbol, string toAddress, decimal amount, int decimals)
         {
-            Console.WriteLine($"Transferring {amount} {symbol} to {toAddress}!");
             if (symbol.Equals("ETH", StringComparison.InvariantCultureIgnoreCase))
             {
                 var bytes = Nexus.GetOracleReader().Read<byte[]>(DateTime.Now, Domain.DomainExtensions.GetOracleFeeURL("ethereum"));
                 var fees = Phantasma.Numerics.BigInteger.FromUnsignedArray(bytes, true);
                 var gasPrice = Numerics.UnitConversion.ToDecimal(fees / _settings.Oracle.EthGasLimit, 9);
-
-                Console.WriteLine($"Eth TransferAsset()/ETH fees: Gas price: {gasPrice}, GAS limit: {_settings.Oracle.EthGasLimit}, calculated fee: {fees}"); // Remove later.
-
 
                 return EthUtils.RunSync(() => GetWeb3Client().Eth.GetEtherTransferService()
                         .TransferEtherAsync(toAddress, amount, gasPrice, _settings.Oracle.EthGasLimit));
@@ -198,8 +197,6 @@ namespace Phantasma.Spook.Chains
                     var bytes = Nexus.GetOracleReader().Read<byte[]>(DateTime.Now, Domain.DomainExtensions.GetOracleFeeURL("ethereum"));
                     var fees = Phantasma.Numerics.BigInteger.FromUnsignedArray(bytes, true);
                     swapIn.GasPrice = System.Numerics.BigInteger.Parse(fees.ToString()) / swapIn.Gas;
-
-                    Console.WriteLine($"Eth TransferAsset()/SwapIn fees: Gas price: {swapIn.GasPrice}, GAS limit: {swapIn.Gas}, calculated fee: {fees}"); // Remove later.
 
                     var result = EthUtils.RunSync(() => swapInHandler
                             .SendRequestAsync(contractAddress, swapIn));

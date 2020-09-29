@@ -26,7 +26,7 @@ using Phantasma.Network.P2P.Messages;
 using Phantasma.RocksDB;
 using Phantasma.Storage;
 using Phantasma.Spook.Oracles;
-using Phantasma.Spook.Swaps;
+using Phantasma.Spook.Interop;
 using Phantasma.Domain;
 using Logger = Phantasma.Core.Log.Logger;
 using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
@@ -39,6 +39,7 @@ using Phantasma.Spook.Chains;
 using System.Threading.Tasks;
 using EthAccount = Nethereum.Web3.Accounts.Account;
 using Nethereum.Hex.HexConvertors.Extensions;
+using Phantasma.Pay.Chains;
 
 namespace Phantasma.Spook
 {
@@ -413,6 +414,7 @@ namespace Phantasma.Spook
                 logger.Message("Running token swapping service...");
                 while (_running)
                 {
+                    logger.Message("Update TokenSwapper now");
                     //Thread.Sleep(5000);
                     //Thread.Sleep(8000);
                     Task.Delay(5000).Wait();
@@ -498,9 +500,11 @@ namespace Phantasma.Spook
             this._neoAPI.SetLogger((s) => logger.Message(s));
 
             var ethRpcList = _settings.Oracle.EthRpcNodes;
-            var interopKeys = InteropUtils.GenerateInteropKeys(_nodeKeys, Nexus.GetGenesisHash(Nexus.RootStorage), "ethereum");
-
-            this._ethAPI = new EthAPI(this.Nexus, this._settings, new EthAccount(interopKeys.PrivateKey.ToHex()));
+            
+            var ethWIF = _settings.GetInteropWif(Nexus, _nodeKeys, EthereumWallet.EthereumPlatform);
+            var ethKeys = PhantasmaKeys.FromWIF(ethWIF);
+            
+            this._ethAPI = new EthAPI(this.Nexus, this._settings, new EthAccount(ethKeys.PrivateKey.ToHex()));
             this._ethAPI.SetLogger((s) => logger.Message(s));
 
             this._neoScanAPI = new NeoScanAPI(neoScanURL, logger, nexus, _nodeKeys);
@@ -589,7 +593,6 @@ namespace Phantasma.Spook
 
         private PhantasmaKeys SetupNodeKeys()
         {
-            Console.WriteLine("NodeWif: " + _settings.Node.NodeWif);
             PhantasmaKeys nodeKeys = PhantasmaKeys.FromWIF(_settings.Node.NodeWif);;
             //TODO wallet module?
 
@@ -697,16 +700,16 @@ namespace Phantasma.Spook
             {
                 nexusApi.ProxyURL = apiProxyURL;
                 logger.Message($"API will be acting as proxy for {apiProxyURL}");
-
-                if (readOnlyMode)
-                {
-                    nexusApi.acceptTransactions = false;
-                    logger.Warning($"Node will be running in read-only mode.");
-                }
             }
             else
             {
                 nexusApi.Node = _node;
+            }
+
+            if (readOnlyMode)
+            {
+                nexusApi.acceptTransactions = false;
+                logger.Warning($"Node will be running in read-only mode.");
             }
 
             // RPC setup

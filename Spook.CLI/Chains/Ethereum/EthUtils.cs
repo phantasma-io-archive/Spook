@@ -28,7 +28,6 @@ namespace Phantasma.Spook.Chains
 
             if (String.IsNullOrEmpty(symbol))
             {
-                Console.WriteLine("assset not found: " + assetID);
                 return null;
             }
 

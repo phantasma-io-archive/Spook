@@ -1,5 +1,11 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System;
+using System.IO;
+using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
+
 using Phantasma.Numerics;
 using Phantasma.Cryptography;
 using Phantasma.Core.Log;
@@ -11,21 +17,16 @@ using Phantasma.VM.Utils;
 using Phantasma.Blockchain.Contracts;
 using Phantasma.Contracts.Native;
 using Phantasma.Core.Types;
-using System;
+
 using Phantasma.API;
 using Phantasma.Storage.Context;
 using Phantasma.Storage;
 using Phantasma.Storage.Utils;
-using Phantasma.Spook.Interop;
-using System.IO;
-using System.Reflection;
-using System.Threading;
 using Phantasma.Spook.Chains;
 using EthereumKey = Phantasma.Ethereum.EthereumKey;
 using Nethereum.RPC.Eth.DTOs;
-using System.Threading.Tasks;
 
-namespace Phantasma.Spook.Swaps
+namespace Phantasma.Spook.Interop
 {
     public enum SwapStatus
     {
@@ -178,24 +179,8 @@ namespace Phantasma.Spook.Swaps
 
         private void InitWIF(string platformName)
         {
-            var genesisHash = Nexus.GetGenesisHash(Nexus.RootStorage);
-            var interopKeys = InteropUtils.GenerateInteropKeys(SwapKeys, genesisHash, platformName);
-            var defaultWif = interopKeys.ToWIF();
-
-            var wif = _settings.Oracle.NeoWif;
-            var ethwif = _settings.Oracle.EthWif;
-
-            switch (platformName)
-            {
-                case "neo":
-                    wifs[platformName] = (wif == null) ? defaultWif : wif;
-                    break;
-                case "ethereum":
-                    wifs[platformName] = (ethwif == null) ? defaultWif : ethwif;
-                    break;
-                default:
-                    break;
-            }
+            var wif = _settings.GetInteropWif(this.Nexus, this.SwapKeys, platformName);
+            wifs[platformName] = wif;
         }
 
         internal IToken FindTokenByHash(string asset, string platform)
@@ -217,7 +202,8 @@ namespace Phantasma.Spook.Swaps
 
         internal string FindAddress(string platformName)
         {
-            return platforms.Where(x => x.Name == platformName).Select(x => x.InteropAddresses[0].ExternalAddress).FirstOrDefault();
+            //TODO use last address for now, needs to be fixed in the future
+            return platforms.Where(x => x.Name == platformName).Select(x => x.InteropAddresses[x.InteropAddresses.Length-1].ExternalAddress).FirstOrDefault();
         }
 
         private const string SettlementTag = ".settled";
@@ -275,6 +261,12 @@ namespace Phantasma.Spook.Swaps
                             OracleReader, Nexus.GetPlatformTokenHashes("ethereum", Nexus.RootStorage).Select(x => x.ToString().Substring(0, 40)).ToArray(), _settings.Oracle.EthConfirmations,
                             Nexus, logger);
                     SwapAddresses["ethereum"] = _finders["ethereum"].LocalAddress;
+
+                    logger.Message("Available swap addresses:");
+                    foreach (var x in SwapAddresses)
+                    {
+                        logger.Message("platform: " + x.Key + " address: " + x.Value);
+                    }
                 }
 
                 if (this.platforms.Length == 0)
@@ -332,7 +324,7 @@ namespace Phantasma.Spook.Swaps
                 foreach (var entry in taskList)
                 {
                     var task = entry.Value;
-                    if (task != null && !task.Status.Equals(TaskStatus.Running))
+                    if (task != null && task.Status.Equals(TaskStatus.Created))
                     {
                         task.Start();
                     }
@@ -388,7 +380,6 @@ namespace Phantasma.Spook.Swaps
             logger.Message("settleSwap called " + sourceHash);
             logger.Message("dest platform " + destPlatform);
             logger.Message("src platform " + sourcePlatform);
-
 
             var settleHash = GetSettleHash(sourcePlatform, sourceHash);
             logger.Message("settleHash in settleswap: " + settleHash);
@@ -539,6 +530,39 @@ namespace Phantasma.Spook.Swaps
             return dict.Values;
         }
 
+        private Hash VerifyNeoTx(Hash sourceHash, string txHash)
+        {
+            var counter = 0;
+            do {
+                Thread.Sleep(15 * 1000); // wait 15 seconds
+
+                if (txHash.StartsWith("0x"))
+                {
+                    txHash = txHash.Substring(2);
+                }
+                var temp = this.neoAPI.GetTransactionHeight(txHash);
+                logger.Message("neo tx included in block: " + temp);
+
+                int height;
+
+                if (int.TryParse(temp, out height) && height > 0)
+                {
+                    return Hash.Parse(txHash);
+                }
+                else
+                {
+                    counter++;
+                    if (counter > 5)
+                    {
+                        var settleMap = new StorageMap(InProgressTag, this.Storage);
+                        settleMap.Remove<Hash>(sourceHash);
+			            return Hash.Null;
+                    }
+                }
+
+            } while (true);
+        }
+
         private Hash VerifyEthTx(Hash sourceHash, string txHash)
         {
             TransactionReceipt txr = null;
@@ -577,14 +601,7 @@ namespace Phantasma.Spook.Swaps
                     tx = settleMap.Get<Hash, string>(sourceHash);
                     if (!string.IsNullOrEmpty(tx))
                     {
-                        txHash = VerifyEthTx(sourceHash, tx);
-
-                        if (txHash == null)
-                        {
-                            return Hash.Null;
-                        }
-
-                        return txHash;
+                        return VerifyEthTx(sourceHash, tx);
                     }
                 }
                 else
@@ -613,14 +630,7 @@ namespace Phantasma.Spook.Swaps
                     return Hash.Null;
                 }
 
-                txHash = VerifyEthTx(sourceHash, tx);
-
-                if (txHash == null)
-                {
-                    return Hash.Null;
-                }
-
-                return txHash;
+                return VerifyEthTx(sourceHash, tx);
             });
         }
 
@@ -628,6 +638,22 @@ namespace Phantasma.Spook.Swaps
         {
             return SettleSwapToExternal(NeoWallet.NeoPlatform, sourceHash, (sourceHash, destination, token, amount) =>
             {
+                Hash txHash = Hash.Null;
+                string txStr = null;
+                var settleMap = new StorageMap(InProgressTag, this.Storage);
+                if (settleMap.ContainsKey<Hash>(sourceHash))
+                {
+                    txStr = settleMap.Get<Hash, string>(sourceHash);
+                    if (!string.IsNullOrEmpty(txStr))
+                    {
+                        return VerifyNeoTx(sourceHash, txStr);
+                    }
+                }
+                else
+                {
+                    // SettleSwap called for the first time 
+                    settleMap.Set<Hash, string>(sourceHash, null);
+                }
                 var total = UnitConversion.ToDecimal(amount, token.Decimals);
 
                 var wif = wifs["neo"];
@@ -650,43 +676,19 @@ namespace Phantasma.Spook.Swaps
                     tx = nep5.Transfer(neoKeys, destAddress, total, nonce);
                 }
 
+                logger.Message("broadcasted neo tx: " + tx);
+
                 if (tx == null)
                 {
                     logger.Error("NeoAPI error: " + neoAPI.LastError);
+                    settleMap.Remove<Hash>(sourceHash);
                     return Hash.Null;
                 }
 
                 var strHash = tx.Hash.ToString();
 
-                int counter = 0;
+                return VerifyNeoTx(sourceHash, strHash);
 
-                do
-                {
-                    Thread.Sleep(15 * 1000); // wait 15 seconds
-
-                    if (strHash.StartsWith("0x"))
-                    {
-                        strHash = strHash.Substring(2);
-                    }
-                    var temp = this.neoAPI.GetTransactionHeight(strHash);
-
-                    int height;
-
-                    if (int.TryParse(temp, out height) && height > 0)
-                    {
-                        var txHash = Hash.Parse(strHash);
-                        return txHash;
-                    }
-                    else
-                    {
-                        counter++;
-                        if (counter > 5)
-                        {
-                            return Hash.Null;
-                        }
-                    }
-
-                } while (true);
             });
         }
 

@@ -7,6 +7,9 @@ using Microsoft.Extensions.Configuration;
 using Phantasma.Blockchain;
 using Phantasma.Core.Types;
 using Phantasma.Core.Utils;
+using Phantasma.Cryptography;
+using Phantasma.Numerics;
+using Phantasma.Simulator;
 
 namespace Phantasma.Spook
 {
@@ -37,9 +40,40 @@ namespace Phantasma.Spook
             this.App = new AppSettings(_settings, section.GetSection("App"));
             this.RPC = new RPCSettings(_settings, section.GetSection("RPC"));
         }
+
+        public string GetInteropWif(Nexus nexus, PhantasmaKeys nodeKeys, string platformName)
+        {
+            var genesisHash = nexus.GetGenesisHash(nexus.RootStorage);
+            var interopKeys = InteropUtils.GenerateInteropKeys(nodeKeys, genesisHash, platformName);
+            var defaultWif = interopKeys.ToWIF();
+
+            string customWIF = null;
+
+            switch (platformName)
+            {
+                case "neo":
+                    customWIF = this.Oracle.NeoWif;
+                    break;
+
+
+                case "ethereum":
+                    customWIF = this.Oracle.EthWif;
+                    break;
+            }
+
+            var result = !string.IsNullOrEmpty(customWIF) ? customWIF: defaultWif;
+
+            if (result != null && result.Length == 64)
+            {
+                var temp = new PhantasmaKeys(Base16.Decode(result));
+                result = temp.ToWIF();
+            }
+
+            return result;
+        }
     }
 
-    public class NodeSettings 
+    public class NodeSettings
     {
         public string ApiProxyUrl { get; }
         public string NexusName { get; }
@@ -90,7 +124,7 @@ namespace Phantasma.Spook
 
         public bool WebLogs { get; }
 
-        public NodeSettings (Arguments settings, IConfigurationSection section)
+        public NodeSettings(Arguments settings, IConfigurationSection section)
         {
             this.WebLogs = settings.GetBool("web.log", section.GetValue<bool>("web.logs"));
 
@@ -183,7 +217,7 @@ namespace Phantasma.Spook
 
             this.StorageBackend = settings.GetString("storage.backend", section.GetValue<string>("storage.backend"));
 
-            if(this.StorageConversion)
+            if (this.StorageConversion)
             {
                 this.RandomSwapData = section.GetValue<bool>("random.Swap.data");
             }
@@ -196,12 +230,12 @@ namespace Phantasma.Spook
         public string hash { get; set; }
     }
 
-    public class OracleSettings 
+    public class OracleSettings
     {
-        public string NeoscanUrl{ get; }
-        public List<string> NeoRpcNodes{ get; }
-        public List<string> EthRpcNodes{ get; }
-        public List<string> EthFeeURLs{ get; }
+        public string NeoscanUrl { get; }
+        public List<string> NeoRpcNodes { get; }
+        public List<string> EthRpcNodes { get; }
+        public List<string> EthFeeURLs { get; }
         public string CryptoCompareAPIKey { get; }
         public bool Swaps { get; }
         public string PhantasmaInteropHeight { get; } = "0";
@@ -250,21 +284,21 @@ namespace Phantasma.Spook
             this.NeoInteropHeight = settings.GetString("neo.interop.height", section.GetValue<string>("neo.interop.height"));
             this.EthInteropHeight = settings.GetString("eth.interop.height", section.GetValue<string>("eth.interop.height"));
             this.NeoWif = settings.GetString("neo.wif", section.GetValue<string>("neo.wif"));
-            if(string.IsNullOrEmpty(this.NeoWif))
+            if (string.IsNullOrEmpty(this.NeoWif))
             {
                 this.NeoWif = null;
             }
             this.EthWif = settings.GetString("eth.wif", section.GetValue<string>("eth.wif"));
-            if(string.IsNullOrEmpty(this.EthWif))
+            if (string.IsNullOrEmpty(this.EthWif))
             {
                 this.EthWif = null;
             }
         }
     }
 
-    public class PluginSettings 
+    public class PluginSettings
     {
-        public int PluginInterval{ get; }
+        public int PluginInterval { get; }
         // TODO idea, configure plugins in a list and find classes through reflection?
         public bool TPSPlugin { get; }
         public bool RAMPlugin { get; }
@@ -279,7 +313,7 @@ namespace Phantasma.Spook
         }
     }
 
-    public class SimulatorSettings 
+    public class SimulatorSettings
     {
         public bool Enabled { get; }
         public List<string> Dapps { get; }
@@ -296,7 +330,7 @@ namespace Phantasma.Spook
         }
     }
 
-    public class AppSettings 
+    public class AppSettings
     {
         public bool UseGui { get; }
         public bool UseShell { get; }

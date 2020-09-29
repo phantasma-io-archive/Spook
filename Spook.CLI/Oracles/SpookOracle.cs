@@ -46,24 +46,19 @@ namespace Phantasma.Spook.Oracles
             this.logger = logger;
 
             logger.Message("Platform count: " + platforms.Count);
-            platforms.Visit((key, _) =>
-    		{
-                logger.Message("Adding: " + key);
-                _keyValueStore.Add(key + StorageConst.Block, new KeyValueStore<string, InteropBlock>(
-                                                    CreateKeyStoreAdapter(key + StorageConst.Block)
-                                                )
-                                            );
 
-                _keyValueStore.Add(key + StorageConst.Transaction, new KeyValueStore<string, InteropTransaction>(
-                                                    CreateKeyStoreAdapter(key + StorageConst.Transaction)
-                                                )
-                                            );
+            var nexusPlatforms = (nexus as Nexus).GetPlatforms(nexus.RootStorage);
+            foreach (var nexusPlatform in nexusPlatforms)
+            {
+                if (!platforms.ContainsKey(nexusPlatform))
+                {
+                    platforms.Set(nexusPlatform, nexusPlatform);
+                }
 
-                _keyValueStore.Add(key + StorageConst.CurrentHeight, new KeyValueStore<string, string>(
-                                                    CreateKeyStoreAdapter(key + StorageConst.CurrentHeight)
-                                                )
-                                            );
-    		});
+                _keyValueStore.Add(nexusPlatform + StorageConst.Block, new KeyValueStore<string, InteropBlock>(CreateKeyStoreAdapter(nexusPlatform + StorageConst.Block)));
+                _keyValueStore.Add(nexusPlatform + StorageConst.Transaction, new KeyValueStore<string, InteropTransaction>(CreateKeyStoreAdapter(nexusPlatform + StorageConst.Transaction)));
+                _keyValueStore.Add(nexusPlatform + StorageConst.CurrentHeight, new KeyValueStore<string, string>(CreateKeyStoreAdapter(nexusPlatform + StorageConst.CurrentHeight)));
+            }
         }
 
         public void Update(INexus nexus, StorageContext storage)
@@ -182,7 +177,6 @@ namespace Phantasma.Spook.Oracles
                         {
                             var logMessage = $"PullFee({platform}): Cached fee pulled: {fee.Value}, GAS limit: {_cli.Settings.Oracle.EthGasLimit}, calculated fee: {fee.Value * _cli.Settings.Oracle.EthGasLimit}";
                             logger.Message(logMessage);
-                            Console.WriteLine(logMessage); // Remove later when fees are fixed.
 
                             return fee.Value * _cli.Settings.Oracle.EthGasLimit;
                         }
@@ -194,7 +188,6 @@ namespace Phantasma.Spook.Oracles
 
                     var logMessage2 = $"PullFee({platform}): New fee pulled: {fee.Value}, GAS limit: {_cli.Settings.Oracle.EthGasLimit}, calculated fee: {fee.Value * _cli.Settings.Oracle.EthGasLimit}";
                     logger.Message(logMessage2);
-                    Console.WriteLine(logMessage2); // Remove later when fees are fixed.
 
                     return fee.Value * _cli.Settings.Oracle.EthGasLimit;
 
@@ -308,10 +301,11 @@ namespace Phantasma.Spook.Oracles
 
         protected override InteropTransaction PullPlatformTransaction(string platformName, string chainName, Hash hash)
         {
-            logger.Message("pull tx: " + hash);
+            logger.Message($"{platformName} pull tx: {hash}");
             InteropTransaction tx = Read<InteropTransaction>(platformName, chainName, hash, StorageConst.Transaction);
             if (tx != null && tx.Hash != null)
             {
+                logger.Message($"Found tx {hash} in oracle storage");
                 return tx;
             }
 
