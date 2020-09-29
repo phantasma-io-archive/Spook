@@ -142,7 +142,7 @@ namespace Phantasma.Spook.Interop
 
                     while (blockIterator.currentBlock > _interopBlockHeight)
                     {
-                        logger.Message("==== current: " + blockIterator.currentBlock + " interop: " + _interopBlockHeight);
+                        logger.Message("==== current neo heights: " + blockIterator.currentBlock + " interop: " + _interopBlockHeight);
                         blockDifference = blockIterator.currentBlock - _interopBlockHeight;
                         batchCount = (blockDifference > 8) ? 8 : blockDifference;
 
@@ -355,10 +355,10 @@ namespace Phantasma.Spook.Interop
             var sourceAddress = NeoWallet.EncodeByteArray(sourceScriptHash);
             var interopSwapAddress = NeoWallet.EncodeAddress(swapAddress);
 
-            logger.Message("interop address: " + interopAddress);
-            logger.Message("xswapAddress: " + swapAddress);
-            logger.Message("interop sourceAddress: " + sourceAddress);
-            logger.Message("neo sourceAddress: " + NeoWallet.DecodeAddress(sourceAddress));
+            //logger.Message("interop address: " + interopAddress);
+            //logger.Message("xswapAddress: " + swapAddress);
+            //logger.Message("interop sourceAddress: " + sourceAddress);
+            //logger.Message("neo sourceAddress: " + NeoWallet.DecodeAddress(sourceAddress));
 
             if (tx.attributes != null && tx.attributes.Length > 0)
             {
@@ -384,16 +384,15 @@ namespace Phantasma.Spook.Interop
             {
                 foreach (var output in tx.outputs)
                 {
-                    logger.Message("have outputs");
                     var targetAddress = NeoWallet.EncodeByteArray(output.scriptHash.ToArray());
-                    logger.Message("interop targetAddress : " + targetAddress);
-                    logger.Message("neo targetAddress: " + NeoWallet.DecodeAddress(targetAddress));
-                    logger.Message("interopSwapAddress: " + interopSwapAddress);
-                    logger.Message("targetAddress: " + targetAddress);
+                    //logger.Message("interop targetAddress : " + targetAddress);
+                    //logger.Message("neo targetAddress: " + NeoWallet.DecodeAddress(targetAddress));
+                    //logger.Message("interopSwapAddress: " + interopSwapAddress);
+                    //logger.Message("targetAddress: " + targetAddress);
 
                     var swpAddress = NeoWallet.EncodeAddress(swapAddress);
-                    logger.Message("interop swpAddress: " + swpAddress);
-                    logger.Message("neo swpAddress: " + NeoWallet.DecodeAddress(swpAddress));
+                    //logger.Message("interop swpAddress: " + swpAddress);
+                    //logger.Message("neo swpAddress: " + NeoWallet.DecodeAddress(swpAddress));
                     //if (targetAddress.ToString() == swapAddress)
                     if (interopSwapAddress == targetAddress)
                     {
@@ -493,16 +492,15 @@ namespace Phantasma.Spook.Interop
                         if (pos ==2)
                         {
                             var targetScriptHash = new UInt160(entry.data);
-                            logger.Message("neo targetAddress: " + targetScriptHash.ToAddress());
+                            //logger.Message("neo targetAddress: " + targetScriptHash.ToAddress());
                             var targetAddress = NeoWallet.EncodeByteArray(entry.data);
-                            logger.Message("targetAddress : " + targetAddress);
-                            logger.Message("interopSwapAddress: " + interopSwapAddress);
-                            logger.Message("SwapAddress: " + swapAddress);
+                            //logger.Message("targetAddress : " + targetAddress);
+                            //logger.Message("interopSwapAddress: " + interopSwapAddress);
+                            //logger.Message("SwapAddress: " + swapAddress);
                             if (interopSwapAddress == targetAddress)
                             {
                                 // found a swap, call getapplicationlog now to get transaction details and verify the tx was actually processed.
                                 ApplicationLog[] appLogs = null;
-                                logger.Message("Found a swap, call GetApplicationLog now to get transaction details and verify the tx was actually processed.");
                                 try
                                 {
 
@@ -518,10 +516,10 @@ namespace Phantasma.Spook.Interop
                                 {
                                     for (var i = 0; i < appLogs.Length; i++)
                                     {
-                                        logger.Message("appLogs[i].contract" + appLogs[i].contract);
+                                        //logger.Message("appLogs[i].contract" + appLogs[i].contract);
                                         var token = FindSymbolFromAsset(appLogs[i].contract);
-                                        logger.Message("TOKEN::::::::::::::::::: " + token);
-                                        logger.Message("amount: " + appLogs[i].amount + " " + token);
+                                        //logger.Message("TOKEN::::::::::::::::::: " + token);
+                                        //logger.Message("amount: " + appLogs[i].amount + " " + token);
                                         var sadd = NeoWallet.EncodeByteArray(appLogs[i].sourceAddress.ToArray());
                                         var tadd = NeoWallet.EncodeByteArray(appLogs[i].targetAddress.ToArray());
 
