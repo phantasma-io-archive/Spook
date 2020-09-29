@@ -202,7 +202,8 @@ namespace Phantasma.Spook.Interop
 
         internal string FindAddress(string platformName)
         {
-            return platforms.Where(x => x.Name == platformName).Select(x => x.InteropAddresses[0].ExternalAddress).FirstOrDefault();
+            //TODO use last address for now, needs to be fixed in the future
+            return platforms.Where(x => x.Name == platformName).Select(x => x.InteropAddresses[x.InteropAddresses.Length-1].ExternalAddress).FirstOrDefault();
         }
 
         private const string SettlementTag = ".settled";
@@ -260,6 +261,12 @@ namespace Phantasma.Spook.Interop
                             OracleReader, Nexus.GetPlatformTokenHashes("ethereum", Nexus.RootStorage).Select(x => x.ToString().Substring(0, 40)).ToArray(), _settings.Oracle.EthConfirmations,
                             Nexus, logger);
                     SwapAddresses["ethereum"] = _finders["ethereum"].LocalAddress;
+
+                    logger.Message("Available swap addresses:");
+                    foreach (var x in SwapAddresses)
+                    {
+                        logger.Message("platform: " + x.Key + " address: " + x.Value);
+                    }
                 }
 
                 if (this.platforms.Length == 0)
