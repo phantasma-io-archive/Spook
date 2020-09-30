@@ -154,6 +154,8 @@ namespace Phantasma.Spook.Interop
 
         public TokenSwapper(SpookSettings settings, PhantasmaKeys swapKey, NexusAPI nexusAPI, NeoAPI neoAPI, EthAPI ethAPI, BigInteger minFee, Logger logger)
         {
+            this.logger.Message($"TokenSwapper() constructor called.");
+
             this._settings = settings;
             this.SwapKeys = swapKey;
             this.NexusAPI = nexusAPI;
@@ -237,6 +239,8 @@ namespace Phantasma.Spook.Interop
         {
             try
             {
+                this.logger.Message($"TokenSwapper Update() called. threads: {System.Diagnostics.Process.GetCurrentProcess().Threads.Count}");
+
                 if (this.platforms == null)
                 {
                     if (!Nexus.HasGenesis)
@@ -279,6 +283,7 @@ namespace Phantasma.Spook.Interop
                     {
                         foreach (var platform in this.platforms)
                         {
+                            this.logger.Message($"taskList.Add({platform.Name})");
                             taskList.Add(platform.Name, null);
                         }
                     }
@@ -287,6 +292,7 @@ namespace Phantasma.Spook.Interop
                 var pendingList = new StorageList(PendingTag, this.Storage);
                 int i = 0;
                 var count = pendingList.Count();
+                this.logger.Message($"TS: Update(): pendingList.Count: {count}");
                 while (i < count)
                 {
                     var settlement = pendingList.Get<PendingFee>(i);
@@ -312,6 +318,7 @@ namespace Phantasma.Spook.Interop
                         ChainWatcher finder;
                         if (_finders.TryGetValue(platform, out finder))
                         {
+                            this.logger.Message($"TS: Update(): creating pending swap task: {platform}");
                             taskList[platform] = new Task<IEnumerable<PendingSwap>>(() =>
                                                     {
                                                         return finder.Update();
@@ -321,11 +328,14 @@ namespace Phantasma.Spook.Interop
                 }
 
                 // start new tasks
+                var taskCounter = 0;
                 foreach (var entry in taskList)
                 {
                     var task = entry.Value;
                     if (task != null && task.Status.Equals(TaskStatus.Created))
                     {
+                        taskCounter++;
+                        this.logger.Message($"TS: Update(): starting new task {taskCounter} / {taskList.Count}");
                         task.Start();
                     }
                 }
@@ -347,6 +357,7 @@ namespace Phantasma.Spook.Interop
 
         public void ProcessCompletedTasks()
         {
+            this.logger.Message($"TS: ProcessCompletedTasks() started. taskList.Count: {taskList.Count}");
             for (var i = 0; i < taskList.Count; i++)
             {
                 var platform = taskList.Keys.ElementAt(i);
@@ -413,6 +424,7 @@ namespace Phantasma.Spook.Interop
 
         public Hash GetSettleHash(string sourcePlatform, Hash sourceHash)
         {
+            this.logger.Message($"TS: GetSettleHash() started");
             var settlements = new StorageMap(SettlementTag, this.Storage);
 
             if (settlements.ContainsKey<Hash>(sourceHash))
@@ -441,6 +453,7 @@ namespace Phantasma.Spook.Interop
 
         private Hash SettleTransaction(string sourcePlatform, string chain, Hash txHash)
         {
+            this.logger.Message($"TS: SettleTransaction() started, sourcePlatform: {sourcePlatform}, txHash: {txHash}");
             var script = new ScriptBuilder().
                 AllowGas(SwapKeys.Address, Address.Null, MinimumFee, 9999).
                 CallContract("interop", nameof(InteropContract.SettleTransaction), SwapKeys.Address, sourcePlatform, chain, txHash).
@@ -532,6 +545,7 @@ namespace Phantasma.Spook.Interop
 
         private Hash VerifyNeoTx(Hash sourceHash, string txHash)
         {
+            this.logger.Message($"TS: VerifyNeoTx() started, sourceHash: {sourceHash}, txHash: {txHash}");
             var counter = 0;
             do {
                 Thread.Sleep(15 * 1000); // wait 15 seconds
@@ -547,6 +561,7 @@ namespace Phantasma.Spook.Interop
 
                 if (int.TryParse(temp, out height) && height > 0)
                 {
+                    this.logger.Message($"TS: VerifyNeoTx() finished");
                     return Hash.Parse(txHash);
                 }
                 else
@@ -556,7 +571,8 @@ namespace Phantasma.Spook.Interop
                     {
                         var settleMap = new StorageMap(InProgressTag, this.Storage);
                         settleMap.Remove<Hash>(sourceHash);
-			            return Hash.Null;
+                        this.logger.Message($"TS: VerifyNeoTx() finished, null");
+                        return Hash.Null;
                     }
                 }
 
@@ -565,6 +581,7 @@ namespace Phantasma.Spook.Interop
 
         private Hash VerifyEthTx(Hash sourceHash, string txHash)
         {
+            this.logger.Message($"TS: VerifyEthTx() started, sourceHash: {sourceHash}, txHash: {txHash}");
             TransactionReceipt txr = null;
             try
             {
@@ -590,6 +607,7 @@ namespace Phantasma.Spook.Interop
 
         private Hash SettleSwapToEth(Hash sourceHash)
         {
+            this.logger.Message($"TS: SettleSwapToEth() started {sourceHash}");
             return SettleSwapToExternal(EthereumWallet.EthereumPlatform, sourceHash, (sourceHash, destination, token, amount) =>
             {
                 // check if tx was sent but not minded yet
@@ -636,6 +654,7 @@ namespace Phantasma.Spook.Interop
 
         private Hash SettleSwapToNeo(Hash sourceHash)
         {
+            this.logger.Message($"TS: SettleSwapToNeo() started {sourceHash}");
             return SettleSwapToExternal(NeoWallet.NeoPlatform, sourceHash, (sourceHash, destination, token, amount) =>
             {
                 Hash txHash = Hash.Null;
@@ -694,6 +713,7 @@ namespace Phantasma.Spook.Interop
 
         private Hash SettleSwapToExternal(string destinationPlatform, Hash sourceHash, Func<Hash, Address, IToken, BigInteger, Hash> generator)
         {
+            this.logger.Message($"TS: SettleSwapToExternal() started {sourceHash}");
 
             var swap = OracleReader.ReadTransaction(DomainSettings.PlatformName, DomainSettings.RootChainName, sourceHash);
             var transfers = swap.Transfers.Where(x => x.destinationAddress.IsInterop).ToArray();
@@ -728,6 +748,7 @@ namespace Phantasma.Spook.Interop
 
         private bool UpdatePendingSettle(StorageList list, int index)
         {
+            this.logger.Message($"TS: UpdatePendingSettle() started");
             var swap = list.Get<PendingFee>(index);
             var prevStatus = swap.status;
             switch (swap.status)
