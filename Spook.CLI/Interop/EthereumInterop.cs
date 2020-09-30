@@ -530,6 +530,7 @@ namespace Phantasma.Spook.Interop
                     if (doc.RootElement.TryGetProperty(feeObj.feeHeight, out var prop))
                     {
                         fee = decimal.Parse(prop.ToString().Replace(',', '.'), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture);
+                        fee += feeObj.feeIncrease;
                     }
                 }
             }

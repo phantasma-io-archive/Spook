@@ -234,6 +234,7 @@ namespace Phantasma.Spook
     {
         public string url { get; set; }
         public string feeHeight { get; set; }
+        public uint feeIncrease { get; set; }
     }
 
     public class OracleSettings
