@@ -49,9 +49,9 @@
             ],
 
             "eth.fee.urls": [
-                "https://gasprice.poa.network/",
-                "https://www.etherchain.org/api/gasPriceOracle",
-                "https://api.anyblock.tools/latest-minimum-gasprice"
+                {"url": "https://gasprice.poa.network/", "feeHeight": "instant" },
+                {"url": "https://www.etherchain.org/api/gasPriceOracle", "feeHeight": "fastest" },
+                {"url": "https://api.anyblock.tools/latest-minimum-gasprice", "feeHeight": "instant" }
             ],
 
             "eth.block.confirmations": 12,

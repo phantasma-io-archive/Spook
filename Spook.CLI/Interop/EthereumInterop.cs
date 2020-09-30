@@ -6,7 +6,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using Phantasma.Blockchain;
-using Phantasma.Spook.Interop;
 using Phantasma.Core.Log;
 using Phantasma.Spook.Chains;
 using Phantasma.Cryptography;
@@ -486,16 +485,16 @@ namespace Phantasma.Spook.Interop
 
         }
 
-        public static decimal GetNormalizedFee(string[] urls)
+        public static decimal GetNormalizedFee(FeeUrl[] fees)
         {
             var taskList = new List<Task<decimal>>();
 
-            foreach (var url in urls)
+            foreach (var fee in fees)
             {
                 taskList.Add(
                         new Task<decimal>(() => 
                         {
-                            return GetFee(url);
+                            return GetFee(fee);
                         })
                 );
             }
@@ -518,7 +517,7 @@ namespace Phantasma.Spook.Interop
             return median;
         }
 
-        public static decimal GetFee(string url)
+        public static decimal GetFee(FeeUrl feeObj)
         {
             decimal fee = 0;
 
@@ -526,9 +525,9 @@ namespace Phantasma.Spook.Interop
             {
                 using (WebClient wc = new WebClient())
                 {
-                    var json = wc.DownloadString(url);
+                    var json = wc.DownloadString(feeObj.url);
                     var doc = JsonDocument.Parse(json);
-                    if (doc.RootElement.TryGetProperty("standard", out var prop)) // TODO config?
+                    if (doc.RootElement.TryGetProperty(feeObj.feeHeight, out var prop))
                     {
                         fee = decimal.Parse(prop.ToString().Replace(',', '.'), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture);
                     }
