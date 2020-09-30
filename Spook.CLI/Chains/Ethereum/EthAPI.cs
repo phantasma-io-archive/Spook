@@ -134,7 +134,8 @@ namespace Phantasma.Spook.Chains
             {
                 receipt = EthUtils.RunSync(() => GetWeb3Client().Eth.Transactions.GetTransactionReceipt.SendRequestAsync(tx));
                 // wait 5s before checking again
-                Thread.Sleep(5000);
+                if(receipt == null)
+                    Thread.Sleep(5000);
             }
 
             return receipt;
