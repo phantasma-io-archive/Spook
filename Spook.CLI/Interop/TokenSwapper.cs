@@ -154,6 +154,8 @@ namespace Phantasma.Spook.Interop
 
         public TokenSwapper(SpookSettings settings, PhantasmaKeys swapKey, NexusAPI nexusAPI, NeoAPI neoAPI, EthAPI ethAPI, BigInteger minFee, Logger logger)
         {
+            this.logger = logger;
+            this.logger.Message($"TokenSwapper() constructor called.");
 
             this._settings = settings;
             this.SwapKeys = swapKey;
@@ -163,8 +165,6 @@ namespace Phantasma.Spook.Interop
             this.neoAPI = neoAPI;
             this.ethAPI = ethAPI;
             this._txIdentifier = "SPK" + Assembly.GetAssembly(typeof(CLI)).GetVersion();
-
-            this.logger = logger;
 
             this.Storage = new KeyStoreStorage(Nexus.CreateKeyStoreAdapter("swaps"));
 
