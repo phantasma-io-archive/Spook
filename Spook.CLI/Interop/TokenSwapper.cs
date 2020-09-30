@@ -603,11 +603,13 @@ namespace Phantasma.Spook.Interop
                     logger.Error($"Ethereum transaction {txHash} not mined yet.");
                     var tx = ethAPI.GetTransaction(txHash);
 
-                    if (tx == null)
+                    // This check doesn't work as expected, it triggers Remove() call
+                    // but tx-es are minted in the end
+                    /*if (tx == null)
                     {
                         logger.Error($"Ethereum transaction {txHash} does not exist anymore.");
                         settleMap.Remove<Hash>(sourceHash);
-                    }
+                    }*/
 
                     return Hash.Null;
                 }
