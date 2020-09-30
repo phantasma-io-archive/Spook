@@ -130,13 +130,7 @@ namespace Phantasma.Spook.Chains
                 tx = "0x"+tx.ToLower();
             }
 
-            while (receipt == null)
-            {
-                receipt = EthUtils.RunSync(() => GetWeb3Client().Eth.Transactions.GetTransactionReceipt.SendRequestAsync(tx));
-                // wait 5s before checking again
-                if(receipt == null)
-                    Thread.Sleep(5000);
-            }
+            receipt = EthUtils.RunSync(() => GetWeb3Client().Eth.Transactions.GetTransactionReceipt.SendRequestAsync(tx));
 
             return receipt;
         }
@@ -159,12 +153,6 @@ namespace Phantasma.Spook.Chains
 
             return logs;
 
-        }
-
-        public TransactionReceipt PollForReceipt(string txHash)
-        {
-            var txrService = (TransactionReceiptPollingService)GetWeb3Client().TransactionManager.TransactionReceiptService;
-            return EthUtils.RunSync(() => txrService.PollForReceiptAsync(txHash));
         }
 
         public string TransferAsset(string symbol, string toAddress, decimal amount, int decimals)
