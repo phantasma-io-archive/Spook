@@ -49,14 +49,14 @@
             ],
 
             "eth.fee.urls": [
-                "https://gasprice.poa.network/",
-                "https://www.etherchain.org/api/gasPriceOracle",
-                "https://api.anyblock.tools/latest-minimum-gasprice"
+                {"url": "https://gasprice.poa.network/", "feeHeight": "instant", "feeIncrease": 40 },
+                {"url": "https://www.etherchain.org/api/gasPriceOracle", "feeHeight": "fastest", "feeIncrease": 40 },
+                {"url": "https://api.anyblock.tools/latest-minimum-gasprice", "feeHeight": "instant", "feeIncrease": 40 }
             ],
 
             "eth.block.confirmations": 12,
             "eth.gas.limit": 100000,
-            "crypto.compare.key": "4e6ffe0dedfd49d2e182b706b72e736fa027844181d179dc5310f115deeb29be",
+            "crypto.compare.key": "################################################################",
             "swaps.enabled": true,
             "phantasma.interop.height": "0",
             "neo.interop.height": "4261049",

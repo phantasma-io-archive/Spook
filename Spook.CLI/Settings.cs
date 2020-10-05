@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using Microsoft.Extensions.Configuration;
 using Phantasma.Blockchain;
 using Phantasma.Core.Types;
 using Phantasma.Core.Utils;
 using Phantasma.Cryptography;
 using Phantasma.Numerics;
-using Phantasma.Simulator;
 
 namespace Phantasma.Spook
 {
@@ -230,12 +230,19 @@ namespace Phantasma.Spook
         public string hash { get; set; }
     }
 
+    public class FeeUrl
+    {
+        public string url { get; set; }
+        public string feeHeight { get; set; }
+        public uint feeIncrease { get; set; }
+    }
+
     public class OracleSettings
     {
         public string NeoscanUrl { get; }
         public List<string> NeoRpcNodes { get; }
         public List<string> EthRpcNodes { get; }
-        public List<string> EthFeeURLs { get; }
+        public List<FeeUrl> EthFeeURLs { get; }
         public string CryptoCompareAPIKey { get; }
         public bool Swaps { get; }
         public string PhantasmaInteropHeight { get; } = "0";
@@ -269,10 +276,7 @@ namespace Phantasma.Spook
                         .Select(p => p.Value)
                         .ToList();
 
-            this.EthFeeURLs = section.GetSection("eth.fee.urls").AsEnumerable()
-                        .Where(p => p.Value != null)
-                        .Select(p => p.Value)
-                        .ToList();
+            this.EthFeeURLs = section.GetSection("eth.fee.urls").Get<List<FeeUrl>>();
 
             var sectionEthContracts = section.GetSection("eth.contracts");
 
