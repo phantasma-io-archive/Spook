@@ -128,28 +128,29 @@ namespace Phantasma.Spook.Interop
 
         protected abstract string GetAvailableAddress(string wif);
         public abstract IEnumerable<PendingSwap> Update();
+        public abstract void ResyncBlock(System.Numerics.BigInteger blockId);
     }
 
     public class TokenSwapper : ITokenSwapper
     {
-        private readonly SpookSettings _settings;
         public readonly NexusAPI NexusAPI;
         public Nexus Nexus => NexusAPI.Nexus;
         public readonly Logger logger;
-        private StorageContext Storage;
+        public Dictionary<string, string> SwapAddresses = new Dictionary<string,string>();
+
         internal readonly PhantasmaKeys SwapKeys;
+
+        private readonly SpookSettings _settings;
+        private StorageContext Storage;
         private readonly BigInteger MinimumFee;
         private readonly NeoAPI neoAPI;
         private readonly EthAPI ethAPI;
         private OracleReader OracleReader;
         private readonly string _txIdentifier;
-        public Dictionary<string, string> SwapAddresses = new Dictionary<string,string>();
 
         private readonly Dictionary<string, BigInteger> interopBlocks;
         private PlatformInfo[] platforms;
-
         private Dictionary<string, string> wifs = new Dictionary<string, string>(); 
-
         private Dictionary<string, ChainWatcher> _finders = new Dictionary<string, ChainWatcher>();
 
         public TokenSwapper(SpookSettings settings, PhantasmaKeys swapKey, NexusAPI nexusAPI, NeoAPI neoAPI, EthAPI ethAPI, BigInteger minFee, Logger logger)
@@ -215,8 +216,6 @@ namespace Phantasma.Spook.Interop
 
         private Dictionary<Hash, PendingSwap> _pendingSwaps = new Dictionary<Hash, PendingSwap>();
         private Dictionary<Address, List<Hash>> _swapAddressMap = new Dictionary<Address, List<Hash>>();
-       // private Dictionary<Hash, Hash> _settlements = new Dictionary<Hash, Hash>();    
-        //private List<PendingSettle> _pendingSettles = new List<PendingSettle>();
         private Dictionary<string, Task<IEnumerable<PendingSwap>>> taskDict = new Dictionary<string, Task<IEnumerable<PendingSwap>>>();
 
         private void MapSwap(Address address, Hash hash)
@@ -234,6 +233,16 @@ namespace Phantasma.Spook.Interop
             }
 
             list.Add(hash);
+        }
+
+        public void ResyncBlockOnChain(string platform, string blockId)
+        {
+            if (_finders.TryGetValue(platform, out ChainWatcher finder) 
+                    && System.Numerics.BigInteger.TryParse(blockId, out var bigIntBlock))
+            {
+                this.logger.Message($"TS: Resync(): Resync: {platform}/{blockId}");
+                finder.ResyncBlock(bigIntBlock);
+            }
         }
 
         public void Update()

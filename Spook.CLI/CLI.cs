@@ -82,10 +82,9 @@ namespace Phantasma.Spook
         private NeoScanAPI _neoScanAPI;
         private CommandDispatcher _commandDispatcher;
         private TokenSwapper _tokenSwapper;
-
         private NexusSimulator _simulator;
-
         private string _cryptoCompareAPIKey = null;
+        private Thread tokenSwapperThread;
 
         public NexusAPI NexusAPI { get { return _nexusApi; } }
         public Nexus Nexus { get { return nexus; } }
@@ -402,29 +401,28 @@ namespace Phantasma.Spook
             this.Run();
         }
 
-        private TokenSwapper StartTokenSwapper()
+        public TokenSwapper StartTokenSwapper()
         {
             var minimumFee = _settings.Node.MinimumFee;
             var oracleSettings = _settings.Oracle;
             var tokenSwapper = new TokenSwapper(_settings, _nodeKeys, _nexusApi, _neoAPI, _ethAPI, minimumFee, logger);
             _nexusApi.TokenSwapper = tokenSwapper;
 
-            new Thread(() =>
+            tokenSwapperThread = new Thread(() =>
             {
                 logger.Message("Running token swapping service...");
                 while (_running)
                 {
                     logger.Message("Update TokenSwapper now");
-                    //Thread.Sleep(5000);
-                    //Thread.Sleep(8000);
                     Task.Delay(5000).Wait();
                     if (_nodeReady)
                     {
                         tokenSwapper.Update();
                     }
-
                 }
-            }).Start();
+            });
+
+            tokenSwapperThread.Start();
 
             return tokenSwapper;
         }

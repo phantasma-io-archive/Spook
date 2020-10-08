@@ -79,6 +79,15 @@ namespace Phantasma.Spook.Command
             }
         }
 
+        [ConsoleCommand("get value", Category = "Node", Description = "Show governance value")]
+        protected void OnGetValue(string[] args)
+        {
+            var name = args[0];
+            var value = _cli.Nexus.GetGovernanceValue(_cli.Nexus.RootStorage, name);
+
+            Console.WriteLine($"Value: {value}");
+        }
+
         [ConsoleCommand("set value", Category = "Node", Description = "Set governance value")]
         protected void OnSetValue(string[] args)
         {

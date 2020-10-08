@@ -30,6 +30,7 @@ namespace Phantasma.Spook.Interop
         private Nexus _nexus;
         private List<string> contracts;
         private uint confirmations;
+        private List<BigInteger> _resyncBlockIds = new List<BigInteger>();
         private static bool initialStart = true;
 
         public EthereumInterop(TokenSwapper swapper, EthAPI ethAPI, string wif, PBigInteger interopBlockHeight
@@ -98,6 +99,24 @@ namespace Phantasma.Spook.Interop
                     var blocksProcessedInOneBatch = 0;
                     while (blocksProcessedInOneBatch < 50)
                     {
+                        if (_resyncBlockIds.Any())
+                        {
+                            for (var i = 0; i < _resyncBlockIds.Count; i++)
+                            {
+                                var blockId = _resyncBlockIds.ElementAt(i);
+                                if (blockId > _interopBlockHeight)
+                                {
+                                    this.logger.Message($"NeoInterop: Update() resync block {blockId} higher than current interop height, can't resync.");
+                                    _resyncBlockIds.RemoveAt(i);
+                                    continue;
+                                }
+
+                                this.logger.Message($"NeoInterop: Update() resync block {blockId} now.");
+                                var block= GetInteropBlock(blockId);
+                                ProcessBlock(block, ref result);
+                            }
+                        }
+
                         blocksProcessedInOneBatch++;
 
                         var blockDifference = currentHeight - _interopBlockHeight;
@@ -187,6 +206,15 @@ namespace Phantasma.Spook.Interop
             return stopWatch.Elapsed;
         }
 
+
+        public override void ResyncBlock(BigInteger blockId)
+        {
+            lock(_resyncBlockIds)
+            {
+                _resyncBlockIds.Add(blockId);
+            }
+        }
+
         private List<Task<InteropBlock>> CreateTaskList(BigInteger batchCount, BigInteger currentHeight, BigInteger[] blockIds = null)
         {
             List<Task<InteropBlock>> taskList = new List<Task<InteropBlock>>();
@@ -274,6 +302,16 @@ namespace Phantasma.Spook.Interop
                 }
             }
         }
+
+        private InteropBlock GetInteropBlock(BigInteger blockId)
+        {
+            var url = DomainExtensions.GetOracleBlockURL(
+                EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform,
+                PBigInteger.FromUnsignedArray(blockId.ToByteArray(), true));
+
+            return oracleReader.Read<InteropBlock>(DateTime.Now, url);
+        }
+
 
         public static Tuple<InteropBlock, InteropTransaction[]> MakeInteropBlock(Logger logger, BlockWithTransactions block, EthAPI api
                 , string swapAddress)
