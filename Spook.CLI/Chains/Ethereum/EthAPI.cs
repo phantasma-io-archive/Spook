@@ -45,7 +45,6 @@ namespace Phantasma.Spook.Chains
 
     public class EthAPI
     {
-        private static Dictionary<string, string> _systemAssets = null;
         public string LastError { get; protected set; }
         private List<string> urls = new List<string>();
         private List<Web3> web3Clients = new List<Web3>();
