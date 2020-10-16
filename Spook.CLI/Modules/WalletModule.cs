@@ -12,7 +12,7 @@ using Phantasma.Pay;
 using Phantasma.Neo.Core;
 using Phantasma.Spook.Oracles;
 using Phantasma.Spook.Command;
-using Phantasma.Blockchain.Contracts;
+using Phantasma.Blockchain;
 using Phantasma.Domain;
 using System.IO;
 using System.Reflection;

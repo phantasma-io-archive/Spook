@@ -1,6 +1,5 @@
 ﻿using Phantasma.Blockchain.Tokens;
-using Phantasma.Contracts;
-using Phantasma.Contracts.Native;
+using Phantasma.Blockchain.Contracts;
 using Phantasma.Core.Utils;
 using Phantasma.Cryptography;
 using Phantasma.Domain;

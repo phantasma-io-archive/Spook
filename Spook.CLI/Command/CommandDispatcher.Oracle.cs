@@ -3,9 +3,9 @@ using Phantasma.Cryptography;
 using Phantasma.Pay.Chains;
 using Phantasma.Blockchain.Contracts;
 using Phantasma.VM.Utils;
-using Phantasma.Contracts.Native;
 using Phantasma.Core.Types;
 using System.Linq;
+using Phantasma.Blockchain;
 
 namespace Phantasma.Spook.Command
 {
