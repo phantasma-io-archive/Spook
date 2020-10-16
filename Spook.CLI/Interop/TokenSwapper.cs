@@ -15,7 +15,6 @@ using Phantasma.Domain;
 using Phantasma.Pay.Chains;
 using Phantasma.VM.Utils;
 using Phantasma.Blockchain.Contracts;
-using Phantasma.Contracts.Native;
 using Phantasma.Core.Types;
 
 using Phantasma.API;
