@@ -457,19 +457,16 @@ namespace Phantasma.Spook.Modules
             }
         }
 
-        public static void Stake(NexusAPI api, string[] args)
+        public static void Stake(NexusAPI api, BigInteger minFee, string[] args)
         {
-            if (args.Length != 2)
+            if (args.Length != 1)
             {
-                throw new CommandException("Expected args: target_address amount");
+                throw new CommandException("Expected args: amount");
             }
 
             DoChecks(api);
 
-            // TODO more arg validation
-            var dest = Address.FromText(args[0]);
-
-            var tempAmount = decimal.Parse(args[1]);
+            var tempAmount = decimal.Parse(args[0]);
             var tokenSymbol = DomainSettings.StakingTokenSymbol;
 
             TokenResult tokenInfo;
@@ -486,8 +483,8 @@ namespace Phantasma.Spook.Modules
             var amount = UnitConversion.ToBigInteger(tempAmount, tokenInfo.decimals);
 
             var script = ScriptUtils.BeginScript().
-                AllowGas(Keys.Address, Address.Null, 1, 9999).
-                CallContract("stake", "Stake", Keys.Address, dest, amount).
+                AllowGas(Keys.Address, Address.Null, minFee, 9999).
+                CallContract("stake", "Stake", Keys.Address, amount).
                 SpendGas(Keys.Address).
                 EndScript();
 
@@ -499,7 +496,7 @@ namespace Phantasma.Spook.Modules
 
                 if (events.Any(x => x.kind == EventKind.TokenStake.ToString()))
                 {
-                    logger.Message($"Staked succesfully {tempAmount} {tokenSymbol} at {dest.Text}");
+                    logger.Message($"Staked succesfully {tempAmount} {tokenSymbol} at {Keys.Address.Text}");
                 }
                 else
                 {
@@ -625,7 +622,7 @@ namespace Phantasma.Spook.Modules
             var sb = new ScriptBuilder();
 
             sb.AllowGas(Keys.Address, Address.Null, minFee, 9999);
-            sb.CallInterop("Runtime.DeployContract", Keys.Address, contractScript, abiBytes);
+            sb.CallInterop("Runtime.DeployContract", Keys.Address, contractName, contractScript, abiBytes);
             sb.SpendGas(Keys.Address);
             var script = sb.EndScript();
 

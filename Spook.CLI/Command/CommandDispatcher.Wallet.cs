@@ -24,7 +24,8 @@ namespace Phantasma.Spook.Command
         [ConsoleCommand("wallet stake", Category = "Wallet")]
         protected void OnWalletStakeCommand(string[] args)
         {
-            WalletModule.Stake(_cli.NexusAPI, args);
+            BigInteger minFee = new BigInteger(_cli.Settings.Node.MinimumFee);
+            WalletModule.Stake(_cli.NexusAPI, minFee, args);
         }
 
         [ConsoleCommand("wallet airdrop", Category = "Wallet")]
