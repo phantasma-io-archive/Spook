@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using Newtonsoft.Json.Linq;
 using Phantasma.Spook.Modules;
+using Phantasma.Core;
 
 namespace Phantasma.Spook.Command
 {
@@ -242,15 +243,27 @@ namespace Phantasma.Spook.Command
                                                     .Select(x => x.ToString())
                                                     .ToArray();
                                 _cli.ExecuteAPI(command.Method.Name, args);
-                                return true;
                             }
                             catch (Exception)
                             {
-                                Console.WriteLine("invalid command");
+                                _cli.Logger.Message("invalid api command");
                             }
+
                             return true;
                         }
-                        command.Method.Invoke(command.Instance, arguments);
+                        else
+                        {
+                            try
+                            {
+                                command.Method.Invoke(command.Instance, arguments);
+                            }
+                            catch (Exception e)
+                            {
+                                e = e.ExpandInnerExceptions();
+                                _cli.Logger.Message(e.Message);
+                            }
+                        }
+
                         return true;
                     }
                 default:

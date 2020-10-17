@@ -900,7 +900,7 @@ namespace Phantasma.Spook
                 return;
             }
 
-            logger.Shell(result);
+            logger.Message(result);
         }
     }
 }

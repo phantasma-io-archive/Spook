@@ -48,7 +48,7 @@ namespace Phantasma.Spook.Modules
             tx.Sign(source);
             var rawTx = tx.ToByteArray(true);
 
-            logger.Shell($"Uploading {fileName}...");
+            logger.Message($"Uploading {fileName}...");
             try
             {
                 api.SendRawTransaction(Base16.Encode(rawTx));
@@ -99,7 +99,7 @@ namespace Phantasma.Spook.Modules
                 api.WriteArchive(archiveHash, i, Base16.Encode(blockContent));
             }
 
-            logger.Shell($"File uploaded successfully!");
+            logger.Message($"File uploaded successfully!");
         }
     }
 }
