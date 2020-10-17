@@ -14,7 +14,7 @@ namespace Phantasma.Spook
         public override void Write(LogEntryKind kind, string msg)
         {
             // only output stuff that should be shown in the shell
-            if (kind == LogEntryKind.Shell)
+            if (kind == LogEntryKind.Message)
             {
                 try
                 {
