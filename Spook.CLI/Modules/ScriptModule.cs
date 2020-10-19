@@ -16,6 +16,8 @@ namespace Phantasma.Spook.Modules
     {
         public static Logger logger => ModuleLogger.Instance;
 
+        private static readonly string ScriptExtension = ".script";
+
         [ConsoleCommand("disassemble file", "script", "Disassemble file")]
         public static void DisassembleFile(string[] args)
         {
@@ -31,9 +33,9 @@ namespace Phantasma.Spook.Modules
             }
 
             var extension = Path.GetExtension(sourceFilePath);
-            if (extension != ScriptFormat.Extension)
+            if (extension != ScriptExtension)
             {
-                throw new CommandException($"Only {ScriptFormat.Extension} format supported!");
+                throw new CommandException($"Only {ScriptExtension} format supported!");
             }
 
             var outputName = sourceFilePath.Replace(extension, ".asm");
@@ -118,7 +120,7 @@ namespace Phantasma.Spook.Modules
             }
 
             var extension = Path.GetExtension(sourceFilePath);
-            var outputName = sourceFilePath.Replace(extension, ScriptFormat.Extension);
+            var outputName = sourceFilePath.Replace(extension, ScriptExtension);
 
             try
             {
@@ -162,7 +164,7 @@ namespace Phantasma.Spook.Modules
             var instructions = compiler.Execute(tree);
             var generator = new ByteCodeGenerator(tree, instructions);
 
-            var outputName = sourceFilePath.Replace(extension, ScriptFormat.Extension);
+            var outputName = sourceFilePath.Replace(extension, ScriptExtension);
 
             try
             {
