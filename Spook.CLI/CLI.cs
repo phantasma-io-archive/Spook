@@ -63,6 +63,7 @@ namespace Phantasma.Spook
     public class CLI
     {
         public static readonly string Identifier = "SPK" + Assembly.GetAssembly(typeof(CLI)).GetVersion();
+        public static readonly int Protocol = 3;
 
         private SpookSettings _settings;
         private Logger logger;
@@ -550,7 +551,7 @@ namespace Phantasma.Spook
 
                             var genesisTimestamp = _settings.Node.GenesisTimestamp;
 
-                            if (!nexus.CreateGenesisBlock(_nodeKeys, genesisTimestamp))
+                            if (!nexus.CreateGenesisBlock(_nodeKeys, genesisTimestamp, Spook.CLI.Protocol))
                             {
                                 throw new ChainException("Genesis block failure");
                             }
