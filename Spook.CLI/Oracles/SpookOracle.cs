@@ -198,19 +198,19 @@ namespace Phantasma.Spook.Oracles
 
         protected override decimal PullPrice(Timestamp time, string symbol)
         {
-            logger.Message($"PullPrice() started");
+            //logger.Message($"PullPrice() started");
             var apiKey = _cli.CryptoCompareAPIKey;
             if (!string.IsNullOrEmpty(apiKey))
             {
                 if (symbol == DomainSettings.FuelTokenSymbol)
                 {
                     var result = PullPrice(time, DomainSettings.StakingTokenSymbol);
-                    logger.Message($"PullPrice() finished");
+                    //logger.Message($"PullPrice() finished");
                     return result / 5;
                 }
 
                 var price = CryptoCompareUtils.GetCoinRate(symbol, DomainSettings.FiatTokenSymbol, apiKey);
-                logger.Message($"PullPrice() finished (2)");
+                //logger.Message($"PullPrice() finished (2)");
                 return price;
             }
 

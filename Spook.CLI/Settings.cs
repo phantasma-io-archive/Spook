@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Threading;
 using Microsoft.Extensions.Configuration;
 using Phantasma.Blockchain;
+using Phantasma.Core.Log;
 using Phantasma.Core.Types;
 using Phantasma.Core.Utils;
 using Phantasma.Cryptography;
@@ -207,7 +208,6 @@ namespace Phantasma.Spook
             {
                 this.DbStoragePath = defaultDbStoragePath;
             }
-            Console.WriteLine("dbstoragePath: " + DbStoragePath);
 
             this.OraclePath = settings.GetString("oracle.path", section.GetValue<string>("oracle.path"));
             if (string.IsNullOrEmpty(this.OraclePath))
