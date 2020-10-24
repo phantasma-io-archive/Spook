@@ -6,9 +6,11 @@ namespace Phantasma.Spook
 {
     public class ShellLogger : FileLogger
     {
+        private ConsoleLogger consoleLogger;
+
         public ShellLogger(string file) : base(file)
         {
-            
+            consoleLogger = new ConsoleLogger();
         }
 
         public override void Write(LogEntryKind kind, string msg)
@@ -24,10 +26,9 @@ namespace Phantasma.Spook
                     }
                 }
                 catch (Exception) {}
-
-                Console.WriteLine(msg);
             }
 
+            consoleLogger.Write(kind, msg);
             base.Write(kind, msg);
         }
     }
