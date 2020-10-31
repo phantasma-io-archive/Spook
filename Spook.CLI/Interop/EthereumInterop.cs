@@ -65,12 +65,10 @@ namespace Phantasma.Spook.Interop
         {
             // wait another 10s to execute eth interop
             //Task.Delay(10000).Wait();
-            this.logger.Message($"EthereumInterop: Update() started");
             try
             {
                 lock (String.Intern("PendingSetCurrentHeight_" + EthereumWallet.EthereumPlatform))
                 {
-                    this.logger.Message($"EthereumInterop: Update() after lock");
                     var result = new List<PendingSwap>();
 
                     // initial start, we have to verify all processed swaps
@@ -120,10 +118,8 @@ namespace Phantasma.Spook.Interop
                         blocksProcessedInOneBatch++;
 
                         var blockDifference = currentHeight - _interopBlockHeight;
-                        this.logger.Message($"EthereumInterop: Update() blockDifference: {blockDifference}");
                         if (blockDifference < confirmations)
                         {
-                            this.logger.Message($"EthereumInterop: Update() break");
                             // no need to query the node yet
                             break;
                         }
@@ -168,8 +164,6 @@ namespace Phantasma.Spook.Interop
                         var interopBlock = oracleReader.Read<InteropBlock>(DateTime.Now, url);
 
                         ProcessBlock(interopBlock, ref result);
-
-                        this.logger.Message($"EthereumInterop: Update() processed block: {_interopBlockHeight}");
 
                         _interopBlockHeight++;
                         //}
@@ -359,12 +353,10 @@ namespace Phantasma.Spook.Interop
             Dictionary<string, Dictionary<string, List<InteropTransfer>>> transfers = null;
             try
             {
-                logger.Message($"EthereumInterop: MakeInteropBlock() call EthBlockCrawler()");
                 var crawler = new EthBlockCrawler(logger, combinedAddresses.ToArray(), confirmations, api);
                 // fetch blocks
                 crawler.Fetch(height);
                 transfers = crawler.ExtractInteropTransfers(nexus, logger, swapAddress);
-                logger.Message($"EthereumInterop: MakeInteropBlock() EthBlockCrawler() transfers found count: {transfers.Count}");
             }
             catch (Exception e)
             {

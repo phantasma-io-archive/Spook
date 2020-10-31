@@ -75,10 +75,8 @@ namespace Phantasma.Spook.Interop
 
         public override IEnumerable<PendingSwap> Update()
         {
-            this.logger.Message($"NeoInterop: Update() started");
             lock (String.Intern("PendingSetCurrentHeight_" + "neo"))
             {
-                this.logger.Message($"NeoInterop: Update() after lock");
                 var result = new List<PendingSwap>();
 
                 var _interopBlockHeight = BigInteger.Parse(oracleReader.GetCurrentHeight("neo", "neo"));
@@ -179,15 +177,12 @@ namespace Phantasma.Spook.Interop
                         {
                             List<Task<InteropBlock>> taskList = CreateTaskList(batchCount);
 
-                            this.logger.Message($"NeoInterop: Update() batchCount: {batchCount}");
-
                             foreach (var task in taskList)
                             {
                                 task.Start();
                             }
 
                             Task.WaitAll(taskList.ToArray());
-                            this.logger.Message($"NeoInterop: Update() Task.WaitAll() finished");
 
                             foreach (var task in taskList)
                             {
@@ -195,23 +190,18 @@ namespace Phantasma.Spook.Interop
 
                                 ProcessBlock(block, result);
                             }
-                            this.logger.Message($"NeoInterop: Update() blocks processed");
 
                             oracleReader.SetCurrentHeight("neo", "neo", _interopBlockHeight.ToString());
                             _interopBlockHeight += batchCount;
                         }
                         else
                         {
-                            this.logger.Message($"NeoInterop: Update() getting block {_interopBlockHeight} from oracle");
-
                             var interopBlock = GetInteropBlock(_interopBlockHeight);
 
                             ProcessBlock(interopBlock, result);
 
                             oracleReader.SetCurrentHeight("neo", "neo", _interopBlockHeight.ToString());
                             _interopBlockHeight++;
-
-                            this.logger.Message($"NeoInterop: Update() block processed after getting block {_interopBlockHeight} from oracle");
                         }
                     }
                 }
