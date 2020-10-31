@@ -94,7 +94,7 @@ namespace Phantasma.Spook.Interop
 
                     var currentHeight = ethAPI.GetBlockHeight();
                     var _interopBlockHeight = BigInteger.Parse(oracleReader.GetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform));
-                    logger.Message($"current eth height: {currentHeight} interop eth height {_interopBlockHeight}");
+                    logger.Message($"Swaps: Current Eth chain height: {currentHeight}, interop: {_interopBlockHeight}, delta: {currentHeight - _interopBlockHeight}");
 
                     var blocksProcessedInOneBatch = 0;
                     while (blocksProcessedInOneBatch < 50)

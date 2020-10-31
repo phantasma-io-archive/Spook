@@ -171,7 +171,7 @@ namespace Phantasma.Spook.Interop
                             }
                         }
 
-                        logger.Message("==== current neo heights: " + blockIterator.currentBlock + " interop: " + _interopBlockHeight);
+                        logger.Message($"Swaps: Current Neo chain height: {blockIterator.currentBlock}, interop: {_interopBlockHeight}, delta: {blockIterator.currentBlock - _interopBlockHeight}");
                         blockDifference = blockIterator.currentBlock - _interopBlockHeight;
                         batchCount = (blockDifference > 8) ? 8 : blockDifference;
 
