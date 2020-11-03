@@ -208,6 +208,9 @@ namespace Phantasma.Spook.Interop
         private const string SettlementTag = ".settled";
         private const string PendingTag = ".pending";
         private const string InProgressTag = ".inprogress";
+        // This lock added to protect from reading wrong state (settled, pending, inprogress)
+        // while it's being modified by concurrent thread.
+        private static object StateModificationLock = new object();
 
         private Dictionary<Hash, PendingSwap> _pendingSwaps = new Dictionary<Hash, PendingSwap>();
         private Dictionary<Address, List<Hash>> _swapAddressMap = new Dictionary<Address, List<Hash>>();
@@ -300,7 +303,10 @@ namespace Phantasma.Spook.Interop
                     var settlement = pendingList.Get<PendingFee>(i);
                     if (UpdatePendingSettle(pendingList, i))
                     {
-                        pendingList.RemoveAt<PendingFee>(i);
+                        lock (StateModificationLock)
+                        {
+                            pendingList.RemoveAt<PendingFee>(i);
+                        }
                         count--;
                     }
                     else
@@ -398,12 +404,19 @@ namespace Phantasma.Spook.Interop
             logger.Message("dest platform " + destPlatform);
             logger.Message("src platform " + sourcePlatform);
 
-            var settleHash = GetSettleHash(sourcePlatform, sourceHash);
-            logger.Message("settleHash in settleswap: " + settleHash);
-
-            if (settleHash != Hash.Null)
+            // This code is preventing us from doing double swaps.
+            // We must ensure that states (settled, pending, inprogress) are locked
+            // during this check and can't be changed by concurrent thread,
+            // making this check inconsistent.
+            lock (StateModificationLock)
             {
-                return settleHash;
+                var settleHash = GetSettleHash(sourcePlatform, sourceHash);
+                logger.Message("settleHash in settleswap: " + settleHash);
+
+                if (settleHash != Hash.Null)
+                {
+                    return settleHash;
+                }
             }
 
             if (destPlatform == PhantasmaWallet.PhantasmaPlatform)
@@ -451,6 +464,8 @@ namespace Phantasma.Spook.Interop
             var hash = (Hash)Nexus.RootChain.InvokeContract(Nexus.RootStorage, "interop", nameof(InteropContract.GetSettlement), sourcePlatform, sourceHash).ToObject();
             if (hash != Hash.Null && !settlements.ContainsKey<Hash>(sourceHash))
             {
+                // This modification should be locked when GetSettleHash() is called from SettleSwap(),
+                // so we lock it in SettleSwap().
                 settlements.Set<Hash, Hash>(sourceHash, hash);
             }
             return hash;
@@ -571,8 +586,11 @@ namespace Phantasma.Spook.Interop
                     counter++;
                     if (counter > 5)
                     {
-                        var settleMap = new StorageMap(InProgressTag, this.Storage);
-                        settleMap.Remove<Hash>(sourceHash);
+                        lock (StateModificationLock)
+                        {
+                            var settleMap = new StorageMap(InProgressTag, this.Storage);
+                            settleMap.Remove<Hash>(sourceHash);
+                        }
                         return Hash.Null;
                     }
                 }
@@ -583,7 +601,6 @@ namespace Phantasma.Spook.Interop
         private Hash VerifyEthTx(Hash sourceHash, string txHash)
         {
             TransactionReceipt txr = null;
-            var settleMap = new StorageMap(InProgressTag, this.Storage);
             try
             {
                 txr = ethAPI.GetTransactionReceipt(txHash);
@@ -613,7 +630,11 @@ namespace Phantasma.Spook.Interop
             if (txr.Status.Value == 0) // Status == 0 = error
             {
                 // remove from settleMap because tx has failed.
-                settleMap.Remove<Hash>(sourceHash);
+                lock (StateModificationLock)
+                {
+                    var settleMap = new StorageMap(InProgressTag, this.Storage);
+                    settleMap.Remove<Hash>(sourceHash);
+                }
                 logger.Error($"EthAPI error, tx {txr.TransactionHash} ");
                 return Hash.Null;
             }
@@ -628,19 +649,29 @@ namespace Phantasma.Spook.Interop
                 // check if tx was sent but not minded yet
                 Hash txHash = Hash.Null;
                 string tx = null;
+                
                 var settleMap = new StorageMap(InProgressTag, this.Storage);
-                if (settleMap.ContainsKey<Hash>(sourceHash))
+
+                // We should lock next block of code,
+                // because if there's no lock, there is a theoretical possibility
+                // of asset transfering code below being called multiple times if
+                // SettleSwapToExternal() called multiple times nearly simultaneously.
+                lock (StateModificationLock)
                 {
-                    tx = settleMap.Get<Hash, string>(sourceHash);
-                    if (!string.IsNullOrEmpty(tx))
+                    if (settleMap.ContainsKey<Hash>(sourceHash))
                     {
-                        return VerifyEthTx(sourceHash, tx);
+                        tx = settleMap.Get<Hash, string>(sourceHash);
+                    }
+                    else
+                    {
+                        // SettleSwap called for the first time 
+                        settleMap.Set<Hash, string>(sourceHash, null);
                     }
                 }
-                else
+
+                if (!string.IsNullOrEmpty(tx))
                 {
-                    // SettleSwap called for the first time 
-                    settleMap.Set<Hash, string>(sourceHash, null);
+                    return VerifyEthTx(sourceHash, tx);
                 }
 
                 var total = UnitConversion.ToDecimal(amount, token.Decimals);
@@ -654,12 +685,18 @@ namespace Phantasma.Spook.Interop
                 {
                     logger.Message($"ETHSWAP: Trying transfer of {total} {token.Symbol} from {ethKeys.Address} to {destAddress}");
                     tx = ethAPI.TransferAsset(token.Symbol, destAddress, total, token.Decimals);
-                    settleMap.Set<Hash, string>(sourceHash, tx);
+                    lock (StateModificationLock)
+                    {
+                        settleMap.Set<Hash, string>(sourceHash, tx);
+                    }
                 }
                 catch (Exception e)
                 {
                     logger.Error($"Exception during transfer: {e}");
-                    settleMap.Remove<Hash>(sourceHash);
+                    lock (StateModificationLock)
+                    {
+                        settleMap.Remove<Hash>(sourceHash);
+                    }
                     return Hash.Null;
                 }
 
@@ -673,20 +710,31 @@ namespace Phantasma.Spook.Interop
             {
                 Hash txHash = Hash.Null;
                 string txStr = null;
+                
                 var settleMap = new StorageMap(InProgressTag, this.Storage);
-                if (settleMap.ContainsKey<Hash>(sourceHash))
+
+                // We should lock next block of code,
+                // because if there's no lock, there is a theoretical possibility
+                // of asset transfering code below being called multiple times if
+                // SettleSwapToExternal() called multiple times nearly simultaneously.
+                lock (StateModificationLock)
                 {
-                    txStr = settleMap.Get<Hash, string>(sourceHash);
-                    if (!string.IsNullOrEmpty(txStr))
+                    if (settleMap.ContainsKey<Hash>(sourceHash))
                     {
-                        return VerifyNeoTx(sourceHash, txStr);
+                        txStr = settleMap.Get<Hash, string>(sourceHash);
+                    }
+                    else
+                    {
+                        // SettleSwap called for the first time 
+                        settleMap.Set<Hash, string>(sourceHash, null);
                     }
                 }
-                else
+
+                if (!string.IsNullOrEmpty(txStr))
                 {
-                    // SettleSwap called for the first time 
-                    settleMap.Set<Hash, string>(sourceHash, null);
+                    return VerifyNeoTx(sourceHash, txStr);
                 }
+
                 var total = UnitConversion.ToDecimal(amount, token.Decimals);
 
                 var wif = wifs["neo"];
@@ -714,7 +762,10 @@ namespace Phantasma.Spook.Interop
                 if (tx == null)
                 {
                     logger.Error("NeoAPI error: " + neoAPI.LastError);
-                    settleMap.Remove<Hash>(sourceHash);
+                    lock (StateModificationLock)
+                    {
+                        settleMap.Remove<Hash>(sourceHash);
+                    }
                     return Hash.Null;
                 }
 
@@ -746,13 +797,16 @@ namespace Phantasma.Spook.Interop
             // if the asset transfer was sucessfull, we prepare a fee settlement on the mainnet
             if (destHash != Hash.Null)
             {
-                var pendingList = new StorageList(PendingTag, this.Storage);
-                var settle = new PendingFee() { sourceHash = sourceHash, destinationHash = destHash, settleHash = Hash.Null, time = DateTime.UtcNow, status = SwapStatus.Settle };
-                pendingList.Add<PendingFee>(settle);
-            
-                // We have a pending fee settle now, so we don't care about the settleMap entry anymore.
-                var settleMap = new StorageMap(InProgressTag, this.Storage);
-                settleMap.Remove<Hash>(sourceHash);
+                lock (StateModificationLock)
+                {
+                    var pendingList = new StorageList(PendingTag, this.Storage);
+                    var settle = new PendingFee() { sourceHash = sourceHash, destinationHash = destHash, settleHash = Hash.Null, time = DateTime.UtcNow, status = SwapStatus.Settle };
+                    pendingList.Add<PendingFee>(settle);
+
+                    // We have a pending fee settle now, so we don't care about the settleMap entry anymore.
+                    var settleMap = new StorageMap(InProgressTag, this.Storage);
+                    settleMap.Remove<Hash>(sourceHash);
+                }
             }
 
             return destHash;
@@ -805,8 +859,11 @@ namespace Phantasma.Spook.Interop
 
             if (swap.status == SwapStatus.Finished)
             {
-                var settlements = new StorageMap(SettlementTag, this.Storage);
-                settlements.Set<Hash, Hash>(swap.sourceHash, swap.destinationHash);
+                lock (StateModificationLock)
+                {
+                    var settlements = new StorageMap(SettlementTag, this.Storage);
+                    settlements.Set<Hash, Hash>(swap.sourceHash, swap.destinationHash);
+                }
                 return true;
             }
 
