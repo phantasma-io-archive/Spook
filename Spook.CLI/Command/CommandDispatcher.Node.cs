@@ -44,7 +44,7 @@ namespace Phantasma.Spook.Command
             Console.WriteLine("Node bounced");
         }
 
-        [ConsoleCommand("show keys", Category = "Node", Description = "Bounce a node to reload configuration")]
+        [ConsoleCommand("show keys", Category = "Node", Description = "Show public address and private key for given platform")]
         protected void onShowInteropKeys(string[] args)
         {
             var wif = args[0];
