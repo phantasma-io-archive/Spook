@@ -680,8 +680,11 @@ namespace Phantasma.Spook.Modules
             var hash = ExecuteTransaction(api, script, isToken ? ProofOfWork.Minimal : ProofOfWork.None, Keys);
             if (hash != Hash.Null)
             {
+                var expectedEvent = isToken ? EventKind.TokenCreate : EventKind.ContractDeploy;
+                var expectedEventStr = expectedEvent.ToString();
+
                 var events = GetTransactionEvents(hash);
-                if (events.Any(x => x.kind == EventKind.ContractDeploy.ToString()))
+                if (events.Any(x => x.kind == expectedEventStr))
                 {
                     var contractAddress = SmartContract.GetAddressForName(contractName);
                     logger.Message($"Deployed {contractName} at {contractAddress}");
