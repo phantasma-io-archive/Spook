@@ -17,6 +17,7 @@ using Phantasma.Domain;
 using System.IO;
 using System.Reflection;
 using System.Linq;
+using Phantasma.VM;
 
 namespace Phantasma.Spook.Modules
 {
@@ -585,6 +586,25 @@ namespace Phantasma.Spook.Modules
             }
         }
 
+        private static VMObject ExecuteScript(byte[] script, ContractInterface abi, string methodName)
+        {
+            var method = abi.FindMethod(methodName);
+
+            if (method == null)
+            {
+                throw new Exception("ABI is missing: " + method.name);
+            }
+
+            var vm = new GasMachine(script, (uint) method.offset);
+            var result = vm.Execute();
+            if (result == ExecutionState.Halt)
+            {
+                return vm.Stack.Pop();
+            }
+
+            throw new Exception("Script execution failed for: " + method.name);
+        }
+
         public static void Deploy(string[] args, NexusAPI api, BigInteger minFee)
         {
             if (args.Length != 1)
@@ -619,10 +639,41 @@ namespace Phantasma.Spook.Modules
             var contractScript = File.ReadAllBytes(fileName);
             var abiBytes = File.ReadAllBytes(abiFile);
 
+            var abi = ContractInterface.FromBytes(abiBytes);
+
             var sb = new ScriptBuilder();
 
+            bool isToken = abi.HasMethod("name") && abi.HasMethod("symbol");
+
             sb.AllowGas(Keys.Address, Address.Null, minFee, 9999);
-            sb.CallInterop("Runtime.DeployContract", Keys.Address, contractName, contractScript, abiBytes);
+
+            if (isToken)
+            {
+                var symbol = ExecuteScript(contractScript, abi, "symbol").AsString();
+                var name = ExecuteScript(contractScript, abi, "name").AsString();
+
+                BigInteger maxSupply = abi.HasMethod("maxSupply") ? ExecuteScript(contractScript, abi, "maxSupply").AsNumber() : 0;
+                BigInteger decimals = abi.HasMethod("decimals") ? ExecuteScript(contractScript, abi, "decimals").AsNumber() : 0;
+
+                TokenFlags flags = TokenFlags.None;
+
+                var availableFlags = Enum.GetValues(typeof(TokenFlags)).Cast<TokenFlags>().ToArray();
+                foreach (var flag in availableFlags)
+                {
+                    var propName = "is" + flag;
+                    if (abi.HasMethod(propName) && ExecuteScript(contractScript, abi, propName).AsBool())
+                    {
+                        flags |= flag;
+                    }
+                }
+
+                sb.CallInterop("Nexus.CreateToken", Keys.Address, symbol, name, maxSupply, decimals, flags, contractScript);
+            }
+            else
+            {
+                sb.CallInterop("Runtime.DeployContract", Keys.Address, contractName, contractScript, abiBytes);
+            }
+
             sb.SpendGas(Keys.Address);
             var script = sb.EndScript();
 
