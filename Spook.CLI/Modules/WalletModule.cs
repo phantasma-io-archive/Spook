@@ -677,7 +677,7 @@ namespace Phantasma.Spook.Modules
             sb.SpendGas(Keys.Address);
             var script = sb.EndScript();
 
-            var hash = ExecuteTransaction(api, script, ProofOfWork.None, Keys);
+            var hash = ExecuteTransaction(api, script, isToken ? ProofOfWork.Minimal : ProofOfWork.None, Keys);
             if (hash != Hash.Null)
             {
                 var events = GetTransactionEvents(hash);
