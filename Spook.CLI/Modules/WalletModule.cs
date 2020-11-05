@@ -667,7 +667,7 @@ namespace Phantasma.Spook.Modules
                     }
                 }
 
-                sb.CallInterop("Nexus.CreateToken", Keys.Address, symbol, name, maxSupply, decimals, flags, contractScript);
+                sb.CallInterop("Nexus.CreateToken", Keys.Address, symbol, name, maxSupply, decimals, flags, contractScript, abiBytes);
             }
             else
             {
