@@ -338,6 +338,12 @@ namespace Phantasma.Spook.Oracles
         {
             throw new OracleException("unknown oracle url");
         }
+
+        protected override InteropNFT PullPlatformNFT(string platformName, string symbol, BigInteger tokenID)
+        {
+            // TODO NFT support
+            throw new NotImplementedException();
+        }
     }
 
     struct CachedFee
