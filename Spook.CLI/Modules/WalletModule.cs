@@ -643,13 +643,18 @@ namespace Phantasma.Spook.Modules
 
             var sb = new ScriptBuilder();
 
-            bool isToken = abi.HasMethod("name") && abi.HasMethod("symbol");
+            bool isToken = ValidationUtils.IsValidTicker(contractName);
 
             sb.AllowGas(Keys.Address, Address.Null, minFee, 9999);
 
             if (isToken)
             {
-                var symbol = ExecuteScript(contractScript, abi, "symbol").AsString();
+                if (!abi.HasMethod("name"))
+                {
+                    throw new CommandException("token contract is missing required 'name' property");
+                }
+                    
+                var symbol = contractName;
                 var name = ExecuteScript(contractScript, abi, "name").AsString();
 
                 BigInteger maxSupply = abi.HasMethod("maxSupply") ? ExecuteScript(contractScript, abi, "maxSupply").AsNumber() : 0;
