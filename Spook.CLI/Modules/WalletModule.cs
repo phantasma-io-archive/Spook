@@ -616,7 +616,7 @@ namespace Phantasma.Spook.Modules
 
             var fileName = args[0];
 
-            var extension = ".script";
+            var extension = ".pvm";
 
             if (!fileName.EndsWith(extension))
             {
