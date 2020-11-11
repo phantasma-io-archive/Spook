@@ -617,16 +617,16 @@ namespace Phantasma.Spook.Modules
 
             var fileName = args[0];
 
+            if (!File.Exists(fileName))
+            {
+                throw new CommandException("Provided file does not exist");
+            }
+
             var extension = ScriptModule.ScriptExtension;
 
             if (!fileName.EndsWith(extension))
             {
-                throw new CommandException("Provided file not a compiled script");
-            }
-
-            if (!File.Exists(fileName))
-            {
-                throw new CommandException("Provided file does not exist");
+                throw new CommandException($"Provided file is not a compiled {extension} script");
             }
 
             var abiFile = fileName.Replace(extension, ".abi");
@@ -655,13 +655,17 @@ namespace Phantasma.Spook.Modules
             else
             if (isToken)
             {
-                if (!abi.HasMethod("name"))
+                if (!abi.HasMethod("getName"))
                 {
                     throw new CommandException("token contract is missing required 'name' property");
                 }
 
                 var symbol = contractName;
                 var name = ExecuteScript(contractScript, abi, "getName").AsString();
+
+                if (string.IsNullOrEmpty(name)) {
+                    throw new CommandException("token contract 'name' property is returning an empty value");
+                }
 
                 BigInteger maxSupply = abi.HasMethod("getMaxSupply") ? ExecuteScript(contractScript, abi, "getMaxSupply").AsNumber() : 0;
                 BigInteger decimals = abi.HasMethod("getDecimals") ? ExecuteScript(contractScript, abi, "getDecimals").AsNumber() : 0;
