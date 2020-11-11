@@ -18,6 +18,7 @@ using System.IO;
 using System.Reflection;
 using System.Linq;
 using Phantasma.VM;
+using Phantasma.Blockchain.Contracts;
 
 namespace Phantasma.Spook.Modules
 {
@@ -605,7 +606,7 @@ namespace Phantasma.Spook.Modules
             throw new Exception("Script execution failed for: " + method.name);
         }
 
-        public static void Deploy(string[] args, NexusAPI api, BigInteger minFee)
+        private static void DeployOrUpgrade(string[] args, NexusAPI api, BigInteger minFee, bool isUpgrade)
         {
             if (args.Length != 1)
             {
@@ -647,13 +648,18 @@ namespace Phantasma.Spook.Modules
 
             sb.AllowGas(Keys.Address, Address.Null, minFee, 9999);
 
+            if (isUpgrade)
+            {
+                sb.CallInterop("Runtime.UpgradeContract", Keys.Address, contractName, contractScript, abiBytes);
+            }
+            else
             if (isToken)
             {
                 if (!abi.HasMethod("name"))
                 {
                     throw new CommandException("token contract is missing required 'name' property");
                 }
-                    
+
                 var symbol = contractName;
                 var name = ExecuteScript(contractScript, abi, "name").AsString();
 
@@ -684,23 +690,49 @@ namespace Phantasma.Spook.Modules
             sb.SpendGas(Keys.Address);
             var script = sb.EndScript();
 
+            if (!isUpgrade)
+            {
+                var upgradeTrigger = AccountContract.GetTriggerForABI(AccountTrigger.OnUpgrade);
+                if (abi.Implements(upgradeTrigger))
+                {
+                    logger.Message($"{contractName} implements proper triggers, and can be upgraded later.");
+                }
+                else
+                {
+                    logger.Warning($"{contractName} does not implements proper triggers, can't be upgraded later.");
+                }
+            }
+
             var hash = ExecuteTransaction(api, script, isToken ? ProofOfWork.Minimal : ProofOfWork.None, Keys);
             if (hash != Hash.Null)
             {
-                var expectedEvent = isToken ? EventKind.TokenCreate : EventKind.ContractDeploy;
+                var expectedEvent = isUpgrade ? EventKind.ContractUpgrade : (isToken ? EventKind.TokenCreate : EventKind.ContractDeploy);
                 var expectedEventStr = expectedEvent.ToString();
 
                 var events = GetTransactionEvents(hash);
                 if (events.Any(x => x.kind == expectedEventStr))
                 {
                     var contractAddress = SmartContract.GetAddressForName(contractName);
-                    logger.Message($"Deployed {contractName} at {contractAddress}");
+
+                    string action = isUpgrade ? "Upgraded" : "Deployed";
+
+                    logger.Message($"{action} {contractName} at {contractAddress}");
                 }
                 else
                 {
                     throw new CommandException("Transaction was confirmed but deployment event is missing!");
                 }
             }
+        }
+
+        public static void Deploy(string[] args, NexusAPI api, BigInteger minFee)
+        {
+            DeployOrUpgrade(args, api, minFee, false);
+        }
+
+        public static void Upgrade(string[] args, NexusAPI api, BigInteger minFee)
+        {
+            DeployOrUpgrade(args, api, minFee, true);
         }
     }
 }

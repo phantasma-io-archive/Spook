@@ -54,6 +54,13 @@ namespace Phantasma.Spook.Command
             WalletModule.Deploy(args, _cli.NexusAPI, minFee);
         }
 
+        [ConsoleCommand("wallet upgrade", Category = "Wallet", Description = "Upgrade a contract using a wallet")]
+        protected void OnWalletUpgradeCommand(string[] args)
+        {
+            BigInteger minFee = new BigInteger(_cli.Settings.Node.MinimumFee);
+            WalletModule.Upgrade(args, _cli.NexusAPI, minFee);
+        }
+
         [ConsoleCommand("wallet migrate", Category = "Wallet", Description = "Migrate a validator wallet")]
         protected void OnWalletRelayCommand(string[] args)
         {
