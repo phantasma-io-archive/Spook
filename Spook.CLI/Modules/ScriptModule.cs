@@ -16,7 +16,7 @@ namespace Phantasma.Spook.Modules
     {
         public static Logger logger => ModuleLogger.Instance;
 
-        private static readonly string ScriptExtension = ".pvm";
+        public static readonly string ScriptExtension = ".pvm";
 
         [ConsoleCommand("disassemble file", "script", "Disassemble file")]
         public static void DisassembleFile(string[] args)
