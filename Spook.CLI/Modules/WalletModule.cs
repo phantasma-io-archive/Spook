@@ -661,10 +661,10 @@ namespace Phantasma.Spook.Modules
                 }
 
                 var symbol = contractName;
-                var name = ExecuteScript(contractScript, abi, "name").AsString();
+                var name = ExecuteScript(contractScript, abi, "getName").AsString();
 
-                BigInteger maxSupply = abi.HasMethod("maxSupply") ? ExecuteScript(contractScript, abi, "maxSupply").AsNumber() : 0;
-                BigInteger decimals = abi.HasMethod("decimals") ? ExecuteScript(contractScript, abi, "decimals").AsNumber() : 0;
+                BigInteger maxSupply = abi.HasMethod("getMaxSupply") ? ExecuteScript(contractScript, abi, "getMaxSupply").AsNumber() : 0;
+                BigInteger decimals = abi.HasMethod("getDecimals") ? ExecuteScript(contractScript, abi, "getDecimals").AsNumber() : 0;
 
                 TokenFlags flags = TokenFlags.None;
 
