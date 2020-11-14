@@ -662,11 +662,15 @@ namespace Phantasma.Spook.Modules
                         var oldToken = (TokenResult)apiResult;
 
                         var oldFlags = TokenFlags.None;
-                        var splitFlags = oldToken.flags.Split();
+                        var splitFlags = oldToken.flags.Split(',');
                         foreach (var entry in splitFlags)
                         {
-                            var flag = Enum.Parse<TokenFlags>(entry, true);
-                            oldFlags |= flag;
+                            TokenFlags flag;
+                            
+                            if (Enum.TryParse<TokenFlags>(entry, true, out flag))
+                            {
+                                oldFlags |= flag;
+                            }
                         }
 
                         foreach (var flag in availableFlags)
