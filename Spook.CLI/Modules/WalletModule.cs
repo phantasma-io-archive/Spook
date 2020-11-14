@@ -645,11 +645,50 @@ namespace Phantasma.Spook.Modules
             var sb = new ScriptBuilder();
 
             bool isToken = ValidationUtils.IsValidTicker(contractName);
+            var availableFlags = Enum.GetValues(typeof(TokenFlags)).Cast<TokenFlags>().ToArray();
 
             sb.AllowGas(Keys.Address, Address.Null, minFee, 9999);
 
             if (isUpgrade)
             {
+                // check for modification in flags
+                if (isToken)
+                {
+                    var symbol = contractName;
+                    var apiResult = api.GetToken(symbol);
+
+                    if (apiResult is TokenResult)
+                    {
+                        var oldToken = (TokenResult)apiResult;
+
+                        var oldFlags = TokenFlags.None;
+                        var splitFlags = oldToken.flags.Split();
+                        foreach (var entry in splitFlags)
+                        {
+                            var flag = Enum.Parse<TokenFlags>(entry, true);
+                            oldFlags |= flag;
+                        }
+
+                        foreach (var flag in availableFlags)
+                        {
+                            var propName = "is" + flag;
+                            if (abi.HasMethod(propName))
+                            {
+                                var isSet = ExecuteScript(contractScript, abi, propName).AsBool();
+                                var wasSet = oldFlags.HasFlag(flag);
+                                if (isSet != wasSet)
+                                {
+                                    throw new CommandException($"Detected '{flag}' flag change: {wasSet} => {isSet}");
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        throw new CommandException("could not find any deployed token contract for " + symbol);
+                    }
+                }
+
                 sb.CallInterop("Runtime.UpgradeContract", Keys.Address, contractName, contractScript, abiBytes);
             }
             else
@@ -672,7 +711,6 @@ namespace Phantasma.Spook.Modules
 
                 TokenFlags flags = TokenFlags.None;
 
-                var availableFlags = Enum.GetValues(typeof(TokenFlags)).Cast<TokenFlags>().ToArray();
                 foreach (var flag in availableFlags)
                 {
                     var propName = "is" + flag;
