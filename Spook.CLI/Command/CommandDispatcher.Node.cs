@@ -5,6 +5,7 @@ using System.Text;
 using Nethereum.Hex.HexConvertors.Extensions;
 using Phantasma.Blockchain;
 using Phantasma.Blockchain.Contracts;
+using Phantasma.Blockchain.Storage;
 using Phantasma.Core.Types;
 using Phantasma.Cryptography;
 using Phantasma.Domain;

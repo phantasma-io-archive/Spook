@@ -12,6 +12,7 @@ using System.Threading;
 using Phantasma.Blockchain.Contracts;
 using Phantasma.Domain;
 using Phantasma.Spook.Command;
+using Phantasma.Blockchain.Storage;
 
 namespace Phantasma.Spook.Modules
 {
