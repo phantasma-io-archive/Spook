@@ -196,6 +196,18 @@ namespace Phantasma.Spook.Oracles
             }
         }
 
+        protected override byte VerifyDomainRecord(string identifier, string domain)
+        {
+            if (String.IsNullOrEmpty(identifier) || String.IsNullOrEmpty(domain))
+            {
+                throw new OracleException("Identifier or domain null!");
+            }
+
+            var result = DomainQuery.GetTXTRecords(identifier, domain);
+
+            return (result) ? (byte)1 : (byte)0;
+        }
+
         protected override decimal PullPrice(Timestamp time, string symbol)
         {
             var apiKey = _cli.CryptoCompareAPIKey;
@@ -297,6 +309,11 @@ namespace Phantasma.Spook.Oracles
             }
 
             return interopTuple.Item1;
+        }
+
+        protected override InteropNFT PullPlatformNFT(string platformName, string symbol, BigInteger tokenID)
+        {
+            throw new NotImplementedException();
         }
 
         protected override InteropTransaction PullPlatformTransaction(string platformName, string chainName, Hash hash)
