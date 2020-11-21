@@ -12,9 +12,19 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using Phantasma.RocksDB;
+using Phantasma.Core.Log;
 
 namespace StorageDump
 {
+    class ConsoleLogger : Logger
+    {
+        public override void Write(LogEntryKind kind, string msg)
+        {
+            Console.WriteLine(msg);
+        }
+    }
+
     class Dumper
     {
         const bool PrettyPrint = false;
@@ -37,13 +47,7 @@ namespace StorageDump
             return true;
         }
 
-        static byte[] GetKeyForField<T>(string fieldName) where T: SmartContract
-        {
-            var contractName = typeof(T).Name.Replace("Contract", "").ToLower();
-            return Encoding.UTF8.GetBytes($".{contractName}.{fieldName}");
-        }
-
-        private static BasicDiskStore store;
+        private static IKeyValueStoreAdapter store;
 
         static void DumpBalances(string symbol, int decimals)
         {
@@ -51,7 +55,8 @@ namespace StorageDump
 
             var storage = new KeyStoreStorage(store);
 
-            var stakeMapKey = GetKeyForField<StakeContract>("_stakes");
+            
+            var stakeMapKey = SmartContract.GetKeyForField(NativeContractKind.Stake, "_stakeMap", true);
             var stakeMap = new StorageMap(stakeMapKey, storage);
             var stakeCount = stakeMap.Count();
 
@@ -68,7 +73,7 @@ namespace StorageDump
                     ByteArrayUtils.CopyBytes(key, prefix.Length, bytes, 0, bytes.Length);
 
                     var addr = Address.FromBytes(bytes);
-                    if (addr.IsSystem || addr.Text == "P2KFNXEbt65rQiWqogAzqkVGMqFirPmqPw8mQyxvRKsrXV8")
+                    if (addr.IsSystem /*|| addr.Text == "P2KFNXEbt65rQiWqogAzqkVGMqFirPmqPw8mQyxvRKsrXV8"*/)
                     {
                         return;
                     }
@@ -152,22 +157,21 @@ namespace StorageDump
         {
             Thread.CurrentThread.CurrentCulture = new CultureInfo("en-US");
 
-            store = new BasicDiskStore(@"chain.main.csv");
+            var logger = new ConsoleLogger();
+            store = new DBPartition(logger, "New/chain.main");
 
-            store.Visit((key, val) =>
+            /*store.Visit((key, val) =>
             {
                 var name = Encoding.UTF8.GetString(key);
                 Console.WriteLine(name);
                 Console.ReadKey();
-            }, uint.MaxValue, new byte[0]);
-            /*
+            }, uint.MaxValue, new byte[0]);*/
+           
             DumpBalances("SOUL", DomainSettings.StakingTokenDecimals);
-            DumpBalances("NEO", 0);
+           /* DumpBalances("NEO", 0);
             DumpBalances("GAS", 8);
             DumpBalances("MKNI", 0);
             DumpBalances("KCAL", DomainSettings.FuelTokenDecimals);*/
-
-            Console.ReadKey();
         }
     }
 }
