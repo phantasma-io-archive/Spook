@@ -749,7 +749,7 @@ namespace Phantasma.Spook.Modules
                 }
             }
 
-            var hash = ExecuteTransaction(api, script, isToken ? ProofOfWork.Minimal : ProofOfWork.None, Keys);
+            var hash = ExecuteTransaction(api, script, ProofOfWork.Minimal, Keys);
             if (hash != Hash.Null)
             {
                 var expectedEvent = isUpgrade ? EventKind.ContractUpgrade : (isToken ? EventKind.TokenCreate : EventKind.ContractDeploy);
