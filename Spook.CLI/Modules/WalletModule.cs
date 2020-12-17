@@ -658,7 +658,8 @@ namespace Phantasma.Spook.Modules
                 if (isToken)
                 {
                     var symbol = contractName;
-                    var apiResult = api.GetToken(symbol);
+                    var resultStr = api.Execute("getToken", new [] {symbol, "false"});
+                    dynamic apiResult = JsonConvert.DeserializeObject<TokenResult>(resultStr);
 
                     if (apiResult is TokenResult)
                     {
