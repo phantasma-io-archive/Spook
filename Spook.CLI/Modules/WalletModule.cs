@@ -19,6 +19,7 @@ using System.Reflection;
 using System.Linq;
 using Phantasma.VM;
 using Phantasma.Blockchain.Contracts;
+using Newtonsoft.Json;
 
 namespace Phantasma.Spook.Modules
 {
@@ -190,7 +191,7 @@ namespace Phantasma.Spook.Modules
             var encodedRawTx = Base16.Encode(rawTx);
             try
             {
-                api.SendRawTransaction(encodedRawTx);
+                api.Execute("sendRawTransaction", new [] {encodedRawTx});
             }
             catch (Exception e)
             {
@@ -201,7 +202,9 @@ namespace Phantasma.Spook.Modules
             var hash = tx.Hash.ToString();
             do
             {
-                var result = api.GetTransaction(hash);
+                var resultStr = api.Execute("getTransaction", new []{hash});
+                dynamic result = JsonConvert.DeserializeObject<TransactionResult>(resultStr);
+
                 if (result is TransactionResult)
                 {
                     _transactionResults[hash] = (TransactionResult)result;
@@ -267,9 +270,9 @@ namespace Phantasma.Spook.Modules
                 throw new CommandException("Please open a wallet first");
             }
 
-            if (api.Mempool == null)
+            if (api.Mempool == null && api.ProxyURL == null)
             {
-                throw new CommandException("No mempool enabled");
+                throw new CommandException("Need either mempool or proxy enabled!");
             }
         }
 
@@ -632,7 +635,7 @@ namespace Phantasma.Spook.Modules
             var abiFile = fileName.Replace(extension, ".abi");
             if (!File.Exists(abiFile))
             {
-                throw new CommandException("Not ABI file that matches provided script file");
+                throw new CommandException($"No ABI file {abiFile} that matches provided script file");
             }
 
             var contractName = Path.GetFileNameWithoutExtension(fileName);

@@ -75,7 +75,7 @@ namespace Phantasma.Spook.Command
             }
             else
             {
-            throw new CommandException("no mempool available");
+                throw new CommandException("no mempool available");
             }
         }
     }

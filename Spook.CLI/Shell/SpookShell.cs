@@ -50,7 +50,7 @@ namespace Phantasma.Spook.Shell
 
         private string PromptGenerator()
         {
-            var height = _cli.ExecuteAPIR("getblockheight", new string[] {"main"});
+            var height = _cli.ExecuteAPIR("getBlockHeight", new string[] {"main"});
             return string.Format(prompt, height.Trim( new char[] {'"'} ));
         }
 
