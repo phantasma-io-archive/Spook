@@ -30,6 +30,7 @@ namespace Phantasma.Spook.Interop
         private Nexus _nexus;
         private List<string> contracts;
         private uint confirmations;
+        private List<BigInteger> _resyncBlockIds = new List<BigInteger>();
         private static bool initialStart = true;
 
         public EthereumInterop(TokenSwapper swapper, EthAPI ethAPI, string wif, PBigInteger interopBlockHeight
@@ -64,12 +65,10 @@ namespace Phantasma.Spook.Interop
         {
             // wait another 10s to execute eth interop
             //Task.Delay(10000).Wait();
-            this.logger.Message($"EthereumInterop: Update() started");
             try
             {
                 lock (String.Intern("PendingSetCurrentHeight_" + EthereumWallet.EthereumPlatform))
                 {
-                    this.logger.Message($"EthereumInterop: Update() after lock");
                     var result = new List<PendingSwap>();
 
                     // initial start, we have to verify all processed swaps
@@ -93,18 +92,34 @@ namespace Phantasma.Spook.Interop
 
                     var currentHeight = ethAPI.GetBlockHeight();
                     var _interopBlockHeight = BigInteger.Parse(oracleReader.GetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform));
-                    logger.Message($"current eth height: {currentHeight} interop eth height {_interopBlockHeight}");
+                    logger.Message($"Swaps: Current Eth chain height: {currentHeight}, interop: {_interopBlockHeight}, delta: {currentHeight - _interopBlockHeight}");
 
                     var blocksProcessedInOneBatch = 0;
                     while (blocksProcessedInOneBatch < 50)
                     {
+                        if (_resyncBlockIds.Any())
+                        {
+                            for (var i = 0; i < _resyncBlockIds.Count; i++)
+                            {
+                                var blockId = _resyncBlockIds.ElementAt(i);
+                                if (blockId > _interopBlockHeight)
+                                {
+                                    this.logger.Message($"NeoInterop: Update() resync block {blockId} higher than current interop height, can't resync.");
+                                    _resyncBlockIds.RemoveAt(i);
+                                    continue;
+                                }
+
+                                this.logger.Message($"NeoInterop: Update() resync block {blockId} now.");
+                                var block= GetInteropBlock(blockId);
+                                ProcessBlock(block, ref result);
+                            }
+                        }
+
                         blocksProcessedInOneBatch++;
 
                         var blockDifference = currentHeight - _interopBlockHeight;
-                        this.logger.Message($"EthereumInterop: Update() blockDifference: {blockDifference}");
                         if (blockDifference < confirmations)
                         {
-                            this.logger.Message($"EthereumInterop: Update() break");
                             // no need to query the node yet
                             break;
                         }
@@ -150,8 +165,6 @@ namespace Phantasma.Spook.Interop
 
                         ProcessBlock(interopBlock, ref result);
 
-                        this.logger.Message($"EthereumInterop: Update() processed block: {_interopBlockHeight}");
-
                         _interopBlockHeight++;
                         //}
                     }
@@ -185,6 +198,15 @@ namespace Phantasma.Spook.Interop
             blockingAction();
             stopWatch.Stop();
             return stopWatch.Elapsed;
+        }
+
+
+        public override void ResyncBlock(BigInteger blockId)
+        {
+            lock(_resyncBlockIds)
+            {
+                _resyncBlockIds.Add(blockId);
+            }
         }
 
         private List<Task<InteropBlock>> CreateTaskList(BigInteger batchCount, BigInteger currentHeight, BigInteger[] blockIds = null)
@@ -275,6 +297,16 @@ namespace Phantasma.Spook.Interop
             }
         }
 
+        private InteropBlock GetInteropBlock(BigInteger blockId)
+        {
+            var url = DomainExtensions.GetOracleBlockURL(
+                EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform,
+                PBigInteger.FromUnsignedArray(blockId.ToByteArray(), true));
+
+            return oracleReader.Read<InteropBlock>(DateTime.Now, url);
+        }
+
+
         public static Tuple<InteropBlock, InteropTransaction[]> MakeInteropBlock(Logger logger, BlockWithTransactions block, EthAPI api
                 , string swapAddress)
         {
@@ -321,12 +353,10 @@ namespace Phantasma.Spook.Interop
             Dictionary<string, Dictionary<string, List<InteropTransfer>>> transfers = null;
             try
             {
-                logger.Message($"EthereumInterop: MakeInteropBlock() call EthBlockCrawler()");
                 var crawler = new EthBlockCrawler(logger, combinedAddresses.ToArray(), confirmations, api);
                 // fetch blocks
                 crawler.Fetch(height);
                 transfers = crawler.ExtractInteropTransfers(nexus, logger, swapAddress);
-                logger.Message($"EthereumInterop: MakeInteropBlock() EthBlockCrawler() transfers found count: {transfers.Count}");
             }
             catch (Exception e)
             {

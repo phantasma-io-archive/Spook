@@ -198,19 +198,16 @@ namespace Phantasma.Spook.Oracles
 
         protected override decimal PullPrice(Timestamp time, string symbol)
         {
-            logger.Message($"PullPrice() started");
             var apiKey = _cli.CryptoCompareAPIKey;
             if (!string.IsNullOrEmpty(apiKey))
             {
                 if (symbol == DomainSettings.FuelTokenSymbol)
                 {
                     var result = PullPrice(time, DomainSettings.StakingTokenSymbol);
-                    logger.Message($"PullPrice() finished");
                     return result / 5;
                 }
 
                 var price = CryptoCompareUtils.GetCoinRate(symbol, DomainSettings.FiatTokenSymbol, apiKey);
-                logger.Message($"PullPrice() finished (2)");
                 return price;
             }
 
@@ -317,18 +314,12 @@ namespace Phantasma.Spook.Oracles
                 case NeoWallet.NeoPlatform:
                     NeoTx neoTx;
                     UInt256 uHash = new UInt256(LuxUtils.ReverseHex(hash.ToString()).HexToBytes());
-                    logger.Message($"PullPlatformTransaction()/Neo calling GetTransaction()");
                     neoTx = _cli.NeoAPI.GetTransaction(uHash);
-                    logger.Message($"PullPlatformTransaction()/Neo calling MakeInteropTx()");
                     tx = NeoInterop.MakeInteropTx(logger, neoTx, _cli.NeoAPI, _cli.TokenSwapper.SwapAddresses[platformName]);
-                    logger.Message($"PullPlatformTransaction()/Neo MakeInteropTx: received tx");
                     break;
                 case EthereumWallet.EthereumPlatform:
-                    logger.Message($"PullPlatformTransaction()/ETH calling GetTransactionReceipt({hash.ToString()})");
                     var txRcpt = _cli.EthAPI.GetTransactionReceipt(hash.ToString());
-                    logger.Message($"PullPlatformTransaction()/ETH GetTransactionReceipt: received receipt");
                     tx = EthereumInterop.MakeInteropTx(_cli.Nexus, logger, txRcpt, _cli.EthAPI, _cli.TokenSwapper.SwapAddresses[platformName]);
-                    logger.Message($"PullPlatformTransaction()/ETH MakeInteropTx: received tx");
                     break;
 
                 default:
@@ -346,6 +337,12 @@ namespace Phantasma.Spook.Oracles
         protected override T PullData<T>(Timestamp time, string url)
         {
             throw new OracleException("unknown oracle url");
+        }
+
+        protected override InteropNFT PullPlatformNFT(string platformName, string symbol, BigInteger tokenID)
+        {
+            // TODO NFT support
+            throw new NotImplementedException();
         }
     }
 

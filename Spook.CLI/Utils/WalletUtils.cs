@@ -2,7 +2,7 @@
 using System;
 using System.Threading;
 using LunarLabs.Parser.JSON;
-using Phantasma.Blockchain.Contracts;
+using Phantasma.Blockchain;
 using Phantasma.Core;
 using Phantasma.Core.Log;
 using Phantasma.Core.Types;

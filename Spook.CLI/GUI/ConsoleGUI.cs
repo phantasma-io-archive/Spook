@@ -412,7 +412,7 @@ namespace Phantasma.Spook.GUI
                 {
                     case LogEntryKind.Error: Console.ForegroundColor = ConsoleColor.Red; break;
                     case LogEntryKind.Warning: Console.ForegroundColor = ConsoleColor.Yellow; break;
-                    case LogEntryKind.Sucess: Console.ForegroundColor = ConsoleColor.Green; break;
+                    case LogEntryKind.Success: Console.ForegroundColor = ConsoleColor.Green; break;
                     case LogEntryKind.Debug: Console.ForegroundColor = ConsoleColor.Cyan; break;
                     default: Console.ForegroundColor = ConsoleColor.Gray; break;
                 }

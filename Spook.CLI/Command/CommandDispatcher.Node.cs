@@ -5,6 +5,7 @@ using System.Text;
 using Nethereum.Hex.HexConvertors.Extensions;
 using Phantasma.Blockchain;
 using Phantasma.Blockchain.Contracts;
+using Phantasma.Blockchain.Storage;
 using Phantasma.Core.Types;
 using Phantasma.Cryptography;
 using Phantasma.Domain;
@@ -44,7 +45,7 @@ namespace Phantasma.Spook.Command
             Console.WriteLine("Node bounced");
         }
 
-        [ConsoleCommand("show keys", Category = "Node", Description = "Bounce a node to reload configuration")]
+        [ConsoleCommand("show keys", Category = "Node", Description = "Show public address and private key for given platform")]
         protected void onShowInteropKeys(string[] args)
         {
             var wif = args[0];
@@ -77,6 +78,15 @@ namespace Phantasma.Spook.Command
                     Console.WriteLine($"Not yet added, feel free to add.");
                     break;
             }
+        }
+
+        [ConsoleCommand("get value", Category = "Node", Description = "Show governance value")]
+        protected void OnGetValue(string[] args)
+        {
+            var name = args[0];
+            var value = _cli.Nexus.GetGovernanceValue(_cli.Nexus.RootStorage, name);
+
+            Console.WriteLine($"Value: {value}");
         }
 
         [ConsoleCommand("set value", Category = "Node", Description = "Set governance value")]

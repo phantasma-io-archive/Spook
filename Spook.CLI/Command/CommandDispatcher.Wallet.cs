@@ -24,7 +24,8 @@ namespace Phantasma.Spook.Command
         [ConsoleCommand("wallet stake", Category = "Wallet")]
         protected void OnWalletStakeCommand(string[] args)
         {
-            WalletModule.Stake(_cli.NexusAPI, args);
+            BigInteger minFee = new BigInteger(_cli.Settings.Node.MinimumFee);
+            WalletModule.Stake(_cli.NexusAPI, minFee, args);
         }
 
         [ConsoleCommand("wallet airdrop", Category = "Wallet")]
@@ -46,6 +47,20 @@ namespace Phantasma.Spook.Command
             }
         }
 
+        [ConsoleCommand("wallet deploy", Category = "Wallet", Description = "Deploy a contract using a wallet")]
+        protected void OnWalletDeployCommand(string[] args)
+        {
+            BigInteger minFee = new BigInteger(_cli.Settings.Node.MinimumFee);
+            WalletModule.Deploy(args, _cli.NexusAPI, minFee);
+        }
+
+        [ConsoleCommand("wallet upgrade", Category = "Wallet", Description = "Upgrade a contract using a wallet")]
+        protected void OnWalletUpgradeCommand(string[] args)
+        {
+            BigInteger minFee = new BigInteger(_cli.Settings.Node.MinimumFee);
+            WalletModule.Upgrade(args, _cli.NexusAPI, minFee);
+        }
+
         [ConsoleCommand("wallet migrate", Category = "Wallet", Description = "Migrate a validator wallet")]
         protected void OnWalletRelayCommand(string[] args)
         {
@@ -60,7 +75,7 @@ namespace Phantasma.Spook.Command
             }
             else
             {
-            throw new CommandException("no mempool available");
+                throw new CommandException("no mempool available");
             }
         }
     }

@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Threading;
 using Microsoft.Extensions.Configuration;
 using Phantasma.Blockchain;
+using Phantasma.Core.Log;
 using Phantasma.Core.Types;
 using Phantasma.Core.Utils;
 using Phantasma.Cryptography;
@@ -29,16 +31,42 @@ namespace Phantasma.Spook
         {
             _settings = new Arguments(args);
 
-            this.configFile = _settings.GetString("conf", "config.json");
-            var section = new ConfigurationBuilder().AddJsonFile(configFile)
-                .Build().GetSection("ApplicationConfiguration");
+            var logger = new ConsoleLogger(); // TODO make this use the same logger as the rest of Spook...
 
-            this.Node = new NodeSettings(_settings, section.GetSection("Node"));
-            this.Simulator = new SimulatorSettings(_settings, section.GetSection("Simulator"));
-            this.Oracle = new OracleSettings(_settings, section.GetSection("Oracle"));
-            this.Plugins = new PluginSettings(_settings, section.GetSection("Plugins"));
-            this.App = new AppSettings(_settings, section.GetSection("App"));
-            this.RPC = new RPCSettings(_settings, section.GetSection("RPC"));
+            var defaultConfigFile = "config.json";
+
+            this.configFile = _settings.GetString("conf", defaultConfigFile);
+
+            if (!File.Exists(configFile))
+            {
+                logger.Error($"Expected configuration file to exist: {this.configFile}");
+
+                if (this.configFile == defaultConfigFile)
+                {
+                    logger.Warning($"Copy either config_mainnet.json or config_testnet.json and rename it to {this.configFile}");
+                }
+
+                Environment.Exit(-1);
+            }
+
+            try
+            {
+                var section = new ConfigurationBuilder().AddJsonFile(configFile)
+                    .Build().GetSection("ApplicationConfiguration");
+
+                this.Node = new NodeSettings(_settings, section.GetSection("Node"));
+                this.Simulator = new SimulatorSettings(_settings, section.GetSection("Simulator"));
+                this.Oracle = new OracleSettings(_settings, section.GetSection("Oracle"));
+                this.Plugins = new PluginSettings(_settings, section.GetSection("Plugins"));
+                this.App = new AppSettings(_settings, section.GetSection("App"));
+                this.RPC = new RPCSettings(_settings, section.GetSection("RPC"));
+            }
+            catch (Exception e)
+            {
+                logger.Error(e.Message);
+                logger.Warning($"There were issues loading settings from {this.configFile}, aborting...");
+                Environment.Exit(-1);
+            }
         }
 
         public string GetInteropWif(Nexus nexus, PhantasmaKeys nodeKeys, string platformName)
@@ -207,7 +235,6 @@ namespace Phantasma.Spook
             {
                 this.DbStoragePath = defaultDbStoragePath;
             }
-            Console.WriteLine("dbstoragePath: " + DbStoragePath);
 
             this.OraclePath = settings.GetString("oracle.path", section.GetValue<string>("oracle.path"));
             if (string.IsNullOrEmpty(this.OraclePath))

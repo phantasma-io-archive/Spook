@@ -5,7 +5,6 @@ using PBigInteger = Phantasma.Numerics.BigInteger;
 using System.Numerics;
 using Phantasma.Blockchain;
 using Phantasma.Neo.Core;
-using Phantasma.Neo.Utils;
 using Phantasma.Neo.Cryptography;
 using NeoBlock = Phantasma.Neo.Core.Block;
 using NeoTx = Phantasma.Neo.Core.Transaction;
@@ -13,7 +12,6 @@ using Phantasma.Domain;
 using Phantasma.Pay;
 using Phantasma.Pay.Chains;
 using Phantasma.Cryptography;
-using Phantasma.Spook.Interop;
 using Phantasma.Core.Log;
 using System.Linq;
 using System.Threading.Tasks;
@@ -30,6 +28,8 @@ namespace Phantasma.Spook.Interop
         private DateTime lastScan;
         private static bool initialStart = true;
         private bool quickSync = false;
+
+        private List<BigInteger> _resyncBlockIds = new List<BigInteger>();
 
         public static Dictionary<string, CryptoCurrencyInfo> NeoTokenInfo = new Dictionary<string, CryptoCurrencyInfo>()
         {
@@ -65,12 +65,18 @@ namespace Phantasma.Spook.Interop
             return neoKeys.Address;
         }
 
+        public override void ResyncBlock(BigInteger blockId)
+        {
+            lock(_resyncBlockIds)
+            {
+                _resyncBlockIds.Add(blockId);
+            }
+        }
+
         public override IEnumerable<PendingSwap> Update()
         {
-            this.logger.Message($"NeoInterop: Update() started");
             lock (String.Intern("PendingSetCurrentHeight_" + "neo"))
             {
-                this.logger.Message($"NeoInterop: Update() after lock");
                 var result = new List<PendingSwap>();
 
                 var _interopBlockHeight = BigInteger.Parse(oracleReader.GetCurrentHeight("neo", "neo"));
@@ -104,7 +110,7 @@ namespace Phantasma.Spook.Interop
                             List<InteropBlock> blockList = new List<InteropBlock>();
                             foreach (var entry in blockIds)
                             {
-                                logger.Message($"read block {entry.Value}");
+                                //logger.Message($"read block {entry.Value}");
                                 var url = DomainExtensions.GetOracleBlockURL("neo", "neo", PBigInteger.Parse(entry.Value.ToString()));
                                 blockList.Add(oracleReader.Read<InteropBlock>(DateTime.Now, url));
                             }
@@ -144,7 +150,26 @@ namespace Phantasma.Spook.Interop
 
                     while (blockIterator.currentBlock > _interopBlockHeight)
                     {
-                        logger.Message("==== current neo heights: " + blockIterator.currentBlock + " interop: " + _interopBlockHeight);
+                        if (_resyncBlockIds.Any())
+                        {
+                            for (var i = 0; i < _resyncBlockIds.Count; i++)
+                            {
+                                var blockId = _resyncBlockIds.ElementAt(i);
+                                if (blockId > _interopBlockHeight)
+                                {
+                                    this.logger.Message($"NeoInterop: Update() resync block {blockId} higher than current interop height, can't resync.");
+                                    _resyncBlockIds.RemoveAt(i);
+                                    continue;
+                                }
+
+                                this.logger.Message($"NeoInterop: Update() resync block {blockId} now.");
+                                var interopBlock = GetInteropBlock(blockId);
+                                ProcessBlock(interopBlock, result);
+                                _resyncBlockIds.RemoveAt(i);
+                            }
+                        }
+
+                        logger.Message($"Swaps: Current Neo chain height: {blockIterator.currentBlock}, interop: {_interopBlockHeight}, delta: {blockIterator.currentBlock - _interopBlockHeight}");
                         blockDifference = blockIterator.currentBlock - _interopBlockHeight;
                         batchCount = (blockDifference > 8) ? 8 : blockDifference;
 
@@ -152,15 +177,12 @@ namespace Phantasma.Spook.Interop
                         {
                             List<Task<InteropBlock>> taskList = CreateTaskList(batchCount);
 
-                            this.logger.Message($"NeoInterop: Update() batchCount: {batchCount}");
-
                             foreach (var task in taskList)
                             {
                                 task.Start();
                             }
 
                             Task.WaitAll(taskList.ToArray());
-                            this.logger.Message($"NeoInterop: Update() Task.WaitAll() finished");
 
                             foreach (var task in taskList)
                             {
@@ -168,25 +190,18 @@ namespace Phantasma.Spook.Interop
 
                                 ProcessBlock(block, result);
                             }
-                            this.logger.Message($"NeoInterop: Update() blocks processed");
 
                             oracleReader.SetCurrentHeight("neo", "neo", _interopBlockHeight.ToString());
                             _interopBlockHeight += batchCount;
                         }
                         else
                         {
-                            this.logger.Message($"NeoInterop: Update() getting block {_interopBlockHeight} from oracle");
-                            var url = DomainExtensions.GetOracleBlockURL(
-                                    "neo", "neo", PBigInteger.FromUnsignedArray(_interopBlockHeight.ToByteArray(), true));
-
-                            var interopBlock = oracleReader.Read<InteropBlock>(DateTime.Now, url);
+                            var interopBlock = GetInteropBlock(_interopBlockHeight);
 
                             ProcessBlock(interopBlock, result);
 
                             oracleReader.SetCurrentHeight("neo", "neo", _interopBlockHeight.ToString());
                             _interopBlockHeight++;
-
-                            this.logger.Message($"NeoInterop: Update() block processed after getting block {_interopBlockHeight} from oracle");
                         }
                     }
                 }
@@ -196,6 +211,14 @@ namespace Phantasma.Spook.Interop
                 }
                 return result;
             }
+        }
+
+        private InteropBlock GetInteropBlock(BigInteger blockId)
+        {
+            var url = DomainExtensions.GetOracleBlockURL(
+                "neo", "neo", PBigInteger.FromUnsignedArray(blockId.ToByteArray(), true));
+
+            return oracleReader.Read<InteropBlock>(DateTime.Now, url);
         }
 
         private List<Task<InteropBlock>> CreateTaskList(BigInteger batchCount, BigInteger[] blockIds = null)
@@ -308,7 +331,7 @@ namespace Phantasma.Spook.Interop
         public static Tuple<InteropBlock, InteropTransaction[]> MakeInteropBlock(Logger logger, NeoBlock block, NeoAPI api, string swapAddress)
         {
             List<Hash> hashes = new List<Hash>();
-            logger.Message($"Read block {block.Height} with hash {block.Hash}");
+            //logger.Message($"Read block {block.Height} with hash {block.Hash}");
 
             // if the block has no swap tx, it's currently not of interest
             bool blockOfInterest = false;

@@ -12,10 +12,14 @@ using Phantasma.Pay;
 using Phantasma.Neo.Core;
 using Phantasma.Spook.Oracles;
 using Phantasma.Spook.Command;
-using Phantasma.Blockchain.Contracts;
+using Phantasma.Blockchain;
 using Phantasma.Domain;
 using System.IO;
 using System.Reflection;
+using System.Linq;
+using Phantasma.VM;
+using Phantasma.Blockchain.Contracts;
+using Newtonsoft.Json;
 
 namespace Phantasma.Spook.Modules
 {
@@ -39,11 +43,11 @@ namespace Phantasma.Spook.Modules
             try
             {
                 Keys = PhantasmaKeys.FromWIF(wif);
-                logger.Shell($"Opened wallet with address: {Keys.Address}");
+                logger.Message($"Opened wallet with address: {Keys.Address}");
             }
             catch (Exception)
             {
-                logger.Error($"Failed to open wallet. Make sure you valid a correct WIF key.");
+                logger.Message($"Failed to open wallet. Make sure you valid a correct WIF key.");
             }
 
         }
@@ -59,13 +63,13 @@ namespace Phantasma.Spook.Modules
             try
             {
                 Keys = PhantasmaKeys.Generate();
-                logger.Shell($"Generate wallet with address: {Keys.Address}");
-                logger.Shell($"WIF: {Keys.ToWIF()}");
-                logger.Warning($"Save this wallet WIF, it won't be displayed again and it is necessary to access the wallet!");
+                logger.Message($"Generate wallet with address: {Keys.Address}");
+                logger.Message($"WIF: {Keys.ToWIF()}");
+                logger.Message($"Save this wallet WIF, it won't be displayed again and it is necessary to access the wallet!");
             }
             catch (Exception)
             {
-                logger.Error($"Failed to create a new wallet.");
+                logger.Message($"Failed to create a new wallet.");
             }
 
         }
@@ -88,7 +92,7 @@ namespace Phantasma.Spook.Modules
                 address = Keys.Address;
             }
 
-            logger.Shell("Fetching balances...");
+            logger.Message("Fetching balances...");
             var wallets = new List<CryptoWallet>();
             wallets.Add(new PhantasmaWallet(Keys, $"http://localhost:{phantasmaRestPort}/api"));
             wallets.Add(new NeoWallet(Keys, neoScanAPI.URL));
@@ -105,16 +109,16 @@ namespace Phantasma.Spook.Modules
                         foreach (var entry in wallet.Balances)
                         {
                             empty = false;
-                            logger.Shell($"{entry.Amount} {entry.Symbol} @ {entry.Chain}");
+                            logger.Message($"{entry.Amount} {entry.Symbol} @ {entry.Chain}");
                         }
                         if (empty)
                         {
-                            logger.Shell("Empty wallet.");
+                            logger.Message("Empty wallet.");
                         }
                     }
                     else
                     {
-                        logger.Shell("Failed to fetch balances!");
+                        logger.Message("Failed to fetch balances!");
                     }
                 });
             }
@@ -152,7 +156,7 @@ namespace Phantasma.Spook.Modules
             }
             catch (Exception e)
             {
-                logger.Error("Error sending NEO transaction: " + e);
+                logger.Message("Error sending NEO transaction: " + e);
                 return Hash.Null;
             }
 
@@ -162,6 +166,8 @@ namespace Phantasma.Spook.Modules
         {
             return ExecuteTransaction(api, script, proofOfWork, new IKeyPair[] { keys });
         }
+
+        private static Dictionary<string, TransactionResult> _transactionResults = new Dictionary<string, TransactionResult>();
 
         public static Hash ExecuteTransaction(NexusAPI api, byte[] script, ProofOfWork proofOfWork, params IKeyPair[] keys)
         {
@@ -185,45 +191,59 @@ namespace Phantasma.Spook.Modules
             var encodedRawTx = Base16.Encode(rawTx);
             try
             {
-                api.SendRawTransaction(encodedRawTx);
+                api.Execute("sendRawTransaction", new [] {encodedRawTx});
             }
             catch (Exception e)
             {
                 throw new CommandException(e.Message);
             }
 
-            Thread.Sleep(3000);
+            Thread.Sleep(4000);
             var hash = tx.Hash.ToString();
             do
             {
-                try
+                var resultStr = api.Execute("getTransaction", new []{hash});
+                dynamic result = JsonConvert.DeserializeObject<TransactionResult>(resultStr);
+
+                if (result is TransactionResult)
                 {
-                    var result = api.GetTransaction(hash);
+                    _transactionResults[hash] = (TransactionResult)result;
                 }
-                catch (Exception e)
-                {
-                    throw new CommandException(e.Message);
-                }
-                /*if (result is ErrorResult)
+                else
+                if (result is ErrorResult)
                 {
                     var temp = (ErrorResult)result;
                     if (temp.error.Contains("pending"))
                     {
                         Thread.Sleep(1000);
+                        continue;
                     }
                     else
                     {
                         throw new CommandException(temp.error);
                     }
                 }
-                else*/
+                else
                 {
-                    break;
+                    throw new Exception("Something weird happened with transaction " + hash);
                 }
+
+                break;
             } while (true);
             logger.Success($"Sent transaction with hash {hash}!");
 
             return Hash.Parse(hash);
+        }
+
+        private static IEnumerable<EventResult> GetTransactionEvents(Hash hash)
+        {
+            var hashStr = hash.ToString();
+            if (_transactionResults.ContainsKey(hashStr))
+            {
+                return _transactionResults[hashStr].events;
+            }
+
+            return Enumerable.Empty<EventResult>();
         }
 
         private static void SettleSwap(NexusAPI api, BigInteger minimumFee, string platform, string swapSymbol, Hash extHash, IKeyPair externalKeys, Address targetAddress)
@@ -242,12 +262,28 @@ namespace Phantasma.Spook.Modules
             logger.Success($"Swap of {swapSymbol} is complete!");
         }
 
+
+        private static void DoChecks(NexusAPI api)
+        {
+            if (Keys == null)
+            {
+                throw new CommandException("Please open a wallet first");
+            }
+
+            if (api.Mempool == null && api.ProxyURL == null)
+            {
+                throw new CommandException("Need either mempool or proxy enabled!");
+            }
+        }
+
         public static void Transfer(NexusAPI api, BigInteger minimumFee, NeoAPI neoAPI, string[] args)
         {
             if (args.Length != 4)
             {
                 throw new CommandException("Expected args: source_address target_address amount symbol");
             }
+
+            DoChecks(api);
 
             var tempAmount = decimal.Parse(args[2]);
             var tokenSymbol = args[3];
@@ -341,7 +377,7 @@ namespace Phantasma.Spook.Modules
                 }
                 else
                 {
-                    logger.Warning($"Source is {sourcePlatform} address, a swap will be performed using an interop address.");
+                    logger.Message($"Source is {sourcePlatform} address, a swap will be performed using an interop address.");
 
                     IPlatform platformInfo = api.Nexus.GetPlatformInfo(api.Nexus.RootStorage, sourcePlatform);
 
@@ -372,7 +408,7 @@ namespace Phantasma.Spook.Modules
                                 }
                                 catch (Exception e)
                                 {
-                                    logger.Error($"{sourcePlatform} error: " + e.Message);
+                                    logger.Message($"{sourcePlatform} error: " + e.Message);
                                     return;
                                 }
 
@@ -380,7 +416,7 @@ namespace Phantasma.Spook.Modules
                             }
 
                         default:
-                            logger.Error($"Transactions using platform {sourcePlatform} are not supported yet");
+                            logger.Message($"Transactions using platform {sourcePlatform} are not supported yet");
                             return;
                     }
 
@@ -403,11 +439,11 @@ namespace Phantasma.Spook.Modules
                             break;
 
                         default:
-                            logger.Error($"Transactions to platform {destPlatform} are not supported yet");
+                            logger.Message($"Transactions to platform {destPlatform} are not supported yet");
                             return;
                     }
 
-                    logger.Warning($"Target is {destPlatform} address, a swap will be performed through interop address {destAddress}.");
+                    logger.Message($"Target is {destPlatform} address, a swap will be performed through interop address {destAddress}.");
                 }
                 else
                 {
@@ -416,7 +452,7 @@ namespace Phantasma.Spook.Modules
 
                 var script = ScriptUtils.BeginScript().
                     CallContract("swap", "SwapFee", Keys.Address, tokenSymbol, UnitConversion.ToBigInteger(0.01m, DomainSettings.FuelTokenDecimals)).
-                    AllowGas(Keys.Address, Address.Null, minimumFee, 300).
+                    AllowGas(Keys.Address, Address.Null, minimumFee, 900).
                     TransferTokens(tokenSymbol, Keys.Address, destAddress, amount).
                     SpendGas(Keys.Address).
                     EndScript();
@@ -426,22 +462,16 @@ namespace Phantasma.Spook.Modules
             }
         }
 
-        public static void Stake(NexusAPI api, string[] args)
+        public static void Stake(NexusAPI api, BigInteger minFee, string[] args)
         {
-            if (args.Length != 3)
+            if (args.Length != 1)
             {
-                throw new CommandException("Expected args: target_address amount");
+                throw new CommandException("Expected args: amount");
             }
 
-            // TODO more arg validation
-            var dest = Address.FromText(args[0]);
+            DoChecks(api);
 
-            if (dest.Text == Keys.Address.Text)
-            {
-                throw new CommandException("Cannot transfer to same address");
-            }
-
-            var tempAmount = decimal.Parse(args[1]);
+            var tempAmount = decimal.Parse(args[0]);
             var tokenSymbol = DomainSettings.StakingTokenSymbol;
 
             TokenResult tokenInfo;
@@ -458,54 +488,26 @@ namespace Phantasma.Spook.Modules
             var amount = UnitConversion.ToBigInteger(tempAmount, tokenInfo.decimals);
 
             var script = ScriptUtils.BeginScript().
-                AllowGas(Keys.Address, Address.Null, 1, 9999).
-                CallContract("energy", "Stake", Keys.Address, dest, amount).
+                AllowGas(Keys.Address, Address.Null, minFee, 9999).
+                CallContract("stake", "Stake", Keys.Address, amount).
                 SpendGas(Keys.Address).
                 EndScript();
-            var tx = new Phantasma.Blockchain.Transaction(api.Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5));
-            tx.Sign(Keys);
-            var rawTx = tx.ToByteArray(true);
 
-            logger.Shell($"Staking {tempAmount} {tokenSymbol} with {dest.Text}...");
-            try
-            {
-                api.SendRawTransaction(Base16.Encode(rawTx));
-            }
-            catch (Exception e)
-            {
-                throw new CommandException(e.Message);
-            }
+            var hash = ExecuteTransaction(api, script, ProofOfWork.None, Keys);
 
-            Thread.Sleep(3000);
-            var hash = tx.Hash.ToString();
-            do
+            if (hash != Hash.Null)
             {
-                try
+                var events = GetTransactionEvents(hash);
+
+                if (events.Any(x => x.kind == EventKind.TokenStake.ToString()))
                 {
-                    var result = api.GetTransaction(hash);
+                    logger.Message($"Staked succesfully {tempAmount} {tokenSymbol} at {Keys.Address.Text}");
                 }
-                catch (Exception e)
+                else
                 {
-                    throw new CommandException(e.Message);
+                    throw new CommandException("Transaction was confirmed but missing stake event?");
                 }
-                /*if (result is ErrorResult)
-                {
-                    var temp = (ErrorResult)result;
-                    if (temp.error.Contains("pending"))
-                    {
-                        Thread.Sleep(1000);
-                    }
-                    else
-                    {
-                        throw new CommandException(temp.error);
-                    }
-                }
-                else*/
-                {
-                    break;
-                }
-            } while (true);
-            logger.Shell($"Sent transaction with hash {hash}!");
+            }
         }
 
         public static void Airdrop(string[] args, NexusAPI api, BigInteger minFee)
@@ -514,6 +516,8 @@ namespace Phantasma.Spook.Modules
             {
                 throw new CommandException("Invalid number of arguments, expected airdrop filename");
             }
+
+            DoChecks(api);
 
             var fileName = args[0];
             if (!File.Exists(fileName))
@@ -527,7 +531,7 @@ namespace Phantasma.Spook.Modules
             var expectedLimit = 100 + 600 * lines.Length;
 
             var expectedGas = UnitConversion.ToDecimal(expectedLimit * minFee, DomainSettings.FuelTokenDecimals);
-            logger.Shell($"This airdrop will require at least {expectedGas} {DomainSettings.FuelTokenSymbol}");
+            logger.Message($"This airdrop will require at least {expectedGas} {DomainSettings.FuelTokenSymbol}");
 
             sb.AllowGas(Keys.Address, Address.Null, minFee, expectedLimit);
 
@@ -553,7 +557,7 @@ namespace Phantasma.Spook.Modules
             sb.SpendGas(Keys.Address);
             var script = sb.EndScript();
 
-            logger.Shell($"Sending airdrop to {addressCount} addresses...");
+            logger.Message($"Sending airdrop to {addressCount} addresses...");
             ExecuteTransaction(api, script, ProofOfWork.None, Keys);
         }
 
@@ -563,6 +567,8 @@ namespace Phantasma.Spook.Modules
             {
                 throw new CommandException("Invalid number of arguments, expected new wif");
             }
+
+            DoChecks(api);
 
             var newWIF = args[0];
             var newKeys = PhantasmaKeys.FromWIF(newWIF);
@@ -579,9 +585,204 @@ namespace Phantasma.Spook.Modules
             var hash = ExecuteTransaction(api, script, ProofOfWork.None, Keys/*, newKeys*/);
             if (hash != Hash.Null)
             {
-                logger.Shell($"Migrated to " + newKeys.Address);
+                logger.Message($"Migrated to " + newKeys.Address);
                 Keys = newKeys;
             }
+        }
+
+        private static VMObject ExecuteScript(byte[] script, ContractInterface abi, string methodName)
+        {
+            var method = abi.FindMethod(methodName);
+
+            if (method == null)
+            {
+                throw new Exception("ABI is missing: " + method.name);
+            }
+
+            var vm = new GasMachine(script, (uint) method.offset);
+            var result = vm.Execute();
+            if (result == ExecutionState.Halt)
+            {
+                return vm.Stack.Pop();
+            }
+
+            throw new Exception("Script execution failed for: " + method.name);
+        }
+
+        private static void DeployOrUpgrade(string[] args, NexusAPI api, BigInteger minFee, bool isUpgrade)
+        {
+            if (args.Length != 1)
+            {
+                throw new CommandException("Invalid number of arguments, expected file name");
+            }
+
+            DoChecks(api);
+
+            var fileName = args[0];
+
+            if (!File.Exists(fileName))
+            {
+                throw new CommandException("Provided file does not exist");
+            }
+
+            var extension = ScriptModule.ScriptExtension;
+
+            if (!fileName.EndsWith(extension))
+            {
+                throw new CommandException($"Provided file is not a compiled {extension} script");
+            }
+
+            var abiFile = fileName.Replace(extension, ".abi");
+            if (!File.Exists(abiFile))
+            {
+                throw new CommandException($"No ABI file {abiFile} that matches provided script file");
+            }
+
+            var contractName = Path.GetFileNameWithoutExtension(fileName);
+
+            var contractScript = File.ReadAllBytes(fileName);
+            var abiBytes = File.ReadAllBytes(abiFile);
+
+            var abi = ContractInterface.FromBytes(abiBytes);
+
+            var sb = new ScriptBuilder();
+
+            bool isToken = ValidationUtils.IsValidTicker(contractName);
+            var availableFlags = Enum.GetValues(typeof(TokenFlags)).Cast<TokenFlags>().ToArray();
+
+            sb.AllowGas(Keys.Address, Address.Null, minFee, 9999);
+
+            if (isUpgrade)
+            {
+                // check for modification in flags
+                if (isToken)
+                {
+                    var symbol = contractName;
+                    var resultStr = api.Execute("getToken", new [] {symbol, "false"});
+                    dynamic apiResult = JsonConvert.DeserializeObject<TokenResult>(resultStr);
+
+                    if (apiResult is TokenResult)
+                    {
+                        var oldToken = (TokenResult)apiResult;
+
+                        var oldFlags = TokenFlags.None;
+                        var splitFlags = oldToken.flags.Split(',');
+                        foreach (var entry in splitFlags)
+                        {
+                            TokenFlags flag;
+                            
+                            if (Enum.TryParse<TokenFlags>(entry, true, out flag))
+                            {
+                                oldFlags |= flag;
+                            }
+                        }
+
+                        foreach (var flag in availableFlags)
+                        {
+                            var propName = "is" + flag;
+                            if (abi.HasMethod(propName))
+                            {
+                                var isSet = ExecuteScript(contractScript, abi, propName).AsBool();
+                                var wasSet = oldFlags.HasFlag(flag);
+                                if (isSet != wasSet)
+                                {
+                                    throw new CommandException($"Detected '{flag}' flag change: {wasSet} => {isSet}");
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        throw new CommandException("could not find any deployed token contract for " + symbol);
+                    }
+                }
+
+                sb.CallInterop("Runtime.UpgradeContract", Keys.Address, contractName, contractScript, abiBytes);
+            }
+            else
+            if (isToken)
+            {
+                if (!abi.HasMethod("getName"))
+                {
+                    throw new CommandException("token contract is missing required 'name' property");
+                }
+
+                var symbol = contractName;
+                var name = ExecuteScript(contractScript, abi, "getName").AsString();
+
+                if (string.IsNullOrEmpty(name)) {
+                    throw new CommandException("token contract 'name' property is returning an empty value");
+                }
+
+                BigInteger maxSupply = abi.HasMethod("getMaxSupply") ? ExecuteScript(contractScript, abi, "getMaxSupply").AsNumber() : 0;
+                BigInteger decimals = abi.HasMethod("getDecimals") ? ExecuteScript(contractScript, abi, "getDecimals").AsNumber() : 0;
+
+                TokenFlags flags = TokenFlags.None;
+
+                foreach (var flag in availableFlags)
+                {
+                    var propName = "is" + flag;
+                    if (abi.HasMethod(propName) && ExecuteScript(contractScript, abi, propName).AsBool())
+                    {
+                        flags |= flag;
+                    }
+                }
+
+                sb.CallInterop("Nexus.CreateToken", Keys.Address, symbol, name, maxSupply, decimals, flags, contractScript, abiBytes);
+
+                contractName = symbol;
+            }
+            else
+            {
+                sb.CallInterop("Runtime.DeployContract", Keys.Address, contractName, contractScript, abiBytes);
+            }
+
+            sb.SpendGas(Keys.Address);
+            var script = sb.EndScript();
+
+            if (!isUpgrade)
+            {
+                var upgradeTrigger = AccountContract.GetTriggerForABI(AccountTrigger.OnUpgrade);
+                if (abi.Implements(upgradeTrigger))
+                {
+                    logger.Message($"{contractName} implements proper triggers, and can be upgraded later.");
+                }
+                else
+                {
+                    logger.Warning($"{contractName} does not implements proper triggers, can't be upgraded later.");
+                }
+            }
+
+            var hash = ExecuteTransaction(api, script, ProofOfWork.Minimal, Keys);
+            if (hash != Hash.Null)
+            {
+                var expectedEvent = isUpgrade ? EventKind.ContractUpgrade : (isToken ? EventKind.TokenCreate : EventKind.ContractDeploy);
+                var expectedEventStr = expectedEvent.ToString();
+
+                var events = GetTransactionEvents(hash);
+                if (events.Any(x => x.kind == expectedEventStr))
+                {
+                    var contractAddress = SmartContract.GetAddressForName(contractName);
+
+                    string action = isUpgrade ? "Upgraded" : "Deployed";
+
+                    logger.Message($"{action} {contractName} at {contractAddress}");
+                }
+                else
+                {
+                    throw new CommandException("Transaction was confirmed but deployment event is missing!");
+                }
+            }
+        }
+
+        public static void Deploy(string[] args, NexusAPI api, BigInteger minFee)
+        {
+            DeployOrUpgrade(args, api, minFee, false);
+        }
+
+        public static void Upgrade(string[] args, NexusAPI api, BigInteger minFee)
+        {
+            DeployOrUpgrade(args, api, minFee, true);
         }
     }
 }

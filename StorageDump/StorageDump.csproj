@@ -8,6 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.Blockchain\Phantasma.Blockchain.csproj" />
+    <ProjectReference Include="..\..\PhantasmaChain\Phantasma.RocksDB\Phantasma.RocksDB.csproj" />
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.Storage\Phantasma.Storage.csproj" />
   </ItemGroup>
 </Project>

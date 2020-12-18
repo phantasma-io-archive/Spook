@@ -47,6 +47,7 @@ namespace Phantasma.Spook.Chains
         {
             addressesToWatch = addresses;
             this.web3 = api.GetWeb3Client();
+            this.logger = logger;
 
             processor = web3.Processing.Blocks.CreateBlockProcessor(steps =>
                 {

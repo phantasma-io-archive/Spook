@@ -2,10 +2,10 @@ using System;
 using Phantasma.Cryptography;
 using Phantasma.Pay.Chains;
 using Phantasma.Blockchain.Contracts;
-using Phantasma.Spook.Modules;
 using Phantasma.VM.Utils;
-using Phantasma.Contracts.Native;
 using Phantasma.Core.Types;
+using System.Linq;
+using Phantasma.Blockchain;
 
 namespace Phantasma.Spook.Command
 {
@@ -56,6 +56,24 @@ namespace Phantasma.Spook.Command
                 Console.WriteLine($"#{i} => {entry.LocalAddress} / {entry.ExternalAddress}");
             }
         }
+
+        [ConsoleCommand("resync block", Category = "Oracle", Description = "resync certain blocks on a psecific platform")]
+        protected void OnResyncBlock(string[] args)
+        {
+            if (args.Length != 2)
+            {
+                Console.WriteLine("Platform and block height needed!");
+            }
+
+            var platform = args.ElementAtOrDefault(0);
+            var blockId = args.ElementAtOrDefault(1);
+
+            _cli.TokenSwapper.ResyncBlockOnChain(platform, blockId);
+
+            Console.WriteLine($"Enqueued height {blockId} on chain {platform} to resync.");
+        }
+
+
 
         [ConsoleCommand("platform address add", Category = "Oracle", Description = "Add swap address to platform")]
         protected void OnPlatformAddressAdd(string[] args)

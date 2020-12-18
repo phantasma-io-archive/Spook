@@ -12,6 +12,7 @@ using System.Threading;
 using Phantasma.Blockchain.Contracts;
 using Phantasma.Domain;
 using Phantasma.Spook.Command;
+using Phantasma.Blockchain.Storage;
 
 namespace Phantasma.Spook.Modules
 {
@@ -41,14 +42,14 @@ namespace Phantasma.Spook.Modules
 
             var script = ScriptUtils.BeginScript().
                 AllowGas(source.Address, Address.Null, 1, 9999).
-                CallContract("storage", "UploadFile", source.Address, fileName, fileContent.Length, contentMerkle, ArchiveFlags.None, new byte[0]).
+                CallContract("storage", "UploadFile", source.Address, fileName, fileContent.Length, contentMerkle, new byte[0]).
                 SpendGas(source.Address).
                 EndScript();
             var tx = new Transaction(api.Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5), txIdentifier);
             tx.Sign(source);
             var rawTx = tx.ToByteArray(true);
 
-            logger.Shell($"Uploading {fileName}...");
+            logger.Message($"Uploading {fileName}...");
             try
             {
                 api.SendRawTransaction(Base16.Encode(rawTx));
@@ -99,7 +100,7 @@ namespace Phantasma.Spook.Modules
                 api.WriteArchive(archiveHash, i, Base16.Encode(blockContent));
             }
 
-            logger.Shell($"File uploaded successfully!");
+            logger.Message($"File uploaded successfully!");
         }
     }
 }
