@@ -436,19 +436,6 @@ namespace Phantasma.Spook
                 _simulator = new NexusSimulator(this.nexus, _nodeKeys, 1234);
                 _simulator.MinimumFee = _settings.Node.MinimumFee;
 
-                /*
-                logger.Message("Bootstrapping validators");
-                simulator.BeginBlock();
-                for (int i = 1; i < validatorWIFs.Length; i++)
-                {
-                    simulator.GenerateTransfer(node_keys, Address.FromWIF(validatorWIFs[i]), this.nexus.RootChain, DomainSettings.StakingTokenSymbol, UnitConversion.ToBigInteger(50000, DomainSettings.StakingTokenDecimals));
-                }
-                simulator.EndBlock();*/
-
-                string[] dapps = _settings.Simulator.Dapps.ToArray();
-
-                //DappServer.InitDapps(nexus, _simulator, _nodeKeys, dapps, _settings.Node.MinimumFee, logger);
-
                 bool genBlocks = _settings.Simulator.Blocks;
                 if (genBlocks)
                 {

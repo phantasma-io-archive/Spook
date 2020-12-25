@@ -83,7 +83,6 @@
 
         "Simulator": {
             "simulator.enabled": false,
-            "simulator.dapps": [""],
             "simulator.generate.blocks": false
         },
 

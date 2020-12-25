@@ -74,7 +74,6 @@
 
         "Simulator": {
             "simulator.enabled": true,
-            "simulator.dapps": [""],
             "simulator.generate.blocks": false
         },
 

@@ -3,15 +3,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading;
-using Microsoft.Extensions.Configuration;
 using Phantasma.Blockchain;
 using Phantasma.Core.Log;
 using Phantasma.Core.Types;
 using Phantasma.Core.Utils;
 using Phantasma.Cryptography;
 using Phantasma.Numerics;
+using LunarLabs.Parser;
+using LunarLabs.Parser.JSON;
 
 namespace Phantasma.Spook
 {
@@ -51,15 +50,16 @@ namespace Phantasma.Spook
 
             try
             {
-                var section = new ConfigurationBuilder().AddJsonFile(configFile)
-                    .Build().GetSection("ApplicationConfiguration");
+                var json = File.ReadAllText(configFile);
+                var root = JSONReader.ReadFromString(json);
+                root = root["ApplicationConfiguration"];
 
-                this.Node = new NodeSettings(_settings, section.GetSection("Node"));
-                this.Simulator = new SimulatorSettings(_settings, section.GetSection("Simulator"));
-                this.Oracle = new OracleSettings(_settings, section.GetSection("Oracle"));
-                this.Plugins = new PluginSettings(_settings, section.GetSection("Plugins"));
-                this.App = new AppSettings(_settings, section.GetSection("App"));
-                this.RPC = new RPCSettings(_settings, section.GetSection("RPC"));
+                this.Node = new NodeSettings(_settings, root.GetNode("Node"));
+                this.Simulator = new SimulatorSettings(_settings, root.GetNode("Simulator"));
+                this.Oracle = new OracleSettings(_settings, root.GetNode("Oracle"));
+                this.Plugins = new PluginSettings(_settings, root.GetNode("Plugins"));
+                this.App = new AppSettings(_settings, root.GetNode("App"));
+                this.RPC = new RPCSettings(_settings, root.GetNode("RPC"));
             }
             catch (Exception e)
             {
@@ -152,13 +152,13 @@ namespace Phantasma.Spook
 
         public bool WebLogs { get; }
 
-        public NodeSettings(Arguments settings, IConfigurationSection section)
+        public NodeSettings(Arguments settings, DataNode section)
         {
-            this.WebLogs = settings.GetBool("web.log", section.GetValue<bool>("web.logs"));
+            this.WebLogs = settings.GetBool("web.log", section.GetBool("web.logs"));
 
-            this.BlockTime = settings.GetInt("block.time", section.GetValue<int>("block.time"));
-            this.MinimumFee = settings.GetInt("minimum.fee", section.GetValue<int>("minimum.fee"));
-            this.MinimumPow = settings.GetInt("minimum.pow", section.GetValue<int>("minimum.pow"));
+            this.BlockTime = settings.GetInt("block.time", section.GetInt32("block.time"));
+            this.MinimumFee = settings.GetInt("minimum.fee", section.GetInt32("minimum.fee"));
+            this.MinimumPow = settings.GetInt("minimum.pow", section.GetInt32("minimum.pow"));
 
             int maxPow = 5; // should be a constanct like MinimumBlockTime
             if (this.MinimumPow < 0 || this.MinimumPow > maxPow)
@@ -166,87 +166,83 @@ namespace Phantasma.Spook
                 throw new Exception("Proof-Of-Work difficulty has to be between 1 and 5");
             }
 
-            this.ApiProxyUrl = settings.GetString("api.proxy.url", section.GetValue<string>("api.proxy.url"));
+            this.ApiProxyUrl = settings.GetString("api.proxy.url", section.GetString("api.proxy.url"));
 
             if (string.IsNullOrEmpty(this.ApiProxyUrl))
             {
                 this.ApiProxyUrl = null;
             }
 
-            this.Seeds = section.GetSection("seeds").AsEnumerable()
-                                            .Where(p => p.Value != null)
-                                            .Select(p => p.Value)
-                                            .ToList();
+            this.Seeds = section.GetNode("seeds").Children.Select(p => p.Value).ToList();
 
+            this.NexusName = settings.GetString("nexus.name", section.GetString("nexus.name"));
+            this.NodeMode = settings.GetString("node.mode", section.GetString("node.mode"));
+            this.NodeWif = settings.GetString("node.wif", section.GetString("node.wif"));
+            this.StorageConversion = settings.GetBool("convert.storage", section.GetBool("convert.storage"));
+            this.ApiLog = settings.GetBool("api.log", section.GetBool("api.log"));
 
-            this.NexusName = settings.GetString("nexus.name", section.GetValue<string>("nexus.name"));
-            this.NodeMode = settings.GetString("node.mode", section.GetValue<string>("node.mode"));
-            this.NodeWif = settings.GetString("node.wif", section.GetValue<string>("node.wif"));
-            this.StorageConversion = settings.GetBool("convert.storage", section.GetValue<bool>("convert.storage"));
-            this.ApiLog = settings.GetBool("api.log", section.GetValue<bool>("api.log"));
+            this.NodePort = settings.GetInt("node.port", section.GetInt32("node.port"));
 
-            this.NodePort = settings.GetInt("node.port", section.GetValue<int>("node.port"));
-
-            this.ProfilerPath = settings.GetString("profiler.path", section.GetValue<string>("profiler.path"));
+            this.ProfilerPath = settings.GetString("profiler.path", section.GetString("profiler.path"));
             if (string.IsNullOrEmpty(this.ProfilerPath)) this.ProfilerPath = null;
 
             this.Validator = (this.NodeMode == "validator") ? true : false;
 
-            this.HasSync = settings.GetBool("has.sync", section.GetValue<bool>("has.sync"));
-            this.HasMempool = settings.GetBool("has.mempool", section.GetValue<bool>("has.mempool"));
-            this.MempoolLog = settings.GetBool("mempool.log", section.GetValue<bool>("mempool.log"));
-            this.HasEvents = settings.GetBool("has.events", section.GetValue<bool>("has.events"));
-            this.HasRelay = settings.GetBool("has.relay", section.GetValue<bool>("has.relay"));
-            this.HasArchive = settings.GetBool("has.archive", section.GetValue<bool>("has.archive"));
+            this.HasSync = settings.GetBool("has.sync", section.GetBool("has.sync"));
+            this.HasMempool = settings.GetBool("has.mempool", section.GetBool("has.mempool"));
+            this.MempoolLog = settings.GetBool("mempool.log", section.GetBool("mempool.log"));
+            this.HasEvents = settings.GetBool("has.events", section.GetBool("has.events"));
+            this.HasRelay = settings.GetBool("has.relay", section.GetBool("has.relay"));
+            this.HasArchive = settings.GetBool("has.archive", section.GetBool("has.archive"));
 
-            this.HasRpc = settings.GetBool("has.rpc", section.GetValue<bool>("has.rpc"));
-            this.RpcPort = settings.GetInt("rpc.port", section.GetValue<int>("rpc.port"));
-            this.HasRest = settings.GetBool("has.rest", section.GetValue<bool>("has.rest"));
-            this.RestPort = settings.GetInt("rest.port", section.GetValue<int>("rest.port"));
+            this.HasRpc = settings.GetBool("has.rpc", section.GetBool("has.rpc"));
+            this.RpcPort = settings.GetInt("rpc.port", section.GetInt32("rpc.port"));
+            this.HasRest = settings.GetBool("has.rest", section.GetBool("has.rest"));
+            this.RestPort = settings.GetInt("rest.port", section.GetInt32("rest.port"));
 
-            this.NexusBootstrap = settings.GetBool("nexus.bootstrap", section.GetValue<bool>("nexus.bootstrap"));
-            this.GenesisTimestampUint = settings.GetUInt("genesis.timestamp", section.GetValue<uint>("genesis.timestamp"));
+            this.NexusBootstrap = settings.GetBool("nexus.bootstrap", section.GetBool("nexus.bootstrap"));
+            this.GenesisTimestampUint = settings.GetUInt("genesis.timestamp", section.GetUInt32("genesis.timestamp"));
             this.GenesisTimestamp = new Timestamp((this.GenesisTimestampUint == 0) ? Timestamp.Now.Value : this.GenesisTimestampUint);
-            this.ApiCache = settings.GetBool("api.cache", section.GetValue<bool>("api.cache"));
-            this.Readonly = settings.GetBool("readonly", section.GetValue<bool>("readonly"));
+            this.ApiCache = settings.GetBool("api.cache", section.GetBool("api.cache"));
+            this.Readonly = settings.GetBool("readonly", section.GetBool("readonly"));
 
-            this.SenderHost = settings.GetString("sender.host", section.GetValue<string>("sender.host"));
-            this.SenderThreads = settings.GetUInt("sender.threads", section.GetValue<uint>("sender.threads"));
-            this.SenderAddressCount = settings.GetUInt("sender.address.count", section.GetValue<uint>("sender.address.count"));
+            this.SenderHost = settings.GetString("sender.host", section.GetString("sender.host"));
+            this.SenderThreads = settings.GetUInt("sender.threads", section.GetUInt32("sender.threads"));
+            this.SenderAddressCount = settings.GetUInt("sender.address.count", section.GetUInt32("sender.address.count"));
 
             var defaultStoragePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/Storage/";
             var defaultDbStoragePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/Storage/db/";
             var defaultOraclePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/Oracle/";
 
-            this.StoragePath = settings.GetString("storage.path", section.GetValue<string>("storage.path"));
+            this.StoragePath = settings.GetString("storage.path", section.GetString("storage.path"));
             if (string.IsNullOrEmpty(this.StoragePath))
             {
                 this.StoragePath = defaultStoragePath;
             }
 
-            this.VerifyStoragePath = settings.GetString("verify.storage.path", section.GetValue<string>("verify.storage.path"));
+            this.VerifyStoragePath = settings.GetString("verify.storage.path", section.GetString("verify.storage.path"));
             if (string.IsNullOrEmpty(this.VerifyStoragePath))
             {
                 this.VerifyStoragePath = defaultStoragePath;
             }
 
-            this.DbStoragePath = settings.GetString("db.storage.path", section.GetValue<string>("db.storage.path"));
+            this.DbStoragePath = settings.GetString("db.storage.path", section.GetString("db.storage.path"));
             if (string.IsNullOrEmpty(this.DbStoragePath))
             {
                 this.DbStoragePath = defaultDbStoragePath;
             }
 
-            this.OraclePath = settings.GetString("oracle.path", section.GetValue<string>("oracle.path"));
+            this.OraclePath = settings.GetString("oracle.path", section.GetString("oracle.path"));
             if (string.IsNullOrEmpty(this.OraclePath))
             {
                 this.OraclePath = defaultOraclePath;
             }
 
-            this.StorageBackend = settings.GetString("storage.backend", section.GetValue<string>("storage.backend"));
+            this.StorageBackend = settings.GetString("storage.backend", section.GetString("storage.backend"));
 
             if (this.StorageConversion)
             {
-                this.RandomSwapData = section.GetValue<bool>("random.Swap.data");
+                this.RandomSwapData = section.GetBool("random.Swap.data");
             }
         }
     }
@@ -259,9 +255,24 @@ namespace Phantasma.Spook
 
     public class FeeUrl
     {
+        public FeeUrl(string url, string feeHeight, uint feeIncrease)
+        {
+            this.url = url;
+            this.feeHeight = feeHeight;
+            this.feeIncrease = feeIncrease;
+        }
+
         public string url { get; set; }
         public string feeHeight { get; set; }
         public uint feeIncrease { get; set; }
+
+        public static FeeUrl FromNode(DataNode node)
+        {
+            var url = node.GetString("url");
+            var feeHeight = node.GetString("feeHeight");
+            var feeIncrease = node.GetUInt32("feeIncrease");
+            return new FeeUrl(url, feeHeight, feeIncrease);
+        }
     }
 
     public class OracleSettings
@@ -281,45 +292,38 @@ namespace Phantasma.Spook
         public uint EthGasLimit { get; }
         public bool NeoQuickSync { get; } = true;
 
-        public OracleSettings(Arguments settings, IConfigurationSection section)
+        public OracleSettings(Arguments settings, DataNode section)
         {
-            this.NeoscanUrl = settings.GetString("neoscan.api", section.GetValue<string>("neoscan.api"));
-            this.NeoRpcNodes = section.GetSection("neo.rpc.specific.nodes").AsEnumerable()
-                        .Where(p => p.Value != null)
-                        .Select(p => p.Value)
-                        .ToList();
+            this.NeoscanUrl = settings.GetString("neoscan.api", section.GetString("neoscan.api"));
+            this.NeoRpcNodes = section.GetNode("neo.rpc.specific.nodes").Children.Select(p => p.Value).ToList();
 
             if (this.NeoRpcNodes.Count() == 0)
             {
-                this.NeoRpcNodes = section.GetSection("neo.rpc.nodes").AsEnumerable()
-                            .Where(p => p.Value != null)
+                this.NeoRpcNodes = section.GetNode("neo.rpc.nodes").Children
                             .Select(p => p.Value)
                             .ToList();
                 this.NeoQuickSync = false;
             }
 
-            this.EthRpcNodes = section.GetSection("eth.rpc.nodes").AsEnumerable()
-                        .Where(p => p.Value != null)
+            this.EthRpcNodes = section.GetNode("eth.rpc.nodes").Children
                         .Select(p => p.Value)
                         .ToList();
 
-            this.EthFeeURLs = section.GetSection("eth.fee.urls").Get<List<FeeUrl>>();
-
-            var sectionEthContracts = section.GetSection("eth.contracts");
-
-            this.EthConfirmations = settings.GetUInt("eth.block.confirmations", section.GetValue<uint>("eth.block.confirmations"));
-            this.EthGasLimit = settings.GetUInt("eth.gas.limit", section.GetValue<uint>("eth.gas.limit"));
-            this.CryptoCompareAPIKey = settings.GetString("crypto.compare.key", section.GetValue<string>("crypto.compare.key"));
-            this.Swaps = settings.GetBool("swaps.enabled", section.GetValue<bool>("swaps.enabled"));
-            this.PhantasmaInteropHeight = settings.GetString("phantasma.interop.height", section.GetValue<string>("phantasma.interop.height"));
-            this.NeoInteropHeight = settings.GetString("neo.interop.height", section.GetValue<string>("neo.interop.height"));
-            this.EthInteropHeight = settings.GetString("eth.interop.height", section.GetValue<string>("eth.interop.height"));
-            this.NeoWif = settings.GetString("neo.wif", section.GetValue<string>("neo.wif"));
+            this.EthFeeURLs = section.GetNode("eth.fee.urls").Children.Select(x => FeeUrl.FromNode(x)).ToList();
+            
+            this.EthConfirmations = settings.GetUInt("eth.block.confirmations", section.GetUInt32("eth.block.confirmations"));
+            this.EthGasLimit = settings.GetUInt("eth.gas.limit", section.GetUInt32("eth.gas.limit"));
+            this.CryptoCompareAPIKey = settings.GetString("crypto.compare.key", section.GetString("crypto.compare.key"));
+            this.Swaps = settings.GetBool("swaps.enabled", section.GetBool("swaps.enabled"));
+            this.PhantasmaInteropHeight = settings.GetString("phantasma.interop.height", section.GetString("phantasma.interop.height"));
+            this.NeoInteropHeight = settings.GetString("neo.interop.height", section.GetString("neo.interop.height"));
+            this.EthInteropHeight = settings.GetString("eth.interop.height", section.GetString("eth.interop.height"));
+            this.NeoWif = settings.GetString("neo.wif", section.GetString("neo.wif"));
             if (string.IsNullOrEmpty(this.NeoWif))
             {
                 this.NeoWif = null;
             }
-            this.EthWif = settings.GetString("eth.wif", section.GetValue<string>("eth.wif"));
+            this.EthWif = settings.GetString("eth.wif", section.GetString("eth.wif"));
             if (string.IsNullOrEmpty(this.EthWif))
             {
                 this.EthWif = null;
@@ -335,29 +339,24 @@ namespace Phantasma.Spook
         public bool RAMPlugin { get; }
         public bool MempoolPlugin { get; }
 
-        public PluginSettings(Arguments settings, IConfigurationSection section)
+        public PluginSettings(Arguments settings, DataNode section)
         {
-            this.PluginInterval = settings.GetInt("plugin.refresh.interval", section.GetValue<int>("plugin.refresh.interval"));
-            this.TPSPlugin = settings.GetBool("tps.plugin", section.GetValue<bool>("tps.plugin"));
-            this.RAMPlugin = settings.GetBool("ram.plugin", section.GetValue<bool>("ram.plugin"));
-            this.MempoolPlugin = settings.GetBool("mempool.plugin", section.GetValue<bool>("mempool.plugin"));
+            this.PluginInterval = settings.GetInt("plugin.refresh.interval", section.GetInt32("plugin.refresh.interval"));
+            this.TPSPlugin = settings.GetBool("tps.plugin", section.GetBool("tps.plugin"));
+            this.RAMPlugin = settings.GetBool("ram.plugin", section.GetBool("ram.plugin"));
+            this.MempoolPlugin = settings.GetBool("mempool.plugin", section.GetBool("mempool.plugin"));
         }
     }
 
     public class SimulatorSettings
     {
         public bool Enabled { get; }
-        public List<string> Dapps { get; }
         public bool Blocks { get; }
 
-        public SimulatorSettings(Arguments settings, IConfigurationSection section)
+        public SimulatorSettings(Arguments settings, DataNode section)
         {
-            this.Enabled = settings.GetBool("simulator.enabled", section.GetValue<bool>("simulator.enabled"));
-            this.Dapps = section.GetSection("simulator.dapps").AsEnumerable()
-                                                            .Where(p => p.Value != null)
-                                                            .Select(p => p.Value)
-                                                            .ToList();
-            this.Blocks = settings.GetBool("simulator.generate.blocks", section.GetValue<bool>("simulator.generate.blocks"));
+            this.Enabled = settings.GetBool("simulator.enabled", section.GetBool("simulator.enabled"));
+            this.Blocks = settings.GetBool("simulator.generate.blocks", section.GetBool("simulator.generate.blocks"));
         }
     }
 
@@ -372,16 +371,16 @@ namespace Phantasma.Spook
         public string Prompt { get; }
         public string LogFile { get; }
 
-        public AppSettings(Arguments settings, IConfigurationSection section)
+        public AppSettings(Arguments settings, DataNode section)
         {
-            this.UseGui = settings.GetBool("gui.enabled", section.GetValue<bool>("gui.enabled"));
-            this.UseShell = settings.GetBool("shell.enabled", section.GetValue<bool>("shell.enabled"));
-            this.AppName = settings.GetString("app.name", section.GetValue<string>("app.name"));
-            this.NodeStart = settings.GetBool("node.start", section.GetValue<bool>("node.start"));
-            this.History = settings.GetString("history", section.GetValue<string>("history"));
-            this.Config = settings.GetString("config", section.GetValue<string>("config"));
-            this.Prompt = settings.GetString("prompt", section.GetValue<string>("prompt"));
-            this.LogFile = settings.GetString("log.file", section.GetValue<string>("log.file"));
+            this.UseGui = settings.GetBool("gui.enabled", section.GetBool("gui.enabled"));
+            this.UseShell = settings.GetBool("shell.enabled", section.GetBool("shell.enabled"));
+            this.AppName = settings.GetString("app.name", section.GetString("app.name"));
+            this.NodeStart = settings.GetBool("node.start", section.GetBool("node.start"));
+            this.History = settings.GetString("history", section.GetString("history"));
+            this.Config = settings.GetString("config", section.GetString("config"));
+            this.Prompt = settings.GetString("prompt", section.GetString("prompt"));
+            this.LogFile = settings.GetString("log.file", section.GetString("log.file"));
         }
     }
 
@@ -390,10 +389,10 @@ namespace Phantasma.Spook
         public string Address { get; }
         public uint Port { get; }
 
-        public RPCSettings(Arguments settings, IConfigurationSection section)
+        public RPCSettings(Arguments settings, DataNode section)
         {
-            this.Address = settings.GetString("rpc.address", section.GetValue<string>("rpc.address"));
-            this.Port = settings.GetUInt("rpc.port", section.GetValue<uint>("rpc.port"));
+            this.Address = settings.GetString("rpc.address", section.GetString("rpc.address"));
+            this.Port = settings.GetUInt("rpc.port", section.GetUInt32("rpc.port"));
         }
     }
 }
