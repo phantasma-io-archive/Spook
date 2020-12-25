@@ -74,20 +74,12 @@
             "eth.wif": ""
         },
 
-        "Plugins": {
-            "plugin.refresh.interval": 1,
-            "tps.plugin": true,
-            "ram.plugin": true,
-            "mempool.plugin": true
-        },
-
         "Simulator": {
             "simulator.enabled": false,
             "simulator.generate.blocks": false
         },
 
         "App": {
-            "gui.enabled": false,
             "shell.enabled": true,
             "node.start": true,
             "app.name": "SPK",

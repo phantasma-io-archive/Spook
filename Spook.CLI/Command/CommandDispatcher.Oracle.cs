@@ -41,7 +41,7 @@ namespace Phantasma.Spook.Command
                 reader.SetCurrentHeight(args[0], args[1], args[2]);
 
                 Console.WriteLine($"Height {args[2]} is set for platform {args[0]}, chain {args[1]}");
-                _cli.Logger.Message($"Height {args[2]} is set for platform {args[0]}, chain {args[1]}");
+                CLI.Logger.Message($"Height {args[2]} is set for platform {args[0]}, chain {args[1]}");
             }
         }
 
@@ -120,7 +120,7 @@ namespace Phantasma.Spook.Command
                 return;
             }
             Console.WriteLine($"Added address {externalAddress} to {platform}");
-            _cli.Logger.Message($"Added address {externalAddress} to {platform}");
+            CLI.Logger.Message($"Added address {externalAddress} to {platform}");
         }
     }
 }

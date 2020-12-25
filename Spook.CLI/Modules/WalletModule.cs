@@ -28,7 +28,7 @@ namespace Phantasma.Spook.Modules
     {
         public static PhantasmaKeys Keys;
 
-        private static Logger logger => ModuleLogger.Instance;
+        private static Logger logger => CLI.Logger;
 
         [ConsoleCommand("wallet open", "Wallet", "Open a wallet, requires WIF")]
         public static void Open(string[] args)

@@ -258,7 +258,7 @@ namespace Phantasma.Spook.Command
                 => new BasicDiskStore(fileStoragePath);
 
             Func<string, IKeyValueStoreAdapter> dbStorageFactory    = (name)
-                => new DBPartition(_cli.Logger, dbStoragePath);
+                => new DBPartition(CLI.Logger, dbStoragePath);
 
             Func<string, IKeyValueStoreAdapter> verificationStorageFactory = null;
             if (!string.IsNullOrEmpty(verificationPath))
@@ -287,7 +287,7 @@ namespace Phantasma.Spook.Command
 
             if (includeArchives > 0)
             {
-                _cli.Logger.Message("Starting copying archives...");
+                CLI.Logger.Message("Starting copying archives...");
                 fileStorageArchives.Visit((key, value) =>
                 {
                     count++;
@@ -295,52 +295,52 @@ namespace Phantasma.Spook.Command
                     var val = dbStorageArchives.Get(key);
                     if (!CompareArchive(val, value))
                     {
-                        _cli.Logger.Message($"Archives: NewValue: {value.Hash} and oldValue: {val.Hash} differ, fail now!");
+                        CLI.Logger.Message($"Archives: NewValue: {value.Hash} and oldValue: {val.Hash} differ, fail now!");
                         Environment.Exit(-1);
                     }
                 });
-                _cli.Logger.Message($"Finished copying {count} archives...");
+                CLI.Logger.Message($"Finished copying {count} archives...");
                 count = 0;
             }
 
-            _cli.Logger.Message("Starting copying content items...");
+            CLI.Logger.Message("Starting copying content items...");
             fileStorageContents.Visit((key, value) =>
             {
                 count++;
                 dbStorageContents.Set(key, value);
                 var val = dbStorageContents.Get(key);
-                _cli.Logger.Message("COUNT: " + count);
+                CLI.Logger.Message("COUNT: " + count);
                 if (!CompareBA(val, value))
                 {
-                    _cli.Logger.Message($"CONTENTS: NewValue: {Encoding.UTF8.GetString(val)} and oldValue: {Encoding.UTF8.GetString(value)} differ, fail now!");
+                    CLI.Logger.Message($"CONTENTS: NewValue: {Encoding.UTF8.GetString(val)} and oldValue: {Encoding.UTF8.GetString(value)} differ, fail now!");
                     Environment.Exit(-1);
                 }
             });
 
-            _cli.Logger.Message("Starting copying root...");
+            CLI.Logger.Message("Starting copying root...");
             fileStorageRoot.Visit((key, value) =>
             {
                 count++;
                 StorageKey stKey = new StorageKey(key);
                 dbStorageRoot.Put(stKey, value);
-                _cli.Logger.Message("COUNT: " + count);
+                CLI.Logger.Message("COUNT: " + count);
                 var val = dbStorageRoot.Get(stKey);
                 if (!CompareBA(val, value))
                 {
-                    _cli.Logger.Message($"ROOT: NewValue: {Encoding.UTF8.GetString(val)} and oldValue: {Encoding.UTF8.GetString(value)} differ, fail now!");
+                    CLI.Logger.Message($"ROOT: NewValue: {Encoding.UTF8.GetString(val)} and oldValue: {Encoding.UTF8.GetString(value)} differ, fail now!");
                     Environment.Exit(-1);
                 }
             });
-            _cli.Logger.Message($"Finished copying {count} root items...");
+            CLI.Logger.Message($"Finished copying {count} root items...");
             count = 0;
 
             if (!string.IsNullOrEmpty(verificationPath))
             {
-                _cli.Logger.Message($"Create verification stores");
+                CLI.Logger.Message($"Create verification stores");
 
                 if (includeArchives > 0)
                 {
-                    _cli.Logger.Message("Start writing verify archives...");
+                    CLI.Logger.Message("Start writing verify archives...");
                     dbStorageArchives.Visit((key, value) =>
                     {
                         count++;
@@ -355,29 +355,29 @@ namespace Phantasma.Spook.Command
                         value.SerializeData(bw);
                         fileStorageContentVerify.Set(key, ms.ToArray());
                     });
-                    _cli.Logger.Message($"Finished writing {count} archives...");
+                    CLI.Logger.Message($"Finished writing {count} archives...");
                     count = 0;
                 }
 
-                _cli.Logger.Message("Start writing content items...");
+                CLI.Logger.Message("Start writing content items...");
                 dbStorageContents.Visit((key, value) =>
                 {
                     count++;
-                    _cli.Logger.Message ($"Content: {count}");
+                    CLI.Logger.Message ($"Content: {count}");
                     fileStorageContentVerify.Set(key, value);
                 });
-                _cli.Logger.Message($"Finished writing {count} content items...");
+                CLI.Logger.Message($"Finished writing {count} content items...");
                 count = 0;
 
-                _cli.Logger.Message("Starting writing root...");
+                CLI.Logger.Message("Starting writing root...");
                 dbStorageRoot.Visit((key, value) =>
                 {
                     count++;
                     StorageKey stKey = new StorageKey(key);
                     fileStorageRootVerify.Put(stKey, value);
-                    _cli.Logger.Message ($"Wrote: {count}");
+                    CLI.Logger.Message ($"Wrote: {count}");
                 });
-                _cli.Logger.Message($"Finished writing {count} root items...");
+                CLI.Logger.Message($"Finished writing {count} root items...");
             }
         }
 

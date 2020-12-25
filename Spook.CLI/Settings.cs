@@ -20,7 +20,6 @@ namespace Phantasma.Spook
         public NodeSettings Node { get; }
         public AppSettings App { get; }
         public OracleSettings Oracle { get; }
-        public PluginSettings Plugins { get; }
         public string PluginURL { get; }
         public SimulatorSettings Simulator { get; }
         private Arguments _settings { get; }
@@ -57,7 +56,6 @@ namespace Phantasma.Spook
                 this.Node = new NodeSettings(_settings, root.GetNode("Node"));
                 this.Simulator = new SimulatorSettings(_settings, root.GetNode("Simulator"));
                 this.Oracle = new OracleSettings(_settings, root.GetNode("Oracle"));
-                this.Plugins = new PluginSettings(_settings, root.GetNode("Plugins"));
                 this.App = new AppSettings(_settings, root.GetNode("App"));
                 this.RPC = new RPCSettings(_settings, root.GetNode("RPC"));
             }
@@ -331,23 +329,6 @@ namespace Phantasma.Spook
         }
     }
 
-    public class PluginSettings
-    {
-        public int PluginInterval { get; }
-        // TODO idea, configure plugins in a list and find classes through reflection?
-        public bool TPSPlugin { get; }
-        public bool RAMPlugin { get; }
-        public bool MempoolPlugin { get; }
-
-        public PluginSettings(Arguments settings, DataNode section)
-        {
-            this.PluginInterval = settings.GetInt("plugin.refresh.interval", section.GetInt32("plugin.refresh.interval"));
-            this.TPSPlugin = settings.GetBool("tps.plugin", section.GetBool("tps.plugin"));
-            this.RAMPlugin = settings.GetBool("ram.plugin", section.GetBool("ram.plugin"));
-            this.MempoolPlugin = settings.GetBool("mempool.plugin", section.GetBool("mempool.plugin"));
-        }
-    }
-
     public class SimulatorSettings
     {
         public bool Enabled { get; }
@@ -362,7 +343,6 @@ namespace Phantasma.Spook
 
     public class AppSettings
     {
-        public bool UseGui { get; }
         public bool UseShell { get; }
         public string AppName { get; }
         public bool NodeStart { get; }
@@ -373,7 +353,6 @@ namespace Phantasma.Spook
 
         public AppSettings(Arguments settings, DataNode section)
         {
-            this.UseGui = settings.GetBool("gui.enabled", section.GetBool("gui.enabled"));
             this.UseShell = settings.GetBool("shell.enabled", section.GetBool("shell.enabled"));
             this.AppName = settings.GetString("app.name", section.GetString("app.name"));
             this.NodeStart = settings.GetBool("node.start", section.GetBool("node.start"));

@@ -10,7 +10,7 @@ namespace Phantasma.Spook.Modules
     [Module("nexus")]
     public static class NexusModule
     {
-        public static Logger logger => ModuleLogger.Instance;
+        public static Logger logger => CLI.Logger;
 
         public static void Rescan(Nexus oldNexus, PhantasmaKeys owner, string[] args)
         {
