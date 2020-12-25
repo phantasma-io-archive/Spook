@@ -31,9 +31,8 @@
             "sender.address.count": 100,
             "storage.path": "ChainData",
             "verify.storage.path": "",
-            "db.storage.path": "",
             "oracle.path": "Oracle",
-            "storage.backend": "db",
+            "storage.backend": "rocksdb",
             "convert.storage": false,
             "random.swap.data": false,
             "seeds": []

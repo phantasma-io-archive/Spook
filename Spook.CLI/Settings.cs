@@ -99,6 +99,13 @@ namespace Phantasma.Spook
         }
     }
 
+
+    public enum StorageBackendType
+    {
+        CSV,
+        RocksDB,
+    }
+
     public class NodeSettings
     {
         public string ApiProxyUrl { get; }
@@ -108,9 +115,8 @@ namespace Phantasma.Spook
         public string NodeWif { get; }
 
         public string StoragePath { get; }
-        public string DbStoragePath { get; }
         public string OraclePath { get; }
-        public string StorageBackend { get; }
+        public StorageBackendType StorageBackend;
 
         public bool StorageConversion { get; }
         public string VerifyStoragePath { get; }
@@ -209,7 +215,6 @@ namespace Phantasma.Spook
             this.SenderAddressCount = settings.GetUInt("sender.address.count", section.GetUInt32("sender.address.count"));
 
             var defaultStoragePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/Storage/";
-            var defaultDbStoragePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/Storage/db/";
             var defaultOraclePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/Oracle/";
 
             this.StoragePath = settings.GetString("storage.path", section.GetString("storage.path"));
@@ -218,16 +223,17 @@ namespace Phantasma.Spook
                 this.StoragePath = defaultStoragePath;
             }
 
+            if (!StoragePath.EndsWith("" + Path.DirectorySeparatorChar))
+            {
+                StoragePath += Path.DirectorySeparatorChar;
+            }
+
+            StoragePath = Path.GetFullPath(StoragePath);
+
             this.VerifyStoragePath = settings.GetString("verify.storage.path", section.GetString("verify.storage.path"));
             if (string.IsNullOrEmpty(this.VerifyStoragePath))
             {
                 this.VerifyStoragePath = defaultStoragePath;
-            }
-
-            this.DbStoragePath = settings.GetString("db.storage.path", section.GetString("db.storage.path"));
-            if (string.IsNullOrEmpty(this.DbStoragePath))
-            {
-                this.DbStoragePath = defaultDbStoragePath;
             }
 
             this.OraclePath = settings.GetString("oracle.path", section.GetString("oracle.path"));
@@ -236,7 +242,12 @@ namespace Phantasma.Spook
                 this.OraclePath = defaultOraclePath;
             }
 
-            this.StorageBackend = settings.GetString("storage.backend", section.GetString("storage.backend"));
+            var backend = settings.GetString("storage.backend", section.GetString("storage.backend"));
+            
+            if (!Enum.TryParse<StorageBackendType>(backend, true, out this.StorageBackend))
+            {
+                throw new Exception("Unknown storage backend: " + backend);
+            }
 
             if (this.StorageConversion)
             {

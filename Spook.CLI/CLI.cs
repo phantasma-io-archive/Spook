@@ -375,17 +375,16 @@ namespace Phantasma.Spook
         {
             var storagePath = _settings.Node.StoragePath;
             var oraclePath = _settings.Node.OraclePath;
-            var dbstoragePath = _settings.Node.DbStoragePath; // maybe we can get rid of dbstoragepath?
             var nexusName = _settings.Node.NexusName;
 
             switch (_settings.Node.StorageBackend)
             {
-                case "file":
+                case StorageBackendType.CSV:
                     nexus = new Nexus(nexusName, Logger, (name) => new BasicDiskStore(storagePath + name + ".csv"));
                     break;
 
-                case "db":
-                    nexus = new Nexus(nexusName, Logger, (name) => new DBPartition(Logger, dbstoragePath + name));
+                case StorageBackendType.RocksDB:
+                    nexus = new Nexus(nexusName, Logger, (name) => new DBPartition(Logger, storagePath + name));
                     break;
                 default:
                     throw new Exception("Backend has to be set to either \"db\" or \"file\"");
