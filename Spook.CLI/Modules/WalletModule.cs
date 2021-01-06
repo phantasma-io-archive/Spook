@@ -135,7 +135,7 @@ namespace Phantasma.Spook.Modules
             try {
                 if (tokenSymbol == "NEO" || tokenSymbol == "GAS")
                 {
-                    neoTx = neoAPI.SendAsset(neoKeys, toAddress, tokenSymbol, tempAmount);
+                    neoTx = neoAPI.SendAsset(neoKeys, toAddress, tokenSymbol, tempAmount, out string usedRpc);
                 }
                 else
                 {
