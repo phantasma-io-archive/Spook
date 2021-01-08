@@ -208,7 +208,7 @@ namespace Phantasma.Spook.Interop
         private const string SettlementTag = ".settled";
         private const string PendingTag = ".pending";
         private const string InProgressTag = ".inprogress";
-        private const string UsedRpcTap = ".usedrpc";
+        private const string UsedRpcTag = ".usedrpc";
         // This lock added to protect from reading wrong state (settled, pending, inprogress)
         // while it's being modified by concurrent thread.
         private static object StateModificationLock = new object();
@@ -565,12 +565,21 @@ namespace Phantasma.Spook.Interop
 
         private bool TxInBlockNeo(string txHash)
         {
-            var temp = this.neoAPI.GetTransactionHeight(txHash);
-            logger.Message("neo tx included in block: " + temp);
+            string strHeight = null;
+            try
+            {
+                strHeight = this.neoAPI.GetTransactionHeight(txHash);
+                logger.Message("neo tx included in block: " + strHeight);
+            }
+            catch (Exception e)
+            {
+                logger.Error("Error during neo api call: " + e);
+                return false;
+            }
 
             int height;
 
-            if (int.TryParse(temp, out height) && height > 0)
+            if (int.TryParse(strHeight, out height) && height > 0)
             {
                 return true;
             }
@@ -582,8 +591,8 @@ namespace Phantasma.Spook.Interop
         {
             var counter = 0;
             do {
-                Thread.Sleep(1000); // wait 15 seconds
-                logger.Message("counter: " + counter);
+
+                Thread.Sleep(15000); // wait 15 seconds
 
                 if (txHash.StartsWith("0x"))
                 {
@@ -601,11 +610,27 @@ namespace Phantasma.Spook.Interop
                     {
                         lock (StateModificationLock)
                         {
-                            // tx could still be in mempool
-                            var rpcMap = new StorageMap(UsedRpcTap, this.Storage);
-                            var node = rpcMap.Get<Hash, string>(sourceHash);
+                            string node = null;
+                            lock (StateModificationLock)
+                            {
+                                var rpcMap = new StorageMap(UsedRpcTag, this.Storage);
+                                node = rpcMap.Get<Hash, string>(sourceHash);
+                            }
 
-                            var inMempool = this.neoAPI.CheckMempool(node, txHash);
+                            // tx could still be in mempool
+                            bool inMempool = true;
+                            try
+                            {
+                                inMempool = this.neoAPI.CheckMempool(node, txHash);
+                            }
+                            catch (Exception e)
+                            {
+                                // If we can't check mempool, we are unable to verify if the tx has gone through or not,
+                                // therefore we have to wait until we are able to check this nodes mempool again, or find 
+                                // the tx in a block in the next round.
+                                logger.Error("Exception during mempool check: " + e);
+                                return Hash.Null;
+                            }
 
                             if (inMempool)
                             {
@@ -615,7 +640,6 @@ namespace Phantasma.Spook.Interop
                             else
                             {
                                 // to make sure it wasn't moved out from mempool and is already processed check again if the tx is already added to a block
-
                                 if (TxInBlockNeo(txHash))
                                 {
                                     return Hash.Parse(txHash);
@@ -733,10 +757,11 @@ namespace Phantasma.Spook.Interop
                 catch (Exception e)
                 {
                     logger.Error($"Exception during transfer: {e}");
-                    lock (StateModificationLock)
-                    {
-                        settleMap.Remove<Hash>(sourceHash);
-                    }
+                    // we don't know if the transfer happend or not, therefore can't delete from settleMap yet.
+                    //lock (StateModificationLock)
+                    //{
+                    //    settleMap.Remove<Hash>(sourceHash);
+                    //}
                     return Hash.Null;
                 }
 
@@ -752,7 +777,7 @@ namespace Phantasma.Spook.Interop
                 string txStr = null;
                 
                 var settleMap = new StorageMap(InProgressTag, this.Storage);
-                var rpcMap = new StorageMap(UsedRpcTap, this.Storage);
+                var rpcMap = new StorageMap(UsedRpcTag, this.Storage);
 
                 // We should lock next block of code,
                 // because if there's no lock, there is a theoretical possibility
@@ -788,19 +813,26 @@ namespace Phantasma.Spook.Interop
 
                 var nonce = sourceHash.ToByteArray();
 
-                Neo.Core.Transaction tx;
+                Neo.Core.Transaction tx = null;
                 string usedRpc = null;
-                if (token.Symbol == "NEO" || token.Symbol == "GAS")
+                try
                 {
-                    tx = neoAPI.SendAsset(neoKeys, destAddress, token.Symbol, total, out usedRpc);
+                    if (token.Symbol == "NEO" || token.Symbol == "GAS")
+                    {
+                        tx = neoAPI.SendAsset(neoKeys, destAddress, token.Symbol, total, out usedRpc);
+                    }
+                    else
+                    {
+                        var nep5 = neoAPI.GetToken(token.Symbol);
+                        tx = nep5.Transfer(neoKeys, destAddress, total, nonce, x => usedRpc = x);
+                    }
                 }
-                else
+                catch (Exception e)
                 {
-                    var nep5 = neoAPI.GetToken(token.Symbol);
-                    tx = nep5.Transfer(neoKeys, destAddress, total, nonce, x => usedRpc = x);
+                    logger.Error("Error during transfering {token.Symbol}: " + e);
+                    return Hash.Null;
                 }
 
-                logger.Message("broadcasted neo tx: " + tx);
                 if (tx == null)
                 {
                     logger.Error("NeoAPI error: " + neoAPI.LastError);
@@ -810,8 +842,13 @@ namespace Phantasma.Spook.Interop
                     }
                     return Hash.Null;
                 }
+                logger.Message("broadcasted neo tx: " + tx);
 
-                rpcMap.Set<Hash, string>(sourceHash, usedRpc);
+                lock (StateModificationLock)
+                {
+                    rpcMap.Set<Hash, string>(sourceHash, usedRpc);
+                }
+
 
                 var strHash = tx.Hash.ToString();
 
