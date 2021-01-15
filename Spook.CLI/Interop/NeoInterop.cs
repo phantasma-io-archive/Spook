@@ -387,6 +387,13 @@ namespace Phantasma.Spook.Interop
             var sourceAddress = NeoWallet.EncodeByteArray(sourceScriptHash);
             var interopSwapAddress = NeoWallet.EncodeAddress(swapAddress);
 
+            if (sourceAddress == interopAddress)
+            {
+                logger.Message("self send tx found, ignoring: " + tx.Hash);
+                // self send, probably consolidation tx, ignore
+                return emptyTx;
+            }
+
             //logger.Message("interop address: " + interopAddress);
             //logger.Message("xswapAddress: " + swapAddress);
             //logger.Message("interop sourceAddress: " + sourceAddress);
