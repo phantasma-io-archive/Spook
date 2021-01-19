@@ -48,7 +48,7 @@ namespace Phantasma.Spook.Modules
                 {
                     var newBlock = new Block(oldBlock.Height, oldBlock.ChainAddress, oldBlock.Timestamp, oldBlock.TransactionHashes, previousHash, oldBlock.Protocol, owner.Address, oldBlock.Payload);
 		            Transaction inflationTx = null;
-                    var changeSet = newRootChain.ProcessBlock(newBlock, transactions, minFee, out inflationTx);
+                    var changeSet = newRootChain.ProcessBlock(newBlock, transactions, minFee, out inflationTx, null);
 		            if (inflationTx != null)
 		            {
 			            transactions = transactions.Concat(new [] { inflationTx });
