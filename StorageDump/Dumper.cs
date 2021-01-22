@@ -14,6 +14,7 @@ using System.Text;
 using System.Threading;
 using Phantasma.RocksDB;
 using Phantasma.Core.Log;
+using System.IO;
 
 namespace StorageDump
 {
@@ -25,9 +26,22 @@ namespace StorageDump
         }
     }
 
+    public struct BalanceEntry
+    {
+        public readonly string address;
+        public readonly decimal value;
+
+        public BalanceEntry(string address, decimal value)
+        {
+            this.address = address;
+            this.value = value;
+        }
+    }
+
     class Dumper
     {
-        const bool PrettyPrint = false;
+        static Dictionary<string, List<BalanceEntry>> balances = new Dictionary<string, List<BalanceEntry>>();
+        static Dictionary<string, decimal> totals = new Dictionary<string, decimal>();
 
         static bool HasPrefix(byte[] prefix, byte[] key)
         {
@@ -51,6 +65,9 @@ namespace StorageDump
 
         static void DumpBalances(string symbol, int decimals)
         {
+            var list = new List<BalanceEntry>();
+            balances[symbol] = list;
+
             var prefix = BalanceSheet.MakePrefix(symbol);
 
             var storage = new KeyStoreStorage(store);
@@ -73,10 +90,10 @@ namespace StorageDump
                     ByteArrayUtils.CopyBytes(key, prefix.Length, bytes, 0, bytes.Length);
 
                     var addr = Address.FromBytes(bytes);
-                    if (addr.IsSystem /*|| addr.Text == "P2KFNXEbt65rQiWqogAzqkVGMqFirPmqPw8mQyxvRKsrXV8"*/)
+                    /*if (addr.IsSystem)
                     {
                         return;
-                    }
+                    }*/
 
                     BigInteger amount;
 
@@ -97,20 +114,11 @@ namespace StorageDump
 
                     addresses.Add(addr);
 
-                    string s;
+                    var dec = UnitConversion.ToDecimal(amount, decimals);
+                    total += dec;
 
-                    if (PrettyPrint)
-                    {
-                        var dec = UnitConversion.ToDecimal(amount, decimals);
-                        total += dec;
-                        s = dec.ToString();
-                    }
-                    else
-                    {
-                        s = amount.ToString();
-                    }
 
-                    Console.WriteLine($"{addr.Text},{symbol},{s}");
+                    list.Add(new BalanceEntry(addr.Text, dec));
                 }
             }, uint.MaxValue, new byte[0]);
 
@@ -147,10 +155,15 @@ namespace StorageDump
                 }
             }*/
 
-            if (PrettyPrint)
-            {
-                Console.WriteLine($"Total,{symbol},{total}");
-            }
+            totals[symbol] = total;
+            //Dump($"Total,{symbol},{total}");
+
+
+            list.Sort((x, y) => y.value.CompareTo(x.value));
+
+            var lines = new List<string>();
+            list.ForEach(x => lines.Add($"{x.address},{symbol},{x.value}"));
+            File.WriteAllLines($"balances_{symbol}.csv", lines);
         }
 
         static void Main(string[] args)
@@ -160,18 +173,12 @@ namespace StorageDump
             var logger = new ConsoleLogger();
             store = new DBPartition(logger, "New/chain.main");
 
-            /*store.Visit((key, val) =>
-            {
-                var name = Encoding.UTF8.GetString(key);
-                Console.WriteLine(name);
-                Console.ReadKey();
-            }, uint.MaxValue, new byte[0]);*/
-           
             DumpBalances("SOUL", DomainSettings.StakingTokenDecimals);
-           /* DumpBalances("NEO", 0);
+            DumpBalances("KCAL", DomainSettings.FuelTokenDecimals);
+            DumpBalances("ETH", 18);
+            DumpBalances("NEO", 0);
             DumpBalances("GAS", 8);
             DumpBalances("MKNI", 0);
-            DumpBalances("KCAL", DomainSettings.FuelTokenDecimals);*/
         }
     }
 }
