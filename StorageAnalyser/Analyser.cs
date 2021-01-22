@@ -38,7 +38,7 @@ namespace StorageDump
         }
     }
 
-    class Dumper
+    class Analyser
     {
         static Dictionary<string, List<BalanceEntry>> balances = new Dictionary<string, List<BalanceEntry>>();
         static Dictionary<string, decimal> totals = new Dictionary<string, decimal>();
@@ -79,8 +79,6 @@ namespace StorageDump
 
             var addresses = new HashSet<Address>();
 
-            //Console.WriteLine($"************ BALANCE LIST FOR {symbol} ************");
-
             decimal total = 0;
             store.Visit((key, value) =>
             {
@@ -90,10 +88,6 @@ namespace StorageDump
                     ByteArrayUtils.CopyBytes(key, prefix.Length, bytes, 0, bytes.Length);
 
                     var addr = Address.FromBytes(bytes);
-                    /*if (addr.IsSystem)
-                    {
-                        return;
-                    }*/
 
                     BigInteger amount;
 
@@ -106,11 +100,11 @@ namespace StorageDump
                         amount = 0;
                     }
 
-                    /*if (symbol == DomainSettings.StakingTokenSymbol && stakeMap.ContainsKey<Address>(addr))
+                    if (symbol == DomainSettings.StakingTokenSymbol && stakeMap.ContainsKey<Address>(addr))
                     {
                         var temp = stakeMap.Get<Address, EnergyStake>(addr);
                         amount += temp.stakeAmount;
-                    }*/
+                    }
 
                     addresses.Add(addr);
 
