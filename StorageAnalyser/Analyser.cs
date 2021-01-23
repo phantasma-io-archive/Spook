@@ -1,20 +1,18 @@
-﻿using Phantasma.Blockchain.Tokens;
+﻿using System;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Collections.Generic;
+using System.Globalization;
+using Phantasma.Blockchain.Tokens;
 using Phantasma.Blockchain.Contracts;
 using Phantasma.Core.Utils;
 using Phantasma.Cryptography;
 using Phantasma.Domain;
 using Phantasma.Numerics;
-using Phantasma.Storage;
 using Phantasma.Storage.Context;
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Threading;
 using Phantasma.RocksDB;
 using Phantasma.Core.Log;
-using System.IO;
 using Phantasma.Blockchain;
 
 namespace StorageDump
@@ -24,6 +22,60 @@ namespace StorageDump
         public override void Write(LogEntryKind kind, string msg)
         {
             Console.WriteLine(msg);
+        }
+    }
+
+    public struct BlockEntry
+    {
+        public BigInteger height;
+        public string hash;
+        public uint timestamp;
+        public int txCount;
+
+        public BlockEntry(BigInteger height, string hash, uint timestamp, int txCount)
+        {
+            this.height = height;
+            this.hash = hash;
+            this.timestamp = timestamp;
+            this.txCount = txCount;
+        }
+    }
+
+    public struct TxEntry
+    {
+        public BigInteger height;
+        public string hash;
+        public uint timestamp;
+        public decimal fee;
+
+        public TxEntry(BigInteger height, string hash, uint timestamp, decimal fee)
+        {
+            this.height = height;
+            this.hash = hash;
+            this.timestamp = timestamp;
+            this.fee = fee;
+        }
+    }
+
+    public struct EventEntry
+    {
+        public BigInteger height;
+        public string hash;
+        public uint timestamp;
+        public EventKind kind;
+        public string address;
+        public string contract;
+        public string data;
+
+        public EventEntry(BigInteger height, string hash, uint timestamp, EventKind kind, string address, string contract, string data)
+        {
+            this.height = height;
+            this.hash = hash;
+            this.timestamp = timestamp;
+            this.kind = kind;
+            this.address = address;
+            this.contract = contract;
+            this.data = data;
         }
     }
 
@@ -39,6 +91,18 @@ namespace StorageDump
         }
     }
 
+    public struct AddressEntry
+    {
+        public readonly string address;
+        public readonly uint timestamp;
+
+        public AddressEntry(string address, uint timestamp)
+        {
+            this.address = address;
+            this.timestamp = timestamp;
+        }
+    }
+
     public class Analyser
     {
         private Dictionary<string, List<BalanceEntry>> balances = new Dictionary<string, List<BalanceEntry>>();
@@ -46,7 +110,12 @@ namespace StorageDump
 
         private Nexus nexus;
 
-        private const string outputFolder = "Output";
+        private string outputFolder;
+
+        public Analyser(string outputFolder)
+        {
+            this.outputFolder = outputFolder;
+        }
 
         static bool HasPrefix(byte[] prefix, byte[] key)
         {
@@ -175,8 +244,61 @@ namespace StorageDump
             File.WriteAllLines($"{outputFolder}/{chain.Name}_balances_{symbol}.csv", lines);
         }
 
-        private void DumpTransactions(Chain chain)
+        private void DumpBlocks(Chain chain)
         {
+            Console.WriteLine($"Analysing blocks on {chain.Name} chain");
+
+            var blockList = new List<BlockEntry>();
+            var txList = new List<TxEntry>();
+            var eventList = new List<EventEntry>();
+            var addresses = new Dictionary<string, AddressEntry>();
+
+            for (uint i=1; i<chain.Height; i++)
+            {
+                var blockHash = chain.GetBlockHashAtHeight(i);
+                var block = chain.GetBlockByHash(blockHash);
+
+                blockList.Add(new BlockEntry(block.Height, block.Hash.ToString(), block.Timestamp.Value, block.TransactionCount));
+
+                foreach (var txHash in block.TransactionHashes)
+                {
+                    var tx = chain.GetTransactionByHash(txHash);
+
+                    var fee = chain.GetTransactionFee(tx);
+                    txList.Add(new TxEntry(block.Height, tx.Hash.ToString(), block.Timestamp.Value, UnitConversion.ToDecimal(fee, DomainSettings.FuelTokenDecimals)));
+
+                    var events = block.GetEventsForTransaction(txHash);
+                    foreach (var evt in events)
+                    {
+                        var addr = evt.Address.Text;
+
+                        eventList.Add(new EventEntry(block.Height, tx.Hash.ToString(), block.Timestamp.Value, evt.Kind, addr, evt.Contract, Base16.Encode(evt.Data)));
+
+                        if (!addresses.ContainsKey(addr))
+                        {
+                            addresses[addr] = new AddressEntry(addr, block.Timestamp.Value);
+                        }
+                    }
+                }
+            }
+
+            var lines = new List<string>();
+            blockList.ForEach(x => lines.Add($"{x.height},{x.hash},{x.timestamp},{x.txCount}"));
+            File.WriteAllLines($"{outputFolder}/{chain.Name}_blocks.csv", lines);
+
+            lines.Clear();
+            txList.ForEach(x => lines.Add($"{x.height},{x.hash},{x.timestamp},{x.fee}"));
+            File.WriteAllLines($"{outputFolder}/{chain.Name}_transactions.csv", lines);
+
+            lines.Clear();
+            eventList.ForEach(x => lines.Add($"{x.height},{x.hash},{x.timestamp},{x.kind},{x.contract},{x.address},{x.data}"));
+            File.WriteAllLines($"{outputFolder}/{chain.Name}_events.csv", lines);
+
+            var addressList = addresses.Values.ToList();
+            addressList.Sort((x, y) => x.timestamp.CompareTo(y.timestamp));
+            lines.Clear();
+            addressList.ForEach(x => lines.Add($"{x.timestamp},{x.address}"));
+            File.WriteAllLines($"{outputFolder}/{chain.Name}_addresses.csv", lines);
         }
 
         private void Execute()
@@ -191,6 +313,8 @@ namespace StorageDump
 
             foreach (var chain in chains)
             {
+                DumpBlocks(chain);
+
                 foreach (var token in tokens)
                 {
                     DumpBalances(chain, token);
@@ -202,9 +326,10 @@ namespace StorageDump
         {
             Thread.CurrentThread.CurrentCulture = new CultureInfo("en-US");
 
+            var outputFolder = args.Length > 0 ? args[0] : "Output";
             Directory.CreateDirectory(outputFolder);
 
-            var analyser = new Analyser();
+            var analyser = new Analyser(outputFolder);
 
             analyser.Execute();
         }
