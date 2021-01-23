@@ -15,6 +15,7 @@ using System.Threading;
 using Phantasma.RocksDB;
 using Phantasma.Core.Log;
 using System.IO;
+using Phantasma.Blockchain;
 
 namespace StorageDump
 {
@@ -38,10 +39,14 @@ namespace StorageDump
         }
     }
 
-    class Analyser
+    public class Analyser
     {
-        static Dictionary<string, List<BalanceEntry>> balances = new Dictionary<string, List<BalanceEntry>>();
-        static Dictionary<string, decimal> totals = new Dictionary<string, decimal>();
+        private Dictionary<string, List<BalanceEntry>> balances = new Dictionary<string, List<BalanceEntry>>();
+        private Dictionary<string, decimal> totals = new Dictionary<string, decimal>();
+
+        private Nexus nexus;
+
+        private const string outputFolder = "Output";
 
         static bool HasPrefix(byte[] prefix, byte[] key)
         {
@@ -61,20 +66,27 @@ namespace StorageDump
             return true;
         }
 
-        private static IKeyValueStoreAdapter store;
-
-        static void DumpBalances(string symbol, int decimals)
+        private void DumpBalances(Chain chain, IToken token)
         {
+            if (!token.IsFungible())
+            {
+                return; // unsupported for now
+            }
+
+            var symbol = token.Symbol;
+
+            Console.WriteLine($"Analysing {symbol} balances on {chain.Name} chain");
+
             var list = new List<BalanceEntry>();
             balances[symbol] = list;
 
             var prefix = BalanceSheet.MakePrefix(symbol);
 
-            var storage = new KeyStoreStorage(store);
+            var store = chain.Storage;
 
             
             var stakeMapKey = SmartContract.GetKeyForField(NativeContractKind.Stake, "_stakeMap", true);
-            var stakeMap = new StorageMap(stakeMapKey, storage);
+            var stakeMap = new StorageMap(stakeMapKey, store);
             var stakeCount = stakeMap.Count();
 
             var addresses = new HashSet<Address>();
@@ -108,7 +120,7 @@ namespace StorageDump
 
                     addresses.Add(addr);
 
-                    var dec = UnitConversion.ToDecimal(amount, decimals);
+                    var dec = UnitConversion.ToDecimal(amount, token.Decimals);
                     total += dec;
 
 
@@ -150,29 +162,51 @@ namespace StorageDump
             }*/
 
             totals[symbol] = total;
-            //Dump($"Total,{symbol},{total}");
 
+            if (list.Count == 0)
+            {
+                return;
+            }
 
             list.Sort((x, y) => y.value.CompareTo(x.value));
 
             var lines = new List<string>();
             list.ForEach(x => lines.Add($"{x.address},{symbol},{x.value}"));
-            File.WriteAllLines($"balances_{symbol}.csv", lines);
+            File.WriteAllLines($"{outputFolder}/{chain.Name}_balances_{symbol}.csv", lines);
+        }
+
+        private void DumpTransactions(Chain chain)
+        {
+        }
+
+        private void Execute()
+        {
+            var logger = new ConsoleLogger();
+
+            this.nexus = new Nexus("mainnet", logger,
+                (name) => new DBPartition(logger, "New/" + name));
+
+            var chains = nexus.GetChains(nexus.RootStorage).Select(x => nexus.GetChainByName(x)).ToArray();
+            var tokens = nexus.GetTokens(nexus.RootStorage).Select(x => nexus.GetTokenInfo(nexus.RootStorage, x)).ToArray();
+
+            foreach (var chain in chains)
+            {
+                foreach (var token in tokens)
+                {
+                    DumpBalances(chain, token);
+                }
+            }
         }
 
         static void Main(string[] args)
         {
             Thread.CurrentThread.CurrentCulture = new CultureInfo("en-US");
 
-            var logger = new ConsoleLogger();
-            store = new DBPartition(logger, "New/chain.main");
+            Directory.CreateDirectory(outputFolder);
 
-            DumpBalances("SOUL", DomainSettings.StakingTokenDecimals);
-            DumpBalances("KCAL", DomainSettings.FuelTokenDecimals);
-            DumpBalances("ETH", 18);
-            DumpBalances("NEO", 0);
-            DumpBalances("GAS", 8);
-            DumpBalances("MKNI", 0);
+            var analyser = new Analyser();
+
+            analyser.Execute();
         }
     }
 }
