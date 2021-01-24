@@ -362,7 +362,7 @@ namespace Phantasma.Spook.Interop
             }
         }
 
-        public void ProcessCompletedTasks()
+        private void ProcessCompletedTasks()
         {
             for (var i = 0; i < taskDict.Count; i++)
             {
@@ -684,10 +684,10 @@ namespace Phantasma.Spook.Interop
                     txr = ethAPI.GetTransactionReceipt(txHash);
                     if (txr == null)
                     {
-                        if (retries == 1) // Waiting for 2 minutes max.
+                        if (retries == 12) // Waiting for 1 minute max.
                             break;
 
-                        Thread.Sleep(1000);
+                        Thread.Sleep(5000);
                         retries++;
                     }
                 } while (txr == null);
@@ -805,6 +805,8 @@ namespace Phantasma.Spook.Interop
 
                 // persist resulting tx hash as in progress
                 inProgressMap.Set<Hash, string>(sourceHash, tx.Hash.ToString());
+                rpcMap.Set<Hash, string>(sourceHash, usedRpc);
+
                 logger.Message("broadcasted neo tx: " + tx);
             }
             catch (Exception e)
@@ -818,8 +820,6 @@ namespace Phantasma.Spook.Interop
                 logger.Error($"NeoAPI error {neoAPI.LastError} or possible failed neo swap sourceHash: {sourceHash} no transfer happend.");
                 return Hash.Null;
             }
-
-            rpcMap.Set<Hash, string>(sourceHash, usedRpc);
 
             var strHash = tx.Hash.ToString();
 
