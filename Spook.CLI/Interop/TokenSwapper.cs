@@ -432,16 +432,7 @@ namespace Phantasma.Spook.Interop
                 throw new SwapException("Invalid source platform");
             }
 
-            switch (destPlatform)
-            {
-                case NeoWallet.NeoPlatform:
-                    return SettleSwapToNeo(sourceHash);
-                case EthereumWallet.EthereumPlatform:
-                    return SettleSwapToEth(sourceHash);
-
-                default:
-                    return Hash.Null;
-            }
+            return SettleSwapToExternal(sourceHash, destPlatform);
         }
 
 
@@ -710,135 +701,126 @@ namespace Phantasma.Spook.Interop
             return Hash.Parse(txr.TransactionHash.Substring(2));
         }
 
-        private Hash SettleSwapToEth(Hash sourceHash)
+        // NOTE no locks happen here because this callback is called from within a lock
+        private Hash SettleSwapToEth(Hash sourceHash, Address destination, IToken token, BigInteger amount)
         {
-            return SettleSwapToExternal(sourceHash, (sourceHash, destination, token, amount) =>
-            {
-                // NOTE no locks happen here because this callback is called from within a lock
-
-                // check if tx was sent but not minded yet
-                Hash txHash = Hash.Null;
-                string tx = null;
+            // check if tx was sent but not minded yet
+            string tx = null;
                 
-                var settleMap = new StorageMap(InProgressTag, this.Storage);
+            var settleMap = new StorageMap(InProgressTag, this.Storage);
 
-                if (settleMap.ContainsKey<Hash>(sourceHash))
-                {
-                    tx = settleMap.Get<Hash, string>(sourceHash);
-                }
-                else
-                {
-                    // SettleSwap called for the first time 
-                    settleMap.Set<Hash, string>(sourceHash, null);
-                }
+            if (settleMap.ContainsKey<Hash>(sourceHash))
+            {
+                tx = settleMap.Get<Hash, string>(sourceHash);
+            }
+            else
+            {
+                // SettleSwap called for the first time 
+                settleMap.Set<Hash, string>(sourceHash, null);
+            }
 
-                if (!string.IsNullOrEmpty(tx))
-                {
-                    return VerifyEthTx(sourceHash, tx);
-                }
-
-                var total = UnitConversion.ToDecimal(amount, token.Decimals);
-
-                var wif = wifs["ethereum"];
-                var ethKeys = EthereumKey.FromWIF(wif);
-
-                var destAddress = EthereumWallet.DecodeAddress(destination);
-
-                try
-                {
-                    logger.Message($"ETHSWAP: Trying transfer of {total} {token.Symbol} from {ethKeys.Address} to {destAddress}");
-                    tx = ethAPI.TransferAsset(token.Symbol, destAddress, total, token.Decimals);
-                    settleMap.Set<Hash, string>(sourceHash, tx);
-                }
-                catch (Exception e)
-                {
-                    logger.Error($"Exception during transfer: {e}");
-                    // we don't know if the transfer happend or not, therefore can't delete from settleMap yet.
-                    //    settleMap.Remove<Hash>(sourceHash);
-                    return Hash.Null;
-                }
-
+            if (!string.IsNullOrEmpty(tx))
+            {
                 return VerifyEthTx(sourceHash, tx);
-            });
+            }
+
+            var total = UnitConversion.ToDecimal(amount, token.Decimals);
+
+            var wif = wifs["ethereum"];
+            var ethKeys = EthereumKey.FromWIF(wif);
+
+            var destAddress = EthereumWallet.DecodeAddress(destination);
+
+            try
+            {
+                logger.Message($"ETHSWAP: Trying transfer of {total} {token.Symbol} from {ethKeys.Address} to {destAddress}");
+                tx = ethAPI.TransferAsset(token.Symbol, destAddress, total, token.Decimals);
+                settleMap.Set<Hash, string>(sourceHash, tx);
+            }
+            catch (Exception e)
+            {
+                logger.Error($"Exception during transfer: {e}");
+                // we don't know if the transfer happend or not, therefore can't delete from settleMap yet.
+                //    settleMap.Remove<Hash>(sourceHash);
+                return Hash.Null;
+            }
+
+            return VerifyEthTx(sourceHash, tx);
         }
 
-        private Hash SettleSwapToNeo(Hash sourceHash)
+        // NOTE no locks happen here because this callback is called from within a lock
+        private Hash SettleSwapToNeo(Hash sourceHash, Address destination, IToken token, BigInteger amount)
         {
-            return SettleSwapToExternal(sourceHash, (sourceHash, destination, token, amount) =>
-            {
-                // NOTE no locks happen here because this callback is called from within a lock
-
-                Hash txHash = Hash.Null;
-                string txStr = null;
+            Hash txHash = Hash.Null;
+            string txStr = null;
                 
-                var settleMap = new StorageMap(InProgressTag, this.Storage);
-                var rpcMap = new StorageMap(UsedRpcTag, this.Storage);
+            var settleMap = new StorageMap(InProgressTag, this.Storage);
+            var rpcMap = new StorageMap(UsedRpcTag, this.Storage);
 
-                if (settleMap.ContainsKey<Hash>(sourceHash))
+            if (settleMap.ContainsKey<Hash>(sourceHash))
+            {
+                txStr = settleMap.Get<Hash, string>(sourceHash);
+            }
+            else
+            {
+                // SettleSwap called for the first time 
+                settleMap.Set<Hash, string>(sourceHash, null);
+                rpcMap.Set<Hash, string>(sourceHash, null);
+            }
+
+            if (!string.IsNullOrEmpty(txStr))
+            {
+                return VerifyNeoTx(sourceHash, txStr);
+            }
+
+            var total = UnitConversion.ToDecimal(amount, token.Decimals);
+
+            var wif = wifs["neo"];
+            var neoKeys = NeoKeys.FromWIF(wif);
+
+            var destAddress = NeoWallet.DecodeAddress(destination);
+
+            logger.Message($"NEOSWAP: Trying transfer of {total} {token.Symbol} from {neoKeys.Address} to {destAddress}");
+
+            var nonce = sourceHash.ToByteArray();
+
+            Neo.Core.Transaction tx = null;
+            string usedRpc = null;
+            try
+            {
+                if (token.Symbol == "NEO" || token.Symbol == "GAS")
                 {
-                    txStr = settleMap.Get<Hash, string>(sourceHash);
+                    tx = neoAPI.SendAsset(neoKeys, destAddress, token.Symbol, total, out usedRpc);
                 }
                 else
                 {
-                    // SettleSwap called for the first time 
-                    settleMap.Set<Hash, string>(sourceHash, null);
-                    rpcMap.Set<Hash, string>(sourceHash, null);
+                    var nep5 = neoAPI.GetToken(token.Symbol);
+                    tx = nep5.Transfer(neoKeys, destAddress, total, nonce, x => usedRpc = x);
                 }
+            }
+            catch (Exception e)
+            {
+                logger.Error("Error during transfering {token.Symbol}: " + e);
+                return Hash.Null;
+            }
 
-                if (!string.IsNullOrEmpty(txStr))
-                {
-                    return VerifyNeoTx(sourceHash, txStr);
-                }
+            if (tx == null)
+            {
+                logger.Error("NeoAPI error: " + neoAPI.LastError);
+                settleMap.Remove<Hash>(sourceHash);
+                return Hash.Null;
+            }
+            logger.Message("broadcasted neo tx: " + tx);
 
-                var total = UnitConversion.ToDecimal(amount, token.Decimals);
+            rpcMap.Set<Hash, string>(sourceHash, usedRpc);
 
-                var wif = wifs["neo"];
-                var neoKeys = NeoKeys.FromWIF(wif);
+            var strHash = tx.Hash.ToString();
 
-                var destAddress = NeoWallet.DecodeAddress(destination);
-
-                logger.Message($"NEOSWAP: Trying transfer of {total} {token.Symbol} from {neoKeys.Address} to {destAddress}");
-
-                var nonce = sourceHash.ToByteArray();
-
-                Neo.Core.Transaction tx = null;
-                string usedRpc = null;
-                try
-                {
-                    if (token.Symbol == "NEO" || token.Symbol == "GAS")
-                    {
-                        tx = neoAPI.SendAsset(neoKeys, destAddress, token.Symbol, total, out usedRpc);
-                    }
-                    else
-                    {
-                        var nep5 = neoAPI.GetToken(token.Symbol);
-                        tx = nep5.Transfer(neoKeys, destAddress, total, nonce, x => usedRpc = x);
-                    }
-                }
-                catch (Exception e)
-                {
-                    logger.Error("Error during transfering {token.Symbol}: " + e);
-                    return Hash.Null;
-                }
-
-                if (tx == null)
-                {
-                    logger.Error("NeoAPI error: " + neoAPI.LastError);
-                    settleMap.Remove<Hash>(sourceHash);
-                    return Hash.Null;
-                }
-                logger.Message("broadcasted neo tx: " + tx);
-
-                rpcMap.Set<Hash, string>(sourceHash, usedRpc);
-
-                var strHash = tx.Hash.ToString();
-
-                return VerifyNeoTx(sourceHash, strHash);
-
-            });
+            return VerifyNeoTx(sourceHash, strHash);
         }
 
-        private Hash SettleSwapToExternal(Hash sourceHash, Func<Hash, Address, IToken, BigInteger, Hash> generator)
+
+        private Hash SettleSwapToExternal(Hash sourceHash, string destPlatform)
         {
             var swap = OracleReader.ReadTransaction(DomainSettings.PlatformName, DomainSettings.RootChainName, sourceHash);
             var transfers = swap.Transfers.Where(x => x.destinationAddress.IsInterop).ToArray();
@@ -856,15 +838,27 @@ namespace Phantasma.Spook.Interop
 
             lock (StateModificationLock)
             {
-                var settleHash = GetSettleHash(DomainSettings.PlatformName, sourceHash);
-                logger.Message("settleHash in settleswap: " + settleHash);
+                var destHash = GetSettleHash(DomainSettings.PlatformName, sourceHash);
+                logger.Message("settleHash in settleswap: " + destHash);
 
-                if (settleHash != Hash.Null)
+                if (destHash != Hash.Null)
                 {
-                    return settleHash;
+                    return destHash;
                 }
 
-                var destHash = generator(sourceHash, transfer.destinationAddress, token, transfer.Value);
+                switch (destPlatform)
+                {
+                    case NeoWallet.NeoPlatform:
+                        destHash = SettleSwapToNeo(sourceHash, transfer.destinationAddress, token, transfer.Value);
+                        break;
+
+                    case EthereumWallet.EthereumPlatform:
+                        destHash = SettleSwapToEth(sourceHash, transfer.destinationAddress, token, transfer.Value);
+                        break;
+
+                    default:
+                        return Hash.Null;
+                }
 
                 // if the asset transfer was sucessfull, we prepare a fee settlement on the mainnet
                 if (destHash != Hash.Null)
