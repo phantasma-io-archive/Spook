@@ -413,12 +413,29 @@ namespace Phantasma.Spook.Interop
             // making this check inconsistent.
             lock (StateModificationLock)
             {
-                var settleHash = GetSettleHash(sourcePlatform, sourceHash);
-                logger.Message("settleHash in settleswap: " + settleHash);
-
-                if (settleHash != Hash.Null)
+                // First thing, check if the sourceHash is already known, if so, return
+                var inProgressMap = new StorageMap(InProgressTag, this.Storage);
+                if (inProgressMap.ContainsKey(sourceHash))
                 {
-                    return settleHash;
+                    logger.Message("Hash already known, swap currently in progress: " + sourceHash);
+                    return Hash.Null;
+                }
+                else
+                {
+                    var settleHash = GetSettleHash(sourcePlatform, sourceHash);
+                    logger.Message("settleHash in settleswap: " + settleHash);
+
+                    if (settleHash != Hash.Null)
+                    {
+                        return settleHash;
+                    }
+                    else
+                    {
+                        // sourceHash not known, create an entry to store it, from here on,
+                        // every call to SettleSwap will return Hash.Null until the swap is finished.
+                        logger.Message("Unknown hash, create in progress entry: " + sourceHash);
+                        inProgressMap.Set<Hash, string>(sourceHash, null);
+                    }
                 }
             }
 
@@ -644,8 +661,7 @@ namespace Phantasma.Spook.Interop
                             else
                             {
                                 // tx is neither in a block, nor in mempool, either dropped out of mempool or mempool was full already
-                                var settleMap = new StorageMap(InProgressTag, this.Storage);
-                                settleMap.Remove<Hash>(sourceHash);
+                                logger.Error($"Possible failed neo swap sourceHash: {sourceHash} txHash: {txHash}");
                             }
                         }
                         return Hash.Null;
@@ -690,9 +706,7 @@ namespace Phantasma.Spook.Interop
 
             if (txr.Status.Value == 0) // Status == 0 = error
             {
-                // remove from settleMap because tx has failed.
-                var settleMap = new StorageMap(InProgressTag, this.Storage);
-                settleMap.Remove<Hash>(sourceHash);
+                logger.Error($"Possible failed eth swap sourceHash: {sourceHash} txHash: {txHash}");
                 
                 logger.Error($"EthAPI error, tx {txr.TransactionHash} ");
                 return Hash.Null;
@@ -707,21 +721,16 @@ namespace Phantasma.Spook.Interop
             // check if tx was sent but not minded yet
             string tx = null;
                 
-            var settleMap = new StorageMap(InProgressTag, this.Storage);
+            var inProgressMap = new StorageMap(InProgressTag, this.Storage);
 
-            if (settleMap.ContainsKey<Hash>(sourceHash))
+            if (inProgressMap.ContainsKey<Hash>(sourceHash))
             {
-                tx = settleMap.Get<Hash, string>(sourceHash);
-            }
-            else
-            {
-                // SettleSwap called for the first time 
-                settleMap.Set<Hash, string>(sourceHash, null);
-            }
+                tx = inProgressMap.Get<Hash, string>(sourceHash);
 
-            if (!string.IsNullOrEmpty(tx))
-            {
-                return VerifyEthTx(sourceHash, tx);
+                if (!string.IsNullOrEmpty(tx))
+                {
+                    return VerifyEthTx(sourceHash, tx);
+                }
             }
 
             var total = UnitConversion.ToDecimal(amount, token.Decimals);
@@ -735,13 +744,15 @@ namespace Phantasma.Spook.Interop
             {
                 logger.Message($"ETHSWAP: Trying transfer of {total} {token.Symbol} from {ethKeys.Address} to {destAddress}");
                 tx = ethAPI.TransferAsset(token.Symbol, destAddress, total, token.Decimals);
-                settleMap.Set<Hash, string>(sourceHash, tx);
+
+                // persist resulting tx hash as in progress
+                inProgressMap.Set<Hash, string>(sourceHash, tx);
+                logger.Message("broadcasted eth tx: " + tx);
             }
             catch (Exception e)
             {
                 logger.Error($"Exception during transfer: {e}");
-                // we don't know if the transfer happend or not, therefore can't delete from settleMap yet.
-                //    settleMap.Remove<Hash>(sourceHash);
+                // we don't know if the transfer happend or not, therefore can't delete from inProgressMap yet.
                 return Hash.Null;
             }
 
@@ -754,23 +765,17 @@ namespace Phantasma.Spook.Interop
             Hash txHash = Hash.Null;
             string txStr = null;
                 
-            var settleMap = new StorageMap(InProgressTag, this.Storage);
+            var inProgressMap = new StorageMap(InProgressTag, this.Storage);
             var rpcMap = new StorageMap(UsedRpcTag, this.Storage);
 
-            if (settleMap.ContainsKey<Hash>(sourceHash))
+            if (inProgressMap.ContainsKey<Hash>(sourceHash))
             {
-                txStr = settleMap.Get<Hash, string>(sourceHash);
-            }
-            else
-            {
-                // SettleSwap called for the first time 
-                settleMap.Set<Hash, string>(sourceHash, null);
-                rpcMap.Set<Hash, string>(sourceHash, null);
-            }
+                txStr = inProgressMap.Get<Hash, string>(sourceHash);
 
-            if (!string.IsNullOrEmpty(txStr))
-            {
-                return VerifyNeoTx(sourceHash, txStr);
+                if (!string.IsNullOrEmpty(txStr))
+                {
+                    return VerifyNeoTx(sourceHash, txStr);
+                }
             }
 
             var total = UnitConversion.ToDecimal(amount, token.Decimals);
@@ -797,6 +802,10 @@ namespace Phantasma.Spook.Interop
                     var nep5 = neoAPI.GetToken(token.Symbol);
                     tx = nep5.Transfer(neoKeys, destAddress, total, nonce, x => usedRpc = x);
                 }
+
+                // persist resulting tx hash as in progress
+                inProgressMap.Set<Hash, string>(sourceHash, tx.Hash.ToString());
+                logger.Message("broadcasted neo tx: " + tx);
             }
             catch (Exception e)
             {
@@ -806,11 +815,9 @@ namespace Phantasma.Spook.Interop
 
             if (tx == null)
             {
-                logger.Error("NeoAPI error: " + neoAPI.LastError);
-                settleMap.Remove<Hash>(sourceHash);
+                logger.Error($"NeoAPI error {neoAPI.LastError} or possible failed neo swap sourceHash: {sourceHash} no transfer happend.");
                 return Hash.Null;
             }
-            logger.Message("broadcasted neo tx: " + tx);
 
             rpcMap.Set<Hash, string>(sourceHash, usedRpc);
 
@@ -866,10 +873,6 @@ namespace Phantasma.Spook.Interop
                     var pendingList = new StorageList(PendingTag, this.Storage);
                     var settle = new PendingFee() { sourceHash = sourceHash, destinationHash = destHash, settleHash = Hash.Null, time = DateTime.UtcNow, status = SwapStatus.Settle };
                     pendingList.Add<PendingFee>(settle);
-
-                    // We have a pending fee settle now, so we don't care about the settleMap entry anymore.
-                    var settleMap = new StorageMap(InProgressTag, this.Storage);
-                    settleMap.Remove<Hash>(sourceHash);
                 }
 
                 return destHash;
@@ -926,6 +929,10 @@ namespace Phantasma.Spook.Interop
             {
                 var settlements = new StorageMap(SettlementTag, this.Storage);
                 settlements.Set<Hash, Hash>(swap.sourceHash, swap.destinationHash);
+
+                // swap is finished, it's safe to remove it from inProgressMap
+                var inProgressMap = new StorageMap(InProgressTag, this.Storage);
+                inProgressMap.Remove<Hash>(swap.sourceHash);
                 return true;
             }
 
