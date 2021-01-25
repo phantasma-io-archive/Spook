@@ -308,7 +308,7 @@ namespace Phantasma.Spook.Interop
                         var settlement = pendingList.Get<PendingFee>(i);
                         if (UpdatePendingSettle(pendingList, i))
                         {
-                            pendingList.RemoveAt<PendingFee>(i);
+                            pendingList.RemoveAt(i);
                             count--;
                         }
                         else
