@@ -452,7 +452,7 @@ namespace Phantasma.Spook.Modules
 
                 var script = ScriptUtils.BeginScript().
                     CallContract("swap", "SwapFee", Keys.Address, tokenSymbol, UnitConversion.ToBigInteger(0.01m, DomainSettings.FuelTokenDecimals)).
-                    AllowGas(Keys.Address, Address.Null, minimumFee, 900).
+                    AllowGas(Keys.Address, Address.Null, minimumFee, 9999).
                     TransferTokens(tokenSymbol, Keys.Address, destAddress, amount).
                     SpendGas(Keys.Address).
                     EndScript();
