@@ -63,7 +63,7 @@ namespace Phantasma.Spook
     public class CLI
     {
         public static readonly string Identifier = "SPK" + Assembly.GetAssembly(typeof(CLI)).GetVersion();
-        public static readonly int Protocol = 3;
+        public static readonly int Protocol = 5;
 
         private SpookSettings _settings;
         private Logger logger;
