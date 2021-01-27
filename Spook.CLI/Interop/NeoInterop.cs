@@ -207,7 +207,7 @@ namespace Phantasma.Spook.Interop
                 }
                 catch (Exception e)
                 {
-                    logger.Message("Neo block sync failed: " + e.Message.ToString());
+                    logger.Message("Neo block sync failed: " + e);
                 }
                 return result;
             }
