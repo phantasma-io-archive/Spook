@@ -101,8 +101,8 @@ namespace Phantasma.Spook.Modules
             {
                 wallet.SyncBalances((success) =>
                 {
-                    var temp = wallet.Name != wallet.Address ? $" ({wallet.Address})":"";
-                    logger.Message($"{wallet.Platform} balance for {wallet.Name}"+temp);
+                    var temp = wallet.Name != wallet.Address ? $" ({wallet.Address})" : "";
+                    logger.Message($"{wallet.Platform} balance for {wallet.Name}" + temp);
                     if (success)
                     {
                         bool empty = true;
@@ -132,7 +132,8 @@ namespace Phantasma.Spook.Modules
 
             Thread.Sleep(500);
 
-            try {
+            try
+            {
                 if (tokenSymbol == "NEO" || tokenSymbol == "GAS")
                 {
                     neoTx = neoAPI.SendAsset(neoKeys, toAddress, tokenSymbol, tempAmount, out string usedRpc);
@@ -191,7 +192,7 @@ namespace Phantasma.Spook.Modules
             var encodedRawTx = Base16.Encode(rawTx);
             try
             {
-                api.Execute("sendRawTransaction", new [] {encodedRawTx});
+                api.Execute("sendRawTransaction", new[] { encodedRawTx });
             }
             catch (Exception e)
             {
@@ -202,7 +203,7 @@ namespace Phantasma.Spook.Modules
             var hash = tx.Hash.ToString();
             do
             {
-                var resultStr = api.Execute("getTransaction", new []{hash});
+                var resultStr = api.Execute("getTransaction", new[] { hash });
                 dynamic result = JsonConvert.DeserializeObject<TransactionResult>(resultStr);
 
                 if (result is TransactionResult)
@@ -599,7 +600,7 @@ namespace Phantasma.Spook.Modules
                 throw new Exception("ABI is missing: " + method.name);
             }
 
-            var vm = new GasMachine(script, (uint) method.offset);
+            var vm = new GasMachine(script, (uint)method.offset);
             var result = vm.Execute();
             if (result == ExecutionState.Halt)
             {
@@ -658,7 +659,7 @@ namespace Phantasma.Spook.Modules
                 if (isToken)
                 {
                     var symbol = contractName;
-                    var resultStr = api.Execute("getToken", new [] {symbol, "false"});
+                    var resultStr = api.Execute("getToken", new[] { symbol, "false" });
                     dynamic apiResult = JsonConvert.DeserializeObject<TokenResult>(resultStr);
 
                     if (apiResult is TokenResult)
@@ -670,7 +671,7 @@ namespace Phantasma.Spook.Modules
                         foreach (var entry in splitFlags)
                         {
                             TokenFlags flag;
-                            
+
                             if (Enum.TryParse<TokenFlags>(entry, true, out flag))
                             {
                                 oldFlags |= flag;
@@ -710,7 +711,8 @@ namespace Phantasma.Spook.Modules
                 var symbol = contractName;
                 var name = ExecuteScript(contractScript, abi, "getName").AsString();
 
-                if (string.IsNullOrEmpty(name)) {
+                if (string.IsNullOrEmpty(name))
+                {
                     throw new CommandException("token contract 'name' property is returning an empty value");
                 }
 
@@ -783,6 +785,40 @@ namespace Phantasma.Spook.Modules
         public static void Upgrade(string[] args, NexusAPI api, BigInteger minFee)
         {
             DeployOrUpgrade(args, api, minFee, true);
+        }
+
+        public static void ExecuteScript(string[] args, NexusAPI api, BigInteger minFee)
+        {
+            if (args.Length != 1)
+            {
+                throw new CommandException("Invalid number of arguments, expected file name");
+            }
+
+            DoChecks(api);
+
+            var fileName = args[0];
+
+            if (!File.Exists(fileName))
+            {
+                throw new CommandException("Provided file does not exist");
+            }
+
+            if (!fileName.EndsWith(".tx"))
+            {
+                throw new CommandException($"Provided file is not a compiled transaction script");
+            }
+
+            var txScript = File.ReadAllBytes(fileName);
+
+            var sb = new ScriptBuilder();
+
+            sb.AllowGas(Keys.Address, Address.Null, minFee, 9999);
+            sb.EmitRaw(txScript);
+            sb.SpendGas(Keys.Address);
+
+            var script = sb.EndScript();
+
+            var hash = ExecuteTransaction(api, script, ProofOfWork.Minimal, Keys);
         }
     }
 }
