@@ -331,7 +331,10 @@ namespace Phantasma.Spook.Interop
             {
                 accountSenderRecovered = Nethereum.Signer.EthECKey.RecoverFromSignature(transaction.Signature, transaction.RawHash);
             }
-            var pubKey = accountSenderRecovered.GetPubKey(true);
+            var pubKey = accountSenderRecovered.GetPubKey();
+
+            var point = Cryptography.ECC.ECPoint.DecodePoint(pubKey, Cryptography.ECC.ECCurve.Secp256k1);
+            pubKey = point.EncodePoint(true);
 
             var bytes = new byte[34];
             bytes[0] = (byte)AddressKind.User;
