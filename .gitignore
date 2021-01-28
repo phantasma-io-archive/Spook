@@ -1,11 +1,7 @@
 .vs/*
 packages/*
-Spook.CLI/obj/*
-Spook.CLI/bin/*
-Spook.CLI/Publish/*
-StorageDump/obj/*
-StorageDump/bin/*
-TxSender/obj/*
-TxSender/bin/*
+*/obj/*
+*/bin/*
+*/Publish/*
 launchSettings.json
 ScanScanner/*

@@ -84,14 +84,11 @@ namespace Phantasma.Spook.Chains
 
         public InteropTransfers ExtractInteropTransfers(Blockchain.Nexus nexus, Logger logger, string swapAddress)
         {
-            logger.Message("extract interop transfers");
             var interopTransfers = new InteropTransfers();
             lock (transactions)
             {
-                logger.Message("transactions count: " + transactions.Count);
                 foreach(var txVo in transactions)
                 {
-                    logger.Message("tx: " + txVo.TransactionHash);
                     var block = txVo.Block;
                     var txr = txVo.TransactionReceipt;
                     var tx = txVo.Transaction;

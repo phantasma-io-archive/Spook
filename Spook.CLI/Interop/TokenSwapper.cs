@@ -208,6 +208,8 @@ namespace Phantasma.Spook.Interop
         private const string SettlementTag = ".settled";
         private const string PendingTag = ".pending";
         private const string InProgressTag = ".inprogress";
+        private const string UsedRpcTag = ".usedrpc";
+
         // This lock added to protect from reading wrong state (settled, pending, inprogress)
         // while it's being modified by concurrent thread.
         private static object StateModificationLock = new object();
@@ -294,24 +296,25 @@ namespace Phantasma.Spook.Interop
                     }
                 }
 
-                var pendingList = new StorageList(PendingTag, this.Storage);
-                int i = 0;
-                var count = pendingList.Count();
-
-                while (i < count)
+                lock (StateModificationLock)
                 {
-                    var settlement = pendingList.Get<PendingFee>(i);
-                    if (UpdatePendingSettle(pendingList, i))
+                    var pendingList = new StorageList(PendingTag, this.Storage);
+
+                    int i = 0;
+                    var count = pendingList.Count();
+
+                    while (i < count)
                     {
-                        lock (StateModificationLock)
+                        var settlement = pendingList.Get<PendingFee>(i);
+                        if (UpdatePendingSettle(pendingList, i))
                         {
-                            pendingList.RemoveAt<PendingFee>(i);
+                            pendingList.RemoveAt(i);
+                            count--;
                         }
-                        count--;
-                    }
-                    else
-                    {
-                        i++;
+                        else
+                        {
+                            i++;
+                        }
                     }
                 }
 
@@ -359,7 +362,7 @@ namespace Phantasma.Spook.Interop
             }
         }
 
-        public void ProcessCompletedTasks()
+        private void ProcessCompletedTasks()
         {
             for (var i = 0; i < taskDict.Count; i++)
             {
@@ -410,12 +413,29 @@ namespace Phantasma.Spook.Interop
             // making this check inconsistent.
             lock (StateModificationLock)
             {
-                var settleHash = GetSettleHash(sourcePlatform, sourceHash);
-                logger.Message("settleHash in settleswap: " + settleHash);
-
-                if (settleHash != Hash.Null)
+                // First thing, check if the sourceHash is already known, if so, return
+                var inProgressMap = new StorageMap(InProgressTag, this.Storage);
+                if (inProgressMap.ContainsKey(sourceHash))
                 {
-                    return settleHash;
+                    logger.Message("Hash already known, swap currently in progress: " + sourceHash);
+                    return Hash.Null;
+                }
+                else
+                {
+                    var settleHash = GetSettleHash(sourcePlatform, sourceHash);
+                    logger.Message("settleHash in settleswap: " + settleHash);
+
+                    if (settleHash != Hash.Null)
+                    {
+                        return settleHash;
+                    }
+                    else
+                    {
+                        // sourceHash not known, create an entry to store it, from here on,
+                        // every call to SettleSwap will return Hash.Null until the swap is finished.
+                        logger.Message("Unknown hash, create in progress entry: " + sourceHash);
+                        inProgressMap.Set<Hash, string>(sourceHash, null);
+                    }
                 }
             }
 
@@ -429,19 +449,12 @@ namespace Phantasma.Spook.Interop
                 throw new SwapException("Invalid source platform");
             }
 
-            switch (destPlatform)
-            {
-                case NeoWallet.NeoPlatform:
-                    return SettleSwapToNeo(sourceHash);
-                case EthereumWallet.EthereumPlatform:
-                    return SettleSwapToEth(sourceHash);
-
-                default:
-                    return Hash.Null;
-            }
+            return SettleSwapToExternal(sourceHash, destPlatform);
         }
 
-        public Hash GetSettleHash(string sourcePlatform, Hash sourceHash)
+
+        // should only be called from inside lock block
+        private Hash GetSettleHash(string sourcePlatform, Hash sourceHash)
         {
             var settlements = new StorageMap(SettlementTag, this.Storage);
 
@@ -519,12 +532,15 @@ namespace Phantasma.Spook.Interop
                     var entry = dict[hash];
                     if (entry.destinationHash == Hash.Null)
                     {
-                        var settleHash = GetSettleHash(entry.sourcePlatform, hash);
-                        logger.Message($"settleHash: {settleHash}.");
-                        if (settleHash != Hash.Null)
+                        lock (StateModificationLock)
                         {
-                            entry.destinationHash = settleHash;
-                            dict[hash] = entry;
+                            var settleHash = GetSettleHash(entry.sourcePlatform, hash);
+                            logger.Message($"settleHash: {settleHash}.");
+                            if (settleHash != Hash.Null)
+                            {
+                                entry.destinationHash = settleHash;
+                                dict[hash] = entry;
+                            }
                         }
                     }
                 }
@@ -548,11 +564,14 @@ namespace Phantasma.Spook.Interop
                     continue;
                 }
 
-                var settleHash = GetSettleHash(DomainSettings.PlatformName, hash);
-                if (settleHash != Hash.Null)
+                lock (StateModificationLock)
                 {
-                    logger.Message($"settleHash null");
-                    continue;
+                    var settleHash = GetSettleHash(DomainSettings.PlatformName, hash);
+                    if (settleHash != Hash.Null)
+                    {
+                        logger.Message($"settleHash null");
+                        continue;
+                    }
                 }
 
                 dict[hash] = swap;
@@ -562,22 +581,43 @@ namespace Phantasma.Spook.Interop
             return dict.Values;
         }
 
+        private bool TxInBlockNeo(string txHash)
+        {
+            string strHeight = null;
+            try
+            {
+                strHeight = this.neoAPI.GetTransactionHeight(txHash);
+                logger.Message("neo tx included in block: " + strHeight);
+            }
+            catch (Exception e)
+            {
+                logger.Error("Error during neo api call: " + e);
+                return false;
+            }
+
+            int height;
+
+            if (int.TryParse(strHeight, out height) && height > 0)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
         private Hash VerifyNeoTx(Hash sourceHash, string txHash)
         {
             var counter = 0;
             do {
-                Thread.Sleep(15 * 1000); // wait 15 seconds
+
+                Thread.Sleep(15000); // wait 15 seconds
 
                 if (txHash.StartsWith("0x"))
                 {
                     txHash = txHash.Substring(2);
                 }
-                var temp = this.neoAPI.GetTransactionHeight(txHash);
-                logger.Message("neo tx included in block: " + temp);
 
-                int height;
-
-                if (int.TryParse(temp, out height) && height > 0)
+                if (TxInBlockNeo(txHash))
                 {
                     return Hash.Parse(txHash);
                 }
@@ -586,10 +626,43 @@ namespace Phantasma.Spook.Interop
                     counter++;
                     if (counter > 5)
                     {
-                        lock (StateModificationLock)
+                        string node = null;
+
+                        var rpcMap = new StorageMap(UsedRpcTag, this.Storage);
+                        node = rpcMap.Get<Hash, string>(sourceHash);
+
+                        // tx could still be in mempool
+                        bool inMempool = true;
+                        try
                         {
-                            var settleMap = new StorageMap(InProgressTag, this.Storage);
-                            settleMap.Remove<Hash>(sourceHash);
+                            inMempool = this.neoAPI.CheckMempool(node, txHash);
+                        }
+                        catch (Exception e)
+                        {
+                            // If we can't check mempool, we are unable to verify if the tx has gone through or not,
+                            // therefore we have to wait until we are able to check this nodes mempool again, or find 
+                            // the tx in a block in the next round.
+                            logger.Error("Exception during mempool check: " + e);
+                            return Hash.Null;
+                        }
+
+                        if (inMempool)
+                        {
+                            // tx still in mempool, do nothing
+                            return Hash.Null;
+                        }
+                        else
+                        {
+                            // to make sure it wasn't moved out from mempool and is already processed check again if the tx is already added to a block
+                            if (TxInBlockNeo(txHash))
+                            {
+                                return Hash.Parse(txHash);
+                            }
+                            else
+                            {
+                                // tx is neither in a block, nor in mempool, either dropped out of mempool or mempool was full already
+                                logger.Error($"Possible failed neo swap sourceHash: {sourceHash} txHash: {txHash}");
+                            }
                         }
                         return Hash.Null;
                     }
@@ -600,7 +673,8 @@ namespace Phantasma.Spook.Interop
 
         private Hash VerifyEthTx(Hash sourceHash, string txHash)
         {
-            TransactionReceipt txr = null;
+            TransactionReceipt txr;
+
             try
             {
                 var retries = 0;
@@ -610,7 +684,7 @@ namespace Phantasma.Spook.Interop
                     txr = ethAPI.GetTransactionReceipt(txHash);
                     if (txr == null)
                     {
-                        if (retries == 12) // Waiting for 2 minutes max.
+                        if (retries == 12) // Waiting for 1 minute max.
                             break;
 
                         Thread.Sleep(5000);
@@ -632,12 +706,8 @@ namespace Phantasma.Spook.Interop
 
             if (txr.Status.Value == 0) // Status == 0 = error
             {
-                // remove from settleMap because tx has failed.
-                lock (StateModificationLock)
-                {
-                    var settleMap = new StorageMap(InProgressTag, this.Storage);
-                    settleMap.Remove<Hash>(sourceHash);
-                }
+                logger.Error($"Possible failed eth swap sourceHash: {sourceHash} txHash: {txHash}");
+                
                 logger.Error($"EthAPI error, tx {txr.TransactionHash} ");
                 return Hash.Null;
             }
@@ -645,141 +715,119 @@ namespace Phantasma.Spook.Interop
             return Hash.Parse(txr.TransactionHash.Substring(2));
         }
 
-        private Hash SettleSwapToEth(Hash sourceHash)
+        // NOTE no locks happen here because this callback is called from within a lock
+        private Hash SettleSwapToEth(Hash sourceHash, Address destination, IToken token, BigInteger amount)
         {
-            return SettleSwapToExternal(EthereumWallet.EthereumPlatform, sourceHash, (sourceHash, destination, token, amount) =>
-            {
-                // check if tx was sent but not minded yet
-                Hash txHash = Hash.Null;
-                string tx = null;
+            // check if tx was sent but not minded yet
+            string tx = null;
                 
-                var settleMap = new StorageMap(InProgressTag, this.Storage);
+            var inProgressMap = new StorageMap(InProgressTag, this.Storage);
 
-                // We should lock next block of code,
-                // because if there's no lock, there is a theoretical possibility
-                // of asset transfering code below being called multiple times if
-                // SettleSwapToExternal() called multiple times nearly simultaneously.
-                lock (StateModificationLock)
-                {
-                    if (settleMap.ContainsKey<Hash>(sourceHash))
-                    {
-                        tx = settleMap.Get<Hash, string>(sourceHash);
-                    }
-                    else
-                    {
-                        // SettleSwap called for the first time 
-                        settleMap.Set<Hash, string>(sourceHash, null);
-                    }
-                }
+            if (inProgressMap.ContainsKey<Hash>(sourceHash))
+            {
+                tx = inProgressMap.Get<Hash, string>(sourceHash);
 
                 if (!string.IsNullOrEmpty(tx))
                 {
                     return VerifyEthTx(sourceHash, tx);
                 }
+            }
 
-                var total = UnitConversion.ToDecimal(amount, token.Decimals);
+            var total = UnitConversion.ToDecimal(amount, token.Decimals);
 
-                var wif = wifs["ethereum"];
-                var ethKeys = EthereumKey.FromWIF(wif);
+            var wif = wifs["ethereum"];
+            var ethKeys = EthereumKey.FromWIF(wif);
 
-                var destAddress = EthereumWallet.DecodeAddress(destination);
+            var destAddress = EthereumWallet.DecodeAddress(destination);
 
-                try
-                {
-                    logger.Message($"ETHSWAP: Trying transfer of {total} {token.Symbol} from {ethKeys.Address} to {destAddress}");
-                    tx = ethAPI.TransferAsset(token.Symbol, destAddress, total, token.Decimals);
-                    lock (StateModificationLock)
-                    {
-                        settleMap.Set<Hash, string>(sourceHash, tx);
-                    }
-                }
-                catch (Exception e)
-                {
-                    logger.Error($"Exception during transfer: {e}");
-                    lock (StateModificationLock)
-                    {
-                        settleMap.Remove<Hash>(sourceHash);
-                    }
-                    return Hash.Null;
-                }
+            try
+            {
+                logger.Message($"ETHSWAP: Trying transfer of {total} {token.Symbol} from {ethKeys.Address} to {destAddress}");
+                tx = ethAPI.TransferAsset(token.Symbol, destAddress, total, token.Decimals);
 
-                return VerifyEthTx(sourceHash, tx);
-            });
+                // persist resulting tx hash as in progress
+                inProgressMap.Set<Hash, string>(sourceHash, tx);
+                logger.Message("broadcasted eth tx: " + tx);
+            }
+            catch (Exception e)
+            {
+                logger.Error($"Exception during transfer: {e}");
+                // we don't know if the transfer happend or not, therefore can't delete from inProgressMap yet.
+                return Hash.Null;
+            }
+
+            return VerifyEthTx(sourceHash, tx);
         }
 
-        private Hash SettleSwapToNeo(Hash sourceHash)
+        // NOTE no locks happen here because this callback is called from within a lock
+        private Hash SettleSwapToNeo(Hash sourceHash, Address destination, IToken token, BigInteger amount)
         {
-            return SettleSwapToExternal(NeoWallet.NeoPlatform, sourceHash, (sourceHash, destination, token, amount) =>
-            {
-                Hash txHash = Hash.Null;
-                string txStr = null;
+            Hash txHash = Hash.Null;
+            string txStr = null;
                 
-                var settleMap = new StorageMap(InProgressTag, this.Storage);
+            var inProgressMap = new StorageMap(InProgressTag, this.Storage);
+            var rpcMap = new StorageMap(UsedRpcTag, this.Storage);
 
-                // We should lock next block of code,
-                // because if there's no lock, there is a theoretical possibility
-                // of asset transfering code below being called multiple times if
-                // SettleSwapToExternal() called multiple times nearly simultaneously.
-                lock (StateModificationLock)
-                {
-                    if (settleMap.ContainsKey<Hash>(sourceHash))
-                    {
-                        txStr = settleMap.Get<Hash, string>(sourceHash);
-                    }
-                    else
-                    {
-                        // SettleSwap called for the first time 
-                        settleMap.Set<Hash, string>(sourceHash, null);
-                    }
-                }
+            if (inProgressMap.ContainsKey<Hash>(sourceHash))
+            {
+                txStr = inProgressMap.Get<Hash, string>(sourceHash);
 
                 if (!string.IsNullOrEmpty(txStr))
                 {
                     return VerifyNeoTx(sourceHash, txStr);
                 }
+            }
 
-                var total = UnitConversion.ToDecimal(amount, token.Decimals);
+            var total = UnitConversion.ToDecimal(amount, token.Decimals);
 
-                var wif = wifs["neo"];
-                var neoKeys = Phantasma.Neo.Core.NeoKeys.FromWIF(wif);
+            var wif = wifs["neo"];
+            var neoKeys = NeoKeys.FromWIF(wif);
 
-                var destAddress = NeoWallet.DecodeAddress(destination);
+            var destAddress = NeoWallet.DecodeAddress(destination);
 
-                logger.Message($"NEOSWAP: Trying transfer of {total} {token.Symbol} from {neoKeys.Address} to {destAddress}");
+            logger.Message($"NEOSWAP: Trying transfer of {total} {token.Symbol} from {neoKeys.Address} to {destAddress}");
 
-                var nonce = sourceHash.ToByteArray();
+            var nonce = sourceHash.ToByteArray();
 
-                Neo.Core.Transaction tx;
+            Neo.Core.Transaction tx = null;
+            string usedRpc = null;
+            try
+            {
                 if (token.Symbol == "NEO" || token.Symbol == "GAS")
                 {
-                    tx = neoAPI.SendAsset(neoKeys, destAddress, token.Symbol, total);
+                    tx = neoAPI.SendAsset(neoKeys, destAddress, token.Symbol, total, out usedRpc);
                 }
                 else
                 {
                     var nep5 = neoAPI.GetToken(token.Symbol);
-                    tx = nep5.Transfer(neoKeys, destAddress, total, nonce);
+                    tx = nep5.Transfer(neoKeys, destAddress, total, nonce, x => usedRpc = x);
                 }
+
+                // persist resulting tx hash as in progress
+                inProgressMap.Set<Hash, string>(sourceHash, tx.Hash.ToString());
+                rpcMap.Set<Hash, string>(sourceHash, usedRpc);
 
                 logger.Message("broadcasted neo tx: " + tx);
+            }
+            catch (Exception e)
+            {
+                logger.Error("Error during transfering {token.Symbol}: " + e);
+                return Hash.Null;
+            }
 
-                if (tx == null)
-                {
-                    logger.Error("NeoAPI error: " + neoAPI.LastError);
-                    lock (StateModificationLock)
-                    {
-                        settleMap.Remove<Hash>(sourceHash);
-                    }
-                    return Hash.Null;
-                }
+            if (tx == null)
+            {
+                logger.Error($"NeoAPI error {neoAPI.LastError} or possible failed neo swap sourceHash: {sourceHash} no transfer happend.");
+                return Hash.Null;
+            }
 
-                var strHash = tx.Hash.ToString();
+            var strHash = tx.Hash.ToString();
 
-                return VerifyNeoTx(sourceHash, strHash);
-
-            });
+            return VerifyNeoTx(sourceHash, strHash);
         }
 
-        private Hash SettleSwapToExternal(string destinationPlatform, Hash sourceHash, Func<Hash, Address, IToken, BigInteger, Hash> generator)
+
+        private Hash SettleSwapToExternal(Hash sourceHash, string destPlatform)
         {
             var swap = OracleReader.ReadTransaction(DomainSettings.PlatformName, DomainSettings.RootChainName, sourceHash);
             var transfers = swap.Transfers.Where(x => x.destinationAddress.IsInterop).ToArray();
@@ -795,26 +843,43 @@ namespace Phantasma.Spook.Interop
 
             var token = Nexus.GetTokenInfo(Nexus.RootStorage, transfer.Symbol);
 
-            var destHash = generator(sourceHash, transfer.destinationAddress, token, transfer.Value);
-
-            // if the asset transfer was sucessfull, we prepare a fee settlement on the mainnet
-            if (destHash != Hash.Null)
+            lock (StateModificationLock)
             {
-                lock (StateModificationLock)
+                var destHash = GetSettleHash(DomainSettings.PlatformName, sourceHash);
+                logger.Message("settleHash in settleswap: " + destHash);
+
+                if (destHash != Hash.Null)
+                {
+                    return destHash;
+                }
+
+                switch (destPlatform)
+                {
+                    case NeoWallet.NeoPlatform:
+                        destHash = SettleSwapToNeo(sourceHash, transfer.destinationAddress, token, transfer.Value);
+                        break;
+
+                    case EthereumWallet.EthereumPlatform:
+                        destHash = SettleSwapToEth(sourceHash, transfer.destinationAddress, token, transfer.Value);
+                        break;
+
+                    default:
+                        return Hash.Null;
+                }
+
+                // if the asset transfer was sucessfull, we prepare a fee settlement on the mainnet
+                if (destHash != Hash.Null)
                 {
                     var pendingList = new StorageList(PendingTag, this.Storage);
                     var settle = new PendingFee() { sourceHash = sourceHash, destinationHash = destHash, settleHash = Hash.Null, time = DateTime.UtcNow, status = SwapStatus.Settle };
                     pendingList.Add<PendingFee>(settle);
-
-                    // We have a pending fee settle now, so we don't care about the settleMap entry anymore.
-                    var settleMap = new StorageMap(InProgressTag, this.Storage);
-                    settleMap.Remove<Hash>(sourceHash);
                 }
-            }
 
-            return destHash;
+                return destHash;
+            }
         }
 
+        // NOTE no locks here because we call this from within a lock already
         private bool UpdatePendingSettle(StorageList list, int index)
         {
             var swap = list.Get<PendingFee>(index);
@@ -862,11 +927,12 @@ namespace Phantasma.Spook.Interop
 
             if (swap.status == SwapStatus.Finished)
             {
-                lock (StateModificationLock)
-                {
-                    var settlements = new StorageMap(SettlementTag, this.Storage);
-                    settlements.Set<Hash, Hash>(swap.sourceHash, swap.destinationHash);
-                }
+                var settlements = new StorageMap(SettlementTag, this.Storage);
+                settlements.Set<Hash, Hash>(swap.sourceHash, swap.destinationHash);
+
+                // swap is finished, it's safe to remove it from inProgressMap
+                var inProgressMap = new StorageMap(InProgressTag, this.Storage);
+                inProgressMap.Remove<Hash>(swap.sourceHash);
                 return true;
             }
 

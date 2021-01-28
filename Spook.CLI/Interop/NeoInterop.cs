@@ -207,7 +207,7 @@ namespace Phantasma.Spook.Interop
                 }
                 catch (Exception e)
                 {
-                    logger.Message("Neo block sync failed: " + e.Message.ToString());
+                    logger.Message("Neo block sync failed: " + e);
                 }
                 return result;
             }
@@ -386,6 +386,13 @@ namespace Phantasma.Spook.Interop
             var sourceScriptHash = witness.verificationScript.Sha256().RIPEMD160();
             var sourceAddress = NeoWallet.EncodeByteArray(sourceScriptHash);
             var interopSwapAddress = NeoWallet.EncodeAddress(swapAddress);
+
+            if (sourceAddress == interopAddress)
+            {
+                logger.Message("self send tx found, ignoring: " + tx.Hash);
+                // self send, probably consolidation tx, ignore
+                return emptyTx;
+            }
 
             //logger.Message("interop address: " + interopAddress);
             //logger.Message("xswapAddress: " + swapAddress);
