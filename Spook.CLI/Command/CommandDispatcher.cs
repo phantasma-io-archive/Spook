@@ -246,7 +246,7 @@ namespace Phantasma.Spook.Command
                             }
                             catch (Exception)
                             {
-                                _cli.Logger.Message("invalid api command");
+                                CLI.Logger.Message("invalid api command");
                             }
 
                             return true;
@@ -260,7 +260,7 @@ namespace Phantasma.Spook.Command
                             catch (Exception e)
                             {
                                 e = e.ExpandInnerExceptions();
-                                _cli.Logger.Message(e.Message);
+                                CLI.Logger.Message(e.Message);
                             }
                         }
 

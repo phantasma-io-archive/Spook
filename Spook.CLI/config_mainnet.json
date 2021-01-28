@@ -31,9 +31,8 @@
             "sender.address.count": 100,
             "storage.path": "ChainData",
             "verify.storage.path": "",
-            "db.storage.path": "",
             "oracle.path": "Oracle",
-            "storage.backend": "db",
+            "storage.backend": "rocksdb",
             "convert.storage": false,
             "random.swap.data": false,
             "seeds": []
@@ -74,21 +73,12 @@
             "eth.wif": ""
         },
 
-        "Plugins": {
-            "plugin.refresh.interval": 1,
-            "tps.plugin": true,
-            "ram.plugin": true,
-            "mempool.plugin": true
-        },
-
         "Simulator": {
             "simulator.enabled": false,
-            "simulator.dapps": [""],
             "simulator.generate.blocks": false
         },
 
         "App": {
-            "gui.enabled": false,
             "shell.enabled": true,
             "node.start": true,
             "app.name": "SPK",
