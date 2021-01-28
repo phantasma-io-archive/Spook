@@ -41,7 +41,7 @@ namespace Phantasma.Spook.Command
                 reader.SetCurrentHeight(args[0], args[1], args[2]);
 
                 Console.WriteLine($"Height {args[2]} is set for platform {args[0]}, chain {args[1]}");
-                CLI.Logger.Message($"Height {args[2]} is set for platform {args[0]}, chain {args[1]}");
+                Spook.Logger.Message($"Height {args[2]} is set for platform {args[0]}, chain {args[1]}");
             }
         }
 
@@ -104,7 +104,7 @@ namespace Phantasma.Spook.Command
                 .SpendGas(_cli.NodeKeys.Address).EndScript();
 
             var expire = Timestamp.Now + TimeSpan.FromMinutes(2);
-            var tx = new Phantasma.Blockchain.Transaction(_cli.Nexus.Name, _cli.Nexus.RootChain.Name, script, expire, CLI.Identifier);
+            var tx = new Phantasma.Blockchain.Transaction(_cli.Nexus.Name, _cli.Nexus.RootChain.Name, script, expire, Spook.Identifier);
 
             tx.Mine((int)ProofOfWork.Minimal);
             tx.Sign(_cli.NodeKeys);
@@ -120,7 +120,7 @@ namespace Phantasma.Spook.Command
                 return;
             }
             Console.WriteLine($"Added address {externalAddress} to {platform}");
-            CLI.Logger.Message($"Added address {externalAddress} to {platform}");
+            Spook.Logger.Message($"Added address {externalAddress} to {platform}");
         }
     }
 }

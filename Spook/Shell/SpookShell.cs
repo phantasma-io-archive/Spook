@@ -15,9 +15,9 @@ namespace Phantasma.Spook.Shell
         private String prompt { get; set; } = "spook> ";
 
         private CommandDispatcher _dispatcher;
-        private CLI _cli;
+        private Spook _cli;
 
-        public SpookShell(string[] args, SpookSettings conf, CLI cli)
+        public SpookShell(string[] args, SpookSettings conf, Spook cli)
         {
             _cli = cli;
             _cli.Start();
@@ -25,7 +25,7 @@ namespace Phantasma.Spook.Shell
 
             List<string> completionList = new List<string>(); 
 
-            string version = Assembly.GetAssembly(typeof(CLI)).GetVersion();
+            string version = Assembly.GetAssembly(typeof(Spook)).GetVersion();
             if (!string.IsNullOrEmpty(_cli.Settings.App.Prompt))
             {
                 prompt = _cli.Settings.App.Prompt;

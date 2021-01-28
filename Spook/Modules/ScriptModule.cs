@@ -14,7 +14,7 @@ namespace Phantasma.Spook.Modules
     [Module("script")]
     public static class ScriptModule
     {
-        public static Logger logger => CLI.Logger;
+        public static Logger logger => Spook.Logger;
 
         public static readonly string ScriptExtension = ".pvm";
 

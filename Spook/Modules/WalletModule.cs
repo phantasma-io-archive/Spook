@@ -28,7 +28,7 @@ namespace Phantasma.Spook.Modules
     {
         public static PhantasmaKeys Keys;
 
-        private static Logger logger => CLI.Logger;
+        private static Logger logger => Spook.Logger;
 
         [ConsoleCommand("wallet open", "Wallet", "Open a wallet, requires WIF")]
         public static void Open(string[] args)
@@ -172,7 +172,7 @@ namespace Phantasma.Spook.Modules
 
         public static Hash ExecuteTransaction(NexusAPI api, byte[] script, ProofOfWork proofOfWork, params IKeyPair[] keys)
         {
-            var identifier = "SPK" + Assembly.GetAssembly(typeof(CLI)).GetVersion();
+            var identifier = "SPK" + Assembly.GetAssembly(typeof(Spook)).GetVersion();
             var tx = new Blockchain.Transaction(api.Nexus.Name, DomainSettings.RootChainName, script, Timestamp.Now + TimeSpan.FromMinutes(5), identifier);
 
             if (proofOfWork != ProofOfWork.None)

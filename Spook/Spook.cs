@@ -50,9 +50,9 @@ namespace Phantasma.Spook
         }
     }
 
-    public class CLI
+    public class Spook
     {
-        public static readonly string Identifier = "SPK" + Assembly.GetAssembly(typeof(CLI)).GetVersion();
+        public static readonly string Identifier = "SPK" + Assembly.GetAssembly(typeof(Spook)).GetVersion();
         public static readonly int Protocol = 5;
 
         private SpookSettings _settings;
@@ -275,7 +275,7 @@ namespace Phantasma.Spook
                     this._mempool.SetKeys(_nodeKeys);
                 }
 
-                node = new Node("Spook v" + Assembly.GetAssembly(typeof(CLI)).GetVersion()
+                node = new Node("Spook v" + Assembly.GetAssembly(typeof(Spook)).GetVersion()
                         , nexus
                         , _mempool
                         , _nodeKeys
@@ -301,7 +301,7 @@ namespace Phantasma.Spook
 
                             var genesisTimestamp = _settings.Node.GenesisTimestamp;
 
-                            if (!nexus.CreateGenesisBlock(_nodeKeys, genesisTimestamp, Spook.CLI.Protocol))
+                            if (!nexus.CreateGenesisBlock(_nodeKeys, genesisTimestamp, Phantasma.Spook.Spook.Protocol))
                             {
                                 throw new ChainException("Genesis block failure");
                             }
@@ -517,7 +517,7 @@ namespace Phantasma.Spook
             // TODO to be continued...
         }
 
-        public CLI(string[] args, SpookSettings settings)
+        public Spook(string[] args, SpookSettings settings)
         {
             var culture = new CultureInfo("en-US");
             Thread.CurrentThread.CurrentCulture = culture;

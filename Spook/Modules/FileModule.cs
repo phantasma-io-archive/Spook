@@ -19,7 +19,7 @@ namespace Phantasma.Spook.Modules
     [Module("file")]
     public static class FileModule
     {
-        public static Logger logger => CLI.Logger;
+        public static Logger logger => Spook.Logger;
 
         public static void Upload(string txIdentifier, PhantasmaKeys source, NexusAPI api, string[] args)
         {

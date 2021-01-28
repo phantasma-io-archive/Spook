@@ -13,7 +13,7 @@ namespace Phantasma.Spook
             CultureInfo.DefaultThreadCurrentCulture = culture;
             var _settings = new SpookSettings(args);
 
-            var CLI = new CLI(args, _settings);
+            var CLI = new Spook(args, _settings);
 
             if (_settings.App.UseShell)
             {

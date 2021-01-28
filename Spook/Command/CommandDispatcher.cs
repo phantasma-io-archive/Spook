@@ -26,9 +26,9 @@ namespace Phantasma.Spook.Command
         private readonly Dictionary<Type, Func<List<CommandToken>, bool, object>> _handlers
             = new Dictionary<Type, Func<List<CommandToken>, bool, object>>();
 
-        private CLI _cli;
+        private Spook _cli;
 
-        public CommandDispatcher(CLI cli)
+        public CommandDispatcher(Spook cli)
         {
 
             _cli = cli;
@@ -246,7 +246,7 @@ namespace Phantasma.Spook.Command
                             }
                             catch (Exception)
                             {
-                                CLI.Logger.Message("invalid api command");
+                                Spook.Logger.Message("invalid api command");
                             }
 
                             return true;
@@ -260,7 +260,7 @@ namespace Phantasma.Spook.Command
                             catch (Exception e)
                             {
                                 e = e.ExpandInnerExceptions();
-                                CLI.Logger.Message(e.Message);
+                                Spook.Logger.Message(e.Message);
                             }
                         }
 

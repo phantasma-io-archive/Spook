@@ -10,7 +10,7 @@ namespace Phantasma.Spook.Modules
     [Module("nexus")]
     public static class NexusModule
     {
-        public static Logger logger => CLI.Logger;
+        public static Logger logger => Spook.Logger;
 
         public static void Rescan(Nexus oldNexus, PhantasmaKeys owner, string[] args)
         {
@@ -28,7 +28,7 @@ namespace Phantasma.Spook.Modules
             var oldGenesisBlock = oldNexus.GetGenesisBlock();
 
             var newNexus = new Nexus(oldNexus.Name);
-            newNexus.CreateGenesisBlock(owner, oldGenesisBlock.Timestamp, Spook.CLI.Protocol);
+            newNexus.CreateGenesisBlock(owner, oldGenesisBlock.Timestamp, Phantasma.Spook.Spook.Protocol);
 
             var oldRootChain = oldNexus.RootChain;
             var newRootChain = newNexus.RootChain;

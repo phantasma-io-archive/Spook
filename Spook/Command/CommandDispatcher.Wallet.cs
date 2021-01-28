@@ -73,7 +73,7 @@ namespace Phantasma.Spook.Command
         {
             var script = Base16.Decode(args[0]);
             var expire = Timestamp.Now + TimeSpan.FromMinutes(2);
-            var tx = new Phantasma.Blockchain.Transaction(_cli.Nexus.Name, _cli.Nexus.RootChain.Name, script, expire, CLI.Identifier);
+            var tx = new Phantasma.Blockchain.Transaction(_cli.Nexus.Name, _cli.Nexus.RootChain.Name, script, expire, Spook.Identifier);
             tx.Sign(WalletModule.Keys);
 
             if (_cli.Mempool != null)

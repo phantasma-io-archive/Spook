@@ -21,7 +21,7 @@ namespace Phantasma.Spook.Oracles
 {
     public class SpookOracle : OracleReader, IOracleObserver
     {
-        private readonly CLI _cli;
+        private readonly Spook _cli;
 
         private Dictionary<string, IKeyValueStoreAdapter> _keystoreCache = new Dictionary<string, IKeyValueStoreAdapter>();
         private Dictionary<string, CachedFee> _feeCache = new Dictionary<string, CachedFee>();
@@ -38,7 +38,7 @@ namespace Phantasma.Spook.Oracles
             Platform
         }
 
-        public SpookOracle(CLI cli, Nexus nexus, Logger logger) : base(nexus)
+        public SpookOracle(Spook cli, Nexus nexus, Logger logger) : base(nexus)
         {
             this._cli = cli;
             nexus.Attach(this);

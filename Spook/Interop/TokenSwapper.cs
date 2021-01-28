@@ -162,7 +162,7 @@ namespace Phantasma.Spook.Interop
             this.MinimumFee = minFee;
             this.neoAPI = neoAPI;
             this.ethAPI = ethAPI;
-            this._txIdentifier = "SPK" + Assembly.GetAssembly(typeof(CLI)).GetVersion();
+            this._txIdentifier = "SPK" + Assembly.GetAssembly(typeof(Spook)).GetVersion();
 
             this.Storage = new KeyStoreStorage(Nexus.CreateKeyStoreAdapter("swaps"));
 
