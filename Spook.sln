@@ -15,7 +15,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phantasma.Tests", "..\Phant
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phantasma.Storage", "..\PhantasmaChain\Phantasma.Storage\Phantasma.Storage.csproj", "{E3E744ED-212E-430F-B948-A543E1BC1EE7}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Spook.CLI", "Spook.CLI\Spook.CLI.csproj", "{0E67C572-3EC9-4E5B-9EF6-26B1D8594CDB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Spook.Node", "Spook\Spook.Node.csproj", "{0E67C572-3EC9-4E5B-9EF6-26B1D8594CDB}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phantasma.P2P", "..\PhantasmaChain\Phantasma.P2P\Phantasma.P2P.csproj", "{689394C7-9B6C-48CF-9F5F-7AAE8F7D9C75}"
 EndProject
