@@ -333,7 +333,9 @@ namespace Phantasma.Spook
                     }
                     else
                     {
-                        Logger.Success("Loaded Nexus with genesis " + _nexus.GetGenesisHash(_nexus.RootStorage));
+                        var chainHeight = _nexus.RootChain.Height;
+                        var genesisHash = _nexus.GetGenesisHash(_nexus.RootStorage);
+                        Logger.Success($"Loaded Nexus with genesis {genesisHash } with {chainHeight} blocks");
                     }
                 }
             }
