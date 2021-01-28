@@ -17,7 +17,10 @@ namespace Phantasma.Spook
             if (node.Settings.App.UseShell)
             {
                 new SpookShell(args, node.Settings, node);
-                return;
+            }
+            else
+            {
+                node.Start();
             }
         }
     }
