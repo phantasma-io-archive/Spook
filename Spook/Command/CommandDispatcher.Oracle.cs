@@ -104,7 +104,7 @@ namespace Phantasma.Spook.Command
                 .SpendGas(_cli.NodeKeys.Address).EndScript();
 
             var expire = Timestamp.Now + TimeSpan.FromMinutes(2);
-            var tx = new Phantasma.Blockchain.Transaction(_cli.Nexus.Name, _cli.Nexus.RootChain.Name, script, expire, Spook.Identifier);
+            var tx = new Phantasma.Blockchain.Transaction(_cli.Nexus.Name, _cli.Nexus.RootChain.Name, script, expire, Spook.TxIdentifier);
 
             tx.Mine((int)ProofOfWork.Minimal);
             tx.Sign(_cli.NodeKeys);

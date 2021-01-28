@@ -17,14 +17,6 @@ using Phantasma.Blockchain;
 
 namespace StorageDump
 {
-    class ConsoleLogger : Logger
-    {
-        public override void Write(LogEntryKind kind, string msg)
-        {
-            Console.WriteLine(msg);
-        }
-    }
-
     public struct BlockEntry
     {
         public BigInteger height;
@@ -303,7 +295,7 @@ namespace StorageDump
 
         private void Execute()
         {
-            var logger = new ConsoleLogger();
+            var logger = new ConsoleLogger(LogLevel.Maximum);
 
             this.nexus = new Nexus("mainnet", logger,
                 (name) => new DBPartition(logger, "New/" + name));

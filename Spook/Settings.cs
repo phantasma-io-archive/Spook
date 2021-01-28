@@ -19,29 +19,30 @@ namespace Phantasma.Spook
         public RPCSettings RPC { get; }
         public NodeSettings Node { get; }
         public AppSettings App { get; }
+        public LogSettings Log { get; }
         public OracleSettings Oracle { get; }
-        public string PluginURL { get; }
         public SimulatorSettings Simulator { get; }
+
         private Arguments _settings { get; }
-        private string configFile;
+        private string _configFile;
 
         public SpookSettings(string[] args)
         {
             _settings = new Arguments(args);
 
-            var logger = new ConsoleLogger(); // TODO make this use the same logger as the rest of Spook...
+            var logger = new ConsoleLogger(LogLevel.Maximum);
 
             var defaultConfigFile = "config.json";
 
-            this.configFile = _settings.GetString("conf", defaultConfigFile);
+            this._configFile = _settings.GetString("conf", defaultConfigFile);
 
-            if (!File.Exists(configFile))
+            if (!File.Exists(_configFile))
             {
-                logger.Error($"Expected configuration file to exist: {this.configFile}");
+                logger.Error($"Expected configuration file to exist: {this._configFile}");
 
-                if (this.configFile == defaultConfigFile)
+                if (this._configFile == defaultConfigFile)
                 {
-                    logger.Warning($"Copy either config_mainnet.json or config_testnet.json and rename it to {this.configFile}");
+                    logger.Warning($"Copy either config_mainnet.json or config_testnet.json and rename it to {this._configFile}");
                 }
 
                 Environment.Exit(-1);
@@ -49,7 +50,7 @@ namespace Phantasma.Spook
 
             try
             {
-                var json = File.ReadAllText(configFile);
+                var json = File.ReadAllText(_configFile);
                 var root = JSONReader.ReadFromString(json);
                 root = root["ApplicationConfiguration"];
 
@@ -62,7 +63,7 @@ namespace Phantasma.Spook
             catch (Exception e)
             {
                 logger.Error(e.Message);
-                logger.Warning($"There were issues loading settings from {this.configFile}, aborting...");
+                logger.Warning($"There were issues loading settings from {this._configFile}, aborting...");
                 Environment.Exit(-1);
             }
         }
@@ -352,6 +353,22 @@ namespace Phantasma.Spook
         }
     }
 
+    public class LogSettings
+    {
+        public string LogName { get; }
+        public string LogPath { get; }
+        public LogLevel FileLevel { get; }
+        public LogLevel ShellLevel { get; }
+
+        public LogSettings(Arguments settings, DataNode section)
+        {
+            this.LogName = settings.GetString("file.name", section.GetString("file.name", "spook.log"));
+            this.LogPath = settings.GetString("file.path", section.GetString("file.path", Path.GetTempPath()));
+            this.FileLevel = settings.GetEnum<LogLevel>("file.level", section.GetEnum<LogLevel>("file.level", LogLevel.Maximum));
+            this.ShellLevel = settings.GetEnum<LogLevel>("shell.level", section.GetEnum<LogLevel>("shell.level", LogLevel.Message));
+        }
+    }
+
     public class AppSettings
     {
         public bool UseShell { get; }
@@ -360,7 +377,6 @@ namespace Phantasma.Spook
         public string History { get; }
         public string Config { get; }
         public string Prompt { get; }
-        public string LogFile { get; }
 
         public AppSettings(Arguments settings, DataNode section)
         {
@@ -370,7 +386,6 @@ namespace Phantasma.Spook
             this.History = settings.GetString("history", section.GetString("history"));
             this.Config = settings.GetString("config", section.GetString("config"));
             this.Prompt = settings.GetString("prompt", section.GetString("prompt"));
-            this.LogFile = settings.GetString("log.file", section.GetString("log.file"));
         }
     }
 

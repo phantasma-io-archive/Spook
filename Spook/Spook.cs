@@ -21,8 +21,8 @@ using Phantasma.Spook.Shell;
 using Phantasma.Spook.Command;
 using Phantasma.Spook.Chains;
 using Phantasma.Pay.Chains;
-
-using LunarLabs.WebServer.Core;
+using Phantasma.Spook.Utils;
+using Phantasma.Core.Log;
 using Nethereum.Hex.HexConvertors.Extensions;
 
 using Logger = Phantasma.Core.Log.Logger;
@@ -45,13 +45,17 @@ namespace Phantasma.Spook
 
     public class Spook
     {
-        public static readonly string Identifier = "SPK" + Assembly.GetAssembly(typeof(Spook)).GetVersion();
         public static readonly int Protocol = 5;
 
-        private SpookSettings _settings;
-        private Nexus nexus;
+        public readonly string LogPath;
+        public readonly SpookSettings Settings;
+
+        public bool Running { get; private set; }
+        public static string Version { get; private set; }
+        public static string TxIdentifier => $"SPK{Version}";
+
+        private Nexus _nexus;
         private NexusAPI _nexusApi;
-        private bool _running;
         private Mempool _mempool = null;
         private PeerCaps _peerCaps;
         private PhantasmaKeys _nodeKeys;
@@ -68,11 +72,10 @@ namespace Phantasma.Spook
         private Thread tokenSwapperThread;
 
         public NexusAPI NexusAPI { get { return _nexusApi; } }
-        public Nexus Nexus { get { return nexus; } }
+        public Nexus Nexus { get { return _nexus; } }
         public NeoAPI NeoAPI { get { return _neoAPI; } }
         public EthAPI EthAPI { get { return _ethAPI; } }
         public NeoScanAPI NeoScanAPI { get { return _neoScanAPI; } }
-        public SpookSettings Settings { get { return _settings; } }
         public string CryptoCompareAPIKey  { get { return _cryptoCompareAPIKey; } }
         public TokenSwapper TokenSwapper { get { return _tokenSwapper; } }
         public Mempool Mempool { get { return _mempool; } }
@@ -81,18 +84,20 @@ namespace Phantasma.Spook
         public PhantasmaKeys NodeKeys { get { return _nodeKeys; } }
         public static Logger Logger { get; private set; }
 
-        private void WebLogMapper(string channel, LogLevel level, string text)
+        private void WebLogMapper(string protocol, LunarLabs.WebServer.Core.LogLevel level, string text)
         {
-            if (!_settings.Node.WebLogs)
+            if (!Settings.Node.WebLogs)
             {
                 return;
             }
 
+            text = $"{protocol} {text}";
+
             switch (level)
             {
-                case LogLevel.Debug: Logger.Debug(text); break;
-                case LogLevel.Error: Logger.Error(text); break;
-                case LogLevel.Warning: Logger.Warning(text); break;
+                case LunarLabs.WebServer.Core.LogLevel.Debug: Logger.Debug(text); break;
+                case LunarLabs.WebServer.Core.LogLevel.Error: Logger.Error(text); break;
+                case LunarLabs.WebServer.Core.LogLevel.Warning: Logger.Warning(text); break;
                 default: Logger.Message(text); break;
             }
         }
@@ -108,11 +113,11 @@ namespace Phantasma.Spook
 
             _nodeKeys = SetupNodeKeys();
 
-            _running = SetupNexus();
+            Running = SetupNexus();
 
             SetupOracleApis();
 
-            if (_settings.Node.HasMempool)
+            if (Settings.Node.HasMempool)
             {
                 _mempool = SetupMempool();
             }
@@ -124,14 +129,14 @@ namespace Phantasma.Spook
             _nexusApi = SetupNexusApi();
 
 
-            if (_node != null && _settings.App.NodeStart)
+            if (_node != null && Settings.App.NodeStart)
             {
                 _node.Start();
             }
 
             _commandDispatcher = SetupCommandDispatcher();
 
-            if (_settings.Simulator.Enabled)
+            if (Settings.Simulator.Enabled)
             {
                 StartSimulator(_commandDispatcher);
             }
@@ -140,7 +145,7 @@ namespace Phantasma.Spook
                 MakeReady(_commandDispatcher);
             }
 
-            if (_settings.Oracle.Swaps)
+            if (Settings.Oracle.Swaps)
             {
                 _tokenSwapper = StartTokenSwapper();
             }
@@ -150,15 +155,15 @@ namespace Phantasma.Spook
 
         public TokenSwapper StartTokenSwapper()
         {
-            var minimumFee = _settings.Node.MinimumFee;
-            var oracleSettings = _settings.Oracle;
-            var tokenSwapper = new TokenSwapper(_settings, _nodeKeys, _nexusApi, _neoAPI, _ethAPI, minimumFee, Logger);
+            var minimumFee = Settings.Node.MinimumFee;
+            var oracleSettings = Settings.Oracle;
+            var tokenSwapper = new TokenSwapper(this, _nodeKeys, _nexusApi, _neoAPI, _ethAPI, minimumFee, Logger);
             _nexusApi.TokenSwapper = tokenSwapper;
 
             tokenSwapperThread = new Thread(() =>
             {
                 Logger.Message("Running token swapping service...");
-                while (_running)
+                while (Running)
                 {
                     Logger.Debug("Update TokenSwapper now");
                     Task.Delay(5000).Wait();
@@ -179,14 +184,14 @@ namespace Phantasma.Spook
             new Thread(() =>
             {
                 Logger.Message("Initializing simulator...");
-                _simulator = new NexusSimulator(this.nexus, _nodeKeys, 1234);
-                _simulator.MinimumFee = _settings.Node.MinimumFee;
+                _simulator = new NexusSimulator(this._nexus, _nodeKeys, 1234);
+                _simulator.MinimumFee = Settings.Node.MinimumFee;
 
-                bool genBlocks = _settings.Simulator.Blocks;
+                bool genBlocks = Settings.Simulator.Blocks;
                 if (genBlocks)
                 {
                     int blockNumber = 0;
-                    while (_running)
+                    while (Running)
                     {
                         Thread.Sleep(5000);
                         blockNumber++;
@@ -216,29 +221,29 @@ namespace Phantasma.Spook
 
         public void MakeReady(CommandDispatcher dispatcher)
         {
-            var nodeMode = _settings.Node.NodeMode;
+            var nodeMode = Settings.Node.NodeMode;
             Logger.Success($"Node is now running in {nodeMode} mode!");
             _nodeReady = true;
         }
 
         private void SetupOracleApis()
         {
-            var neoScanURL = _settings.Oracle.NeoscanUrl;
+            var neoScanURL = Settings.Oracle.NeoscanUrl;
 
-            var neoRpcList = _settings.Oracle.NeoRpcNodes;
+            var neoRpcList = Settings.Oracle.NeoRpcNodes;
             this._neoAPI = new Neo.Core.RemoteRPCNode(neoScanURL, neoRpcList.ToArray());
             this._neoAPI.SetLogger((s) => Logger.Message(s));
 
-            var ethRpcList = _settings.Oracle.EthRpcNodes;
+            var ethRpcList = Settings.Oracle.EthRpcNodes;
             
-            var ethWIF = _settings.GetInteropWif(Nexus, _nodeKeys, EthereumWallet.EthereumPlatform);
+            var ethWIF = Settings.GetInteropWif(Nexus, _nodeKeys, EthereumWallet.EthereumPlatform);
             var ethKeys = PhantasmaKeys.FromWIF(ethWIF);
             
-            this._ethAPI = new EthAPI(this.Nexus, this._settings, new EthAccount(ethKeys.PrivateKey.ToHex()), Logger);
+            this._ethAPI = new EthAPI(this.Nexus, this.Settings, new EthAccount(ethKeys.PrivateKey.ToHex()), Logger);
 
-            this._neoScanAPI = new NeoScanAPI(neoScanURL, Logger, nexus, _nodeKeys);
+            this._neoScanAPI = new NeoScanAPI(neoScanURL, Logger, _nexus, _nodeKeys);
 
-            this._cryptoCompareAPIKey = _settings.Oracle.CryptoCompareAPIKey;
+            this._cryptoCompareAPIKey = Settings.Oracle.CryptoCompareAPIKey;
             if (!string.IsNullOrEmpty(this._cryptoCompareAPIKey))
             {
                 Logger.Message($"CryptoCompare API enabled...");
@@ -248,28 +253,30 @@ namespace Phantasma.Spook
         private Node SetupNode()
         {
             Node node = null;
-            if (_settings.Node.HasSync)
+            if (Settings.Node.HasSync)
             {
                 if (this._mempool != null)
                 {
                     this._mempool.SetKeys(_nodeKeys);
                 }
 
-                node = new Node("Spook v" + Assembly.GetAssembly(typeof(Spook)).GetVersion()
-                        , nexus
+                Spook.Version = Assembly.GetAssembly(typeof(Spook)).GetVersion();
+
+                node = new Node("Spook v" + Version
+                        , _nexus
                         , _mempool
                         , _nodeKeys
-                        , _settings.Node.NodePort
+                        , Settings.Node.NodePort
                         , _peerCaps
-                        , _settings.Node.Seeds
+                        , Settings.Node.Seeds
                         , Logger);
 
-                if (!nexus.HasGenesis)
+                if (!_nexus.HasGenesis)
                 {
-                    if (_settings.Node.Validator)
+                    if (Settings.Node.Validator)
                     {
-                        var nexusName = _settings.Node.NexusName;
-                        if (_settings.Node.NexusBootstrap)
+                        var nexusName = Settings.Node.NexusName;
+                        if (Settings.Node.NexusBootstrap)
                         {
                             if (!ValidationUtils.IsValidIdentifier(nexusName))
                             {
@@ -279,14 +286,14 @@ namespace Phantasma.Spook
 
                             Logger.Debug($"Boostraping {nexusName} nexus using {_nodeKeys.Address}...");
 
-                            var genesisTimestamp = _settings.Node.GenesisTimestamp;
+                            var genesisTimestamp = Settings.Node.GenesisTimestamp;
 
-                            if (!nexus.CreateGenesisBlock(_nodeKeys, genesisTimestamp, Phantasma.Spook.Spook.Protocol))
+                            if (!_nexus.CreateGenesisBlock(_nodeKeys, genesisTimestamp, Phantasma.Spook.Spook.Protocol))
                             {
                                 throw new ChainException("Genesis block failure");
                             }
 
-                            Logger.Debug("Genesis block created: " + nexus.GetGenesisHash(nexus.RootStorage));
+                            Logger.Debug("Genesis block created: " + _nexus.GetGenesisHash(_nexus.RootStorage));
                         }
                         else
                         {
@@ -305,14 +312,14 @@ namespace Phantasma.Spook
                 }
                 else
                 {
-                    var genesisAddress = nexus.GetGenesisAddress(nexus.RootStorage);
-                    if (_settings.Node.Validator && _nodeKeys.Address != genesisAddress && !_settings.Node.Readonly)
+                    var genesisAddress = _nexus.GetGenesisAddress(_nexus.RootStorage);
+                    if (Settings.Node.Validator && _nodeKeys.Address != genesisAddress && !Settings.Node.Readonly)
                     {
                         throw new Exception("Specified node key does not match genesis address " + genesisAddress.Text);
                     }
                     else
                     {
-                        Logger.Success("Loaded Nexus with genesis " + nexus.GetGenesisHash(nexus.RootStorage));
+                        Logger.Success("Loaded Nexus with genesis " + _nexus.GetGenesisHash(_nexus.RootStorage));
                     }
                 }
             }
@@ -322,7 +329,7 @@ namespace Phantasma.Spook
 
         private PhantasmaKeys SetupNodeKeys()
         {
-            PhantasmaKeys nodeKeys = PhantasmaKeys.FromWIF(_settings.Node.NodeWif);;
+            PhantasmaKeys nodeKeys = PhantasmaKeys.FromWIF(Settings.Node.NodeWif);;
             //TODO wallet module?
 
             return nodeKeys;
@@ -331,13 +338,13 @@ namespace Phantasma.Spook
         private PeerCaps SetupPeerCaps()
         {
             PeerCaps caps = PeerCaps.None;
-            if (_settings.Node.HasSync) { caps |= PeerCaps.Sync; }
-            if (_settings.Node.HasMempool) { caps |= PeerCaps.Mempool; }
-            if (_settings.Node.HasEvents) { caps |= PeerCaps.Events; }
-            if (_settings.Node.HasRelay) { caps |= PeerCaps.Relay; }
-            if (_settings.Node.HasArchive) { caps |= PeerCaps.Archive; }
-            if (_settings.Node.HasRpc) { caps |= PeerCaps.RPC; }
-            if (_settings.Node.HasRest) { caps |= PeerCaps.REST; }
+            if (Settings.Node.HasSync) { caps |= PeerCaps.Sync; }
+            if (Settings.Node.HasMempool) { caps |= PeerCaps.Mempool; }
+            if (Settings.Node.HasEvents) { caps |= PeerCaps.Events; }
+            if (Settings.Node.HasRelay) { caps |= PeerCaps.Relay; }
+            if (Settings.Node.HasArchive) { caps |= PeerCaps.Archive; }
+            if (Settings.Node.HasRpc) { caps |= PeerCaps.RPC; }
+            if (Settings.Node.HasRest) { caps |= PeerCaps.REST; }
 
             var possibleCaps = Enum.GetValues(typeof(PeerCaps)).Cast<PeerCaps>().ToArray();
             foreach (var cap in possibleCaps)
@@ -353,47 +360,47 @@ namespace Phantasma.Spook
 
         private bool SetupNexus()
         {
-            var storagePath = _settings.Node.StoragePath;
-            var oraclePath = _settings.Node.OraclePath;
-            var nexusName = _settings.Node.NexusName;
+            var storagePath = Settings.Node.StoragePath;
+            var oraclePath = Settings.Node.OraclePath;
+            var nexusName = Settings.Node.NexusName;
 
-            switch (_settings.Node.StorageBackend)
+            switch (Settings.Node.StorageBackend)
             {
                 case StorageBackendType.CSV:
-                    nexus = new Nexus(nexusName, Logger, (name) => new BasicDiskStore(storagePath + name + ".csv"));
+                    _nexus = new Nexus(nexusName, Logger, (name) => new BasicDiskStore(storagePath + name + ".csv"));
                     break;
 
                 case StorageBackendType.RocksDB:
-                    nexus = new Nexus(nexusName, Logger, (name) => new DBPartition(Logger, storagePath + name));
+                    _nexus = new Nexus(nexusName, Logger, (name) => new DBPartition(Logger, storagePath + name));
                     break;
                 default:
                     throw new Exception("Backend has to be set to either \"db\" or \"file\"");
             }
 
-            nexus.SetOracleReader(new SpookOracle(this, nexus, Logger));
+            _nexus.SetOracleReader(new SpookOracle(this, _nexus, Logger));
 
             return true;
         }
 
         private Mempool SetupMempool()
         {
-            var mempool = new Mempool(nexus
-                    , _settings.Node.BlockTime
-                    , _settings.Node.MinimumFee
-                    , System.Text.Encoding.UTF8.GetBytes(Identifier)
+            var mempool = new Mempool(_nexus
+                    , Settings.Node.BlockTime
+                    , Settings.Node.MinimumFee
+                    , System.Text.Encoding.UTF8.GetBytes(TxIdentifier)
                     , 0
                     , Logger
-                    , _settings.Node.ProfilerPath
+                    , Settings.Node.ProfilerPath
                     );
 
-            if (_settings.Node.MempoolLog)
+            if (Settings.Node.MempoolLog)
             {
                 mempool.OnTransactionFailed += Mempool_OnTransactionFailed;
                 mempool.OnTransactionAdded += (hash) => Logger.Message($"Received transaction {hash}");
                 mempool.OnTransactionCommitted += (hash) => Logger.Message($"Commited transaction {hash}");
                 mempool.OnTransactionDiscarded += (hash) => Logger.Message($"Discarded transaction {hash}");
             }
-            if (_settings.App.NodeStart)
+            if (Settings.App.NodeStart)
             {
                 mempool.Start(ThreadPriority.AboveNormal);
             }
@@ -403,7 +410,7 @@ namespace Phantasma.Spook
 
         private void Mempool_OnTransactionFailed(Hash hash)
         {
-            if (!_running || _mempool == null)
+            if (!Running || _mempool == null)
             {
                 return;
             }
@@ -414,14 +421,14 @@ namespace Phantasma.Spook
 
         private NexusAPI SetupNexusApi()
         {
-            var apiCache = _settings.Node.ApiCache;
-            var apiLog = _settings.Node.ApiLog;
-            var apiProxyURL = _settings.Node.ApiProxyUrl;
-            var readOnlyMode = _settings.Node.Readonly;
-            var hasRPC = _settings.Node.HasRpc;
-            var hasREST = _settings.Node.HasRest;
+            var apiCache = Settings.Node.ApiCache;
+            var apiLog = Settings.Node.ApiLog;
+            var apiProxyURL = Settings.Node.ApiProxyUrl;
+            var readOnlyMode = Settings.Node.Readonly;
+            var hasRPC = Settings.Node.HasRpc;
+            var hasREST = Settings.Node.HasRest;
 
-            NexusAPI nexusApi = new NexusAPI(nexus, apiCache, apiLog ? Logger : null);
+            NexusAPI nexusApi = new NexusAPI(_nexus, apiCache, apiLog ? Logger : null);
             nexusApi.Mempool = _mempool;
 
             if (apiProxyURL != null)
@@ -443,7 +450,7 @@ namespace Phantasma.Spook
             // RPC setup
             if (hasRPC)
             {
-                var rpcPort = _settings.Node.RpcPort;
+                var rpcPort = Settings.Node.RpcPort;
                 Logger.Message($"RPC server listening on port {rpcPort}...");
                 var rpcServer = new RPCServer(nexusApi, "/rpc", rpcPort, (level, text) => WebLogMapper("rpc", level, text));
                 rpcServer.Start(ThreadPriority.AboveNormal);
@@ -452,7 +459,7 @@ namespace Phantasma.Spook
             // REST setup
             if (hasREST)
             {
-                var restPort = _settings.Node.RestPort;
+                var restPort = Settings.Node.RestPort;
                 Logger.Message($"REST server listening on port {restPort}...");
                 var restServer = new RESTServer(nexusApi, "/api", restPort, (level, text) => WebLogMapper("rest", level, text));
                 restServer.Start(ThreadPriority.AboveNormal);
@@ -463,32 +470,32 @@ namespace Phantasma.Spook
 
         private void ValidateConfig()
         {
-            if (_settings.Node.ApiProxyUrl != null)
+            if (Settings.Node.ApiProxyUrl != null)
             {
-                if (!_settings.Node.ApiCache)
+                if (!Settings.Node.ApiCache)
                 {
                     throw new Exception("A proxy node must have api cache enabled.");
                 }
 
-                if (_settings.Node.Validator)
+                if (Settings.Node.Validator)
                 {
                     throw new Exception("A validator node cannot have a proxy url specified.");
                 }
 
-                if (!_settings.Node.HasRpc && !_settings.Node.HasRest)
+                if (!Settings.Node.HasRpc && !Settings.Node.HasRest)
                 {
                     throw new Exception("API proxy must have REST or RPC enabled.");
                 }
             }
             else
             {
-                if (!_settings.Node.Validator && !_settings.Node.HasSync )
+                if (!Settings.Node.Validator && !Settings.Node.HasSync )
                 {
                     throw new Exception("Non-validator nodes require sync to be enabled");
                 }
             }
 
-            if (!_settings.Node.Validator && _settings.Oracle.Swaps) 
+            if (!Settings.Node.Validator && Settings.Oracle.Swaps) 
             {
                     throw new Exception("Non-validator nodes cannot have swaps enabled");
             }
@@ -497,23 +504,23 @@ namespace Phantasma.Spook
             // TODO to be continued...
         }
 
-        public Spook(string[] args, SpookSettings settings)
+        public Spook(string[] args)
         {
             var culture = new CultureInfo("en-US");
             Thread.CurrentThread.CurrentCulture = culture;
             CultureInfo.DefaultThreadCurrentCulture = culture;
-            this._settings = settings;
 
-            if (_settings.App.UseShell)
-            {
-                Logger = new ShellLogger(Path.GetTempPath() + settings.App.LogFile);
-            }
-            else
-            {
-                Logger = new ConsoleLogger();
-            }
+            this.Settings = new SpookSettings(args);
 
-            if (!_settings.App.UseShell)
+            var loggers = new List<Logger>();
+
+            this.LogPath = Settings.Log.LogPath + Settings.Log.LogName;
+
+            loggers.Add(new ConsoleLogger(Settings.Log.ShellLevel));
+            loggers.Add(new FileLogger(LogPath, Settings.Log.FileLevel));
+            Logger = new MultiLogger(loggers);
+
+            if (!Settings.App.UseShell)
             {
                 this.Start();
             }
@@ -527,7 +534,7 @@ namespace Phantasma.Spook
 
         public void Stop()
         {
-            _running = false;
+            Running = false;
 
             Logger.Message("Termination started...");
 
@@ -546,7 +553,7 @@ namespace Phantasma.Spook
 
         public void Terminate()
         {
-            if (!_running)
+            if (!Running)
             {
                 Logger.Message("Termination already in progress...");
             }

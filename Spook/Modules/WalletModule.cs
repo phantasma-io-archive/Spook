@@ -173,8 +173,7 @@ namespace Phantasma.Spook.Modules
 
         public static Hash ExecuteTransaction(NexusAPI api, byte[] script, ProofOfWork proofOfWork, params IKeyPair[] keys)
         {
-            var identifier = "SPK" + Assembly.GetAssembly(typeof(Spook)).GetVersion();
-            var tx = new Blockchain.Transaction(api.Nexus.Name, DomainSettings.RootChainName, script, Timestamp.Now + TimeSpan.FromMinutes(5), identifier);
+            var tx = new Blockchain.Transaction(api.Nexus.Name, DomainSettings.RootChainName, script, Timestamp.Now + TimeSpan.FromMinutes(5), Spook.TxIdentifier);
 
             if (proofOfWork != ProofOfWork.None)
             {

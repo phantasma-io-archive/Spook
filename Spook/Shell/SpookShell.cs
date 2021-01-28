@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Collections.Generic;
 using Phantasma.Cryptography;
 using Phantasma.Spook.Command;
+using Phantasma.Spook.Utils;
 
 namespace Phantasma.Spook.Shell
 {
@@ -15,24 +16,24 @@ namespace Phantasma.Spook.Shell
         private String prompt { get; set; } = "spook> ";
 
         private CommandDispatcher _dispatcher;
-        private Spook _cli;
+        private Spook _node;
 
-        public SpookShell(string[] args, SpookSettings conf, Spook cli)
+        public SpookShell(string[] args, SpookSettings conf, Spook node)
         {
-            _cli = cli;
-            _cli.Start();
-            _dispatcher = new CommandDispatcher(_cli);
+            _node = node;
+            _node.Start();
+            _dispatcher = new CommandDispatcher(_node);
 
             List<string> completionList = new List<string>(); 
 
             string version = Assembly.GetAssembly(typeof(Spook)).GetVersion();
-            if (!string.IsNullOrEmpty(_cli.Settings.App.Prompt))
+            if (!string.IsNullOrEmpty(_node.Settings.App.Prompt))
             {
-                prompt = _cli.Settings.App.Prompt;
+                prompt = _node.Settings.App.Prompt;
             }
 
             var startupMsg =  "Spook shell " + version + "\nLogs are stored in " 
-                + Path.GetTempPath() + conf.App.LogFile + "\nTo exit use <ctrl-c> or \"exit\"!\n";
+                + _node.LogPath + "\nTo exit use <ctrl-c> or \"exit\"!\n";
 
             Prompt.Run(
                 ((command, listCmd, list) =>
@@ -50,7 +51,7 @@ namespace Phantasma.Spook.Shell
 
         private string PromptGenerator()
         {
-            var height = _cli.ExecuteAPIR("getBlockHeight", new string[] {"main"});
+            var height = _node.ExecuteAPIR("getBlockHeight", new string[] {"main"});
             return string.Format(prompt, height.Trim( new char[] {'"'} ));
         }
 

@@ -145,24 +145,22 @@ namespace Phantasma.Spook.Interop
         private readonly NeoAPI neoAPI;
         private readonly EthAPI ethAPI;
         private OracleReader OracleReader;
-        private readonly string _txIdentifier;
 
         private readonly Dictionary<string, BigInteger> interopBlocks;
         private PlatformInfo[] platforms;
         private Dictionary<string, string> wifs = new Dictionary<string, string>(); 
         private Dictionary<string, ChainWatcher> _finders = new Dictionary<string, ChainWatcher>();
 
-        public TokenSwapper(SpookSettings settings, PhantasmaKeys swapKey, NexusAPI nexusAPI, NeoAPI neoAPI, EthAPI ethAPI, BigInteger minFee, Logger logger)
+        public TokenSwapper(Spook node, PhantasmaKeys swapKey, NexusAPI nexusAPI, NeoAPI neoAPI, EthAPI ethAPI, BigInteger minFee, Logger logger)
         {
             this.logger = logger;
-            this._settings = settings;
+            this._settings = node.Settings;
             this.SwapKeys = swapKey;
             this.NexusAPI = nexusAPI;
             this.OracleReader = Nexus.GetOracleReader();
             this.MinimumFee = minFee;
             this.neoAPI = neoAPI;
             this.ethAPI = ethAPI;
-            this._txIdentifier = "SPK" + Assembly.GetAssembly(typeof(Spook)).GetVersion();
 
             this.Storage = new KeyStoreStorage(Nexus.CreateKeyStoreAdapter("swaps"));
 
@@ -492,7 +490,7 @@ namespace Phantasma.Spook.Interop
                 SpendGas(SwapKeys.Address).
                 EndScript();
 
-            var tx = new Blockchain.Transaction(Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5), _txIdentifier);
+            var tx = new Blockchain.Transaction(Nexus.Name, "main", script, Timestamp.Now + TimeSpan.FromMinutes(5), Spook.TxIdentifier);
             tx.Sign(SwapKeys);
 
             var bytes = tx.ToByteArray(true);

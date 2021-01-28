@@ -1,6 +1,10 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Linq;
+using System.Reflection;
+
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
 
 namespace Phantasma.Spook.Utils
 {
@@ -72,6 +76,38 @@ namespace Phantasma.Spook.Utils
 
             throw new Exception("Cannot determine operating system!");
         }
+        public static string GetVersion(this Assembly assembly)
+        {
+            CustomAttributeData attribute = assembly.CustomAttributes.FirstOrDefault(p => p.AttributeType == typeof(AssemblyInformationalVersionAttribute));
+            if (attribute == null) return assembly.GetName().Version.ToString(3);
+            return (string)attribute.ConstructorArguments[0].Value;
+        }
+
+        public static bool IsValidJson(this string stringValue)
+        {
+            if (string.IsNullOrWhiteSpace(stringValue))
+            {
+                return false;
+            }
+
+            var value = stringValue.Trim();
+
+            if ((value.StartsWith("{") && value.EndsWith("}")) || //For object
+                (value.StartsWith("[") && value.EndsWith("]"))) //For array
+            {
+                try
+                {
+                    var obj = JToken.Parse(value);
+                    return true;
+                }
+                catch (JsonReaderException)
+                {
+                    return false;
+                }
+            }
+
+            return false;
+        }
 
         // thx to Vince Panuccio
         // https://stackoverflow.com/questions/4580397/json-formatter-in-c/24782322#24782322
@@ -88,13 +124,13 @@ namespace Phantasma.Spook.Utils
                 let unquoted = quotes % 2 == 0
                 let colon = ch == ':' && unquoted ? ": " : null
                 let nospace = char.IsWhiteSpace(ch) && unquoted ? string.Empty : null
-                let lineBreak = ch == ',' && unquoted ? ch + Environment.NewLine 
+                let lineBreak = ch == ',' && unquoted ? ch + Environment.NewLine
                     + string.Concat(Enumerable.Repeat(indent, indentation)) : null
 
-                let openChar = (ch == '{' || ch == '[') && unquoted ? ch + Environment.NewLine 
+                let openChar = (ch == '{' || ch == '[') && unquoted ? ch + Environment.NewLine
                     + string.Concat(Enumerable.Repeat(indent, ++indentation)) : ch.ToString()
 
-                let closeChar = (ch == '}' || ch == ']') && unquoted ? Environment.NewLine 
+                let closeChar = (ch == '}' || ch == ']') && unquoted ? Environment.NewLine
                     + string.Concat(Enumerable.Repeat(indent, --indentation)) + ch : ch.ToString()
 
                 select colon ?? nospace ?? lineBreak ?? (
@@ -103,6 +139,5 @@ namespace Phantasma.Spook.Utils
 
             return string.Concat(result);
         }
-
     }
 }
