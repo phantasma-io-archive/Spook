@@ -403,9 +403,9 @@ namespace Phantasma.Spook.Interop
 
         public Hash SettleSwap(string sourcePlatform, string destPlatform, Hash sourceHash)
         {
-            logger.Message("settleSwap called " + sourceHash);
-            logger.Message("dest platform " + destPlatform);
-            logger.Message("src platform " + sourcePlatform);
+            logger.Debug("settleSwap called " + sourceHash);
+            logger.Debug("dest platform " + destPlatform);
+            logger.Debug("src platform " + sourcePlatform);
 
             // This code is preventing us from doing double swaps.
             // We must ensure that states (settled, pending, inprogress) are locked
@@ -417,13 +417,13 @@ namespace Phantasma.Spook.Interop
                 var inProgressMap = new StorageMap(InProgressTag, this.Storage);
                 if (inProgressMap.ContainsKey(sourceHash))
                 {
-                    logger.Message("Hash already known, swap currently in progress: " + sourceHash);
+                    logger.Debug("Hash already known, swap currently in progress: " + sourceHash);
                     return Hash.Null;
                 }
                 else
                 {
                     var settleHash = GetSettleHash(sourcePlatform, sourceHash);
-                    logger.Message("settleHash in settleswap: " + settleHash);
+                    logger.Debug("settleHash in settleswap: " + settleHash);
 
                     if (settleHash != Hash.Null)
                     {
@@ -433,7 +433,7 @@ namespace Phantasma.Spook.Interop
                     {
                         // sourceHash not known, create an entry to store it, from here on,
                         // every call to SettleSwap will return Hash.Null until the swap is finished.
-                        logger.Message("Unknown hash, create in progress entry: " + sourceHash);
+                        logger.Debug("Unknown hash, create in progress entry: " + sourceHash);
                         inProgressMap.Set<Hash, string>(sourceHash, null);
                     }
                 }
@@ -509,12 +509,12 @@ namespace Phantasma.Spook.Interop
 
         public IEnumerable<ChainSwap> GetPendingSwaps(Address address)
         {
-            logger.Message($"Getting pending swaps for {address} now.");
+            logger.Debug($"Getting pending swaps for {address} now.");
             var dict = new Dictionary<Hash, ChainSwap>();
 
             if (_swapAddressMap.ContainsKey(address))
             {
-                logger.Message($"Address  exists in swap address map");
+                logger.Debug($"Address exists in swap address map");
 
                 var swaps = _swapAddressMap[address].
                     Select(x => _pendingSwaps[x]).
@@ -522,7 +522,7 @@ namespace Phantasma.Spook.Interop
 
                 foreach (var entry in swaps)
                 {
-                    logger.Message($"Adding hash {entry.sourceHash} to dict.");
+                    logger.Debug($"Adding hash {entry.sourceHash} to dict.");
                     dict[entry.sourceHash] = entry;
                 }
 
@@ -535,7 +535,7 @@ namespace Phantasma.Spook.Interop
                         lock (StateModificationLock)
                         {
                             var settleHash = GetSettleHash(entry.sourcePlatform, hash);
-                            logger.Message($"settleHash: {settleHash}.");
+                            logger.Debug($"settleHash: {settleHash}.");
                             if (settleHash != Hash.Null)
                             {
                                 entry.destinationHash = settleHash;
@@ -548,19 +548,19 @@ namespace Phantasma.Spook.Interop
             }
 
             var hashes = Nexus.RootChain.GetSwapHashesForAddress(Nexus.RootChain.Storage, address);
-            logger.Message($"Have {hashes.Length} for address {address}.");
+            logger.Debug($"Have {hashes.Length} for address {address}.");
             foreach (var hash in hashes)
             {
                 if (dict.ContainsKey(hash))
                 {
-                    logger.Message($"Ignoring hash {hash}");
+                    logger.Debug($"Ignoring hash {hash}");
                     continue;
                 }
 
                 var swap = Nexus.RootChain.GetSwap(Nexus.RootChain.Storage, hash);
                 if (swap.destinationHash != Hash.Null)
                 {
-                    logger.Message($"Ignoring swap with hash {swap.sourceHash}");
+                    logger.Debug($"Ignoring swap with hash {swap.sourceHash}");
                     continue;
                 }
 
@@ -569,7 +569,7 @@ namespace Phantasma.Spook.Interop
                     var settleHash = GetSettleHash(DomainSettings.PlatformName, hash);
                     if (settleHash != Hash.Null)
                     {
-                        logger.Message($"settleHash null");
+                        logger.Debug($"settleHash null");
                         continue;
                     }
                 }
@@ -577,17 +577,17 @@ namespace Phantasma.Spook.Interop
                 dict[hash] = swap;
             }
 
-            logger.Message($"Getting pending swaps for {address} done, found {dict.Count()} swaps.");
+            logger.Debug($"Getting pending swaps for {address} done, found {dict.Count()} swaps.");
             return dict.Values;
         }
 
         private bool TxInBlockNeo(string txHash)
         {
-            string strHeight = null;
+            string strHeight;
             try
             {
                 strHeight = this.neoAPI.GetTransactionHeight(txHash);
-                logger.Message("neo tx included in block: " + strHeight);
+                logger.Debug("neo tx included in block: " + strHeight);
             }
             catch (Exception e)
             {
@@ -742,12 +742,12 @@ namespace Phantasma.Spook.Interop
 
             try
             {
-                logger.Message($"ETHSWAP: Trying transfer of {total} {token.Symbol} from {ethKeys.Address} to {destAddress}");
+                logger.Debug($"ETHSWAP: Trying transfer of {total} {token.Symbol} from {ethKeys.Address} to {destAddress}");
                 tx = ethAPI.TransferAsset(token.Symbol, destAddress, total, token.Decimals);
 
                 // persist resulting tx hash as in progress
                 inProgressMap.Set<Hash, string>(sourceHash, tx);
-                logger.Message("broadcasted eth tx: " + tx);
+                logger.Debug("broadcasted eth tx: " + tx);
             }
             catch (Exception e)
             {
@@ -785,7 +785,7 @@ namespace Phantasma.Spook.Interop
 
             var destAddress = NeoWallet.DecodeAddress(destination);
 
-            logger.Message($"NEOSWAP: Trying transfer of {total} {token.Symbol} from {neoKeys.Address} to {destAddress}");
+            logger.Debug($"NEOSWAP: Trying transfer of {total} {token.Symbol} from {neoKeys.Address} to {destAddress}");
 
             var nonce = sourceHash.ToByteArray();
 
@@ -807,7 +807,7 @@ namespace Phantasma.Spook.Interop
                 inProgressMap.Set<Hash, string>(sourceHash, tx.Hash.ToString());
                 rpcMap.Set<Hash, string>(sourceHash, usedRpc);
 
-                logger.Message("broadcasted neo tx: " + tx);
+                logger.Debug("broadcasted neo tx: " + tx);
             }
             catch (Exception e)
             {
@@ -846,7 +846,7 @@ namespace Phantasma.Spook.Interop
             lock (StateModificationLock)
             {
                 var destHash = GetSettleHash(DomainSettings.PlatformName, sourceHash);
-                logger.Message("settleHash in settleswap: " + destHash);
+                logger.Debug("settleHash in settleswap: " + destHash);
 
                 if (destHash != Hash.Null)
                 {
