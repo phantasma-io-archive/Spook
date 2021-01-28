@@ -292,22 +292,73 @@ namespace Phantasma.Spook.Interop
             {
                 var interopTx = oracleReader.ReadTransaction("neo", "neo", txHash);
 
-                // TODO check why
-                if (interopTx.Transfers.Length != 1)
+                if (interopTx.Transfers.Length == 0)
                 {
-                    throw new OracleException("neo transfers with multiple sources or tokens not supported yet");
+                    continue;
                 }
 
-                foreach (var interopTransfer in interopTx.Transfers)
+                InteropTransfer transfer;
+
+                if (interopTx.Transfers.Length != 1)
                 {
-                    result.Add(
-                                new PendingSwap(
-                                                 this.PlatformName
-                                                ,txHash
-                                                ,interopTransfer.sourceAddress
-                                                ,interopTransfer.interopAddress)
-                            );
+                    var sources = interopTx.Transfers.Select(x => x.sourceAddress).Distinct();
+                    if (sources.Count() > 1)
+                    {
+                        throw new OracleException("neo transfers with multiple source addresses not supported yet");
+                    }
+
+                    var dests = interopTx.Transfers.Select(x => x.destinationAddress).Distinct();
+                    if (dests.Count() > 1)
+                    {
+                        throw new OracleException("neo transfers with multiple destination addresses not supported yet");
+                    }
+
+                    var interops = interopTx.Transfers.Select(x => x.interopAddress).Distinct();
+                    if (interops.Count() > 1)
+                    {
+                        throw new OracleException("neo transfers with multiple interop addresses not supported yet");
+                    }
+
+                    var symbols = interopTx.Transfers.Select(x => x.Symbol).Distinct();
+
+                    if (symbols.Count() > 1)
+                    {
+                        throw new OracleException("neo transfers with multiple tokens not supported yet");
+                    }
+
+                    PBigInteger sum = 0;
+
+                    foreach (var temp in interopTx.Transfers)
+                    {
+                        sum += temp.Value;
+                    }
+
+                    var first = interopTx.Transfers.First();
+
+                    if (first.Data != null && first.Data.Length > 0)
+                    {
+                        throw new OracleException("neo transfers with custom data are not supported yet");
+                    }
+
+                    transfer = new InteropTransfer(first.sourceChain, first.sourceAddress, first.destinationChain, first.destinationAddress, first.interopAddress, first.Symbol, sum);
                 }
+                else
+                {
+                    transfer = interopTx.Transfers.First();
+                }
+
+                if (transfer.sourceAddress == transfer.destinationAddress) // ignore this tx, this is a utxo consolidation
+                {
+                    continue;
+                }
+
+                result.Add(
+                            new PendingSwap(
+                                                this.PlatformName
+                                            ,txHash
+                                            , transfer.sourceAddress
+                                            , transfer.interopAddress)
+                        );
             }
         }
 
