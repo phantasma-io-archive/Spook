@@ -69,7 +69,7 @@ namespace Phantasma.Spook
         private TokenSwapper _tokenSwapper;
         private NexusSimulator _simulator;
         private string _cryptoCompareAPIKey = null;
-        private Thread tokenSwapperThread;
+        private Thread _tokenSwapperThread;
 
         public NexusAPI NexusAPI { get { return _nexusApi; } }
         public Nexus Nexus { get { return _nexus; } }
@@ -160,7 +160,7 @@ namespace Phantasma.Spook
             var tokenSwapper = new TokenSwapper(this, _nodeKeys, _nexusApi, _neoAPI, _ethAPI, minimumFee, Logger);
             _nexusApi.TokenSwapper = tokenSwapper;
 
-            tokenSwapperThread = new Thread(() =>
+            _tokenSwapperThread = new Thread(() =>
             {
                 Logger.Message("Running token swapping service...");
                 while (Running)
@@ -174,7 +174,7 @@ namespace Phantasma.Spook
                 }
             });
 
-            tokenSwapperThread.Start();
+            _tokenSwapperThread.Start();
 
             return tokenSwapper;
         }
