@@ -58,6 +58,7 @@ namespace Phantasma.Spook
                 this.Simulator = new SimulatorSettings(_settings, root.GetNode("Simulator"));
                 this.Oracle = new OracleSettings(_settings, root.GetNode("Oracle"));
                 this.App = new AppSettings(_settings, root.GetNode("App"));
+                this.Log = new LogSettings(_settings, root.GetNode("Log"));
                 this.RPC = new RPCSettings(_settings, root.GetNode("RPC"));
             }
             catch (Exception e)
