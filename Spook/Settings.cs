@@ -54,12 +54,12 @@ namespace Phantasma.Spook
                 var root = JSONReader.ReadFromString(json);
                 root = root["ApplicationConfiguration"];
 
-                this.Node = new NodeSettings(_settings, root.GetNode("Node"));
-                this.Simulator = new SimulatorSettings(_settings, root.GetNode("Simulator"));
-                this.Oracle = new OracleSettings(_settings, root.GetNode("Oracle"));
-                this.App = new AppSettings(_settings, root.GetNode("App"));
-                this.Log = new LogSettings(_settings, root.GetNode("Log"));
-                this.RPC = new RPCSettings(_settings, root.GetNode("RPC"));
+                this.Node = new NodeSettings(_settings, FindSection(root, "Node", true));
+                this.Simulator = new SimulatorSettings(_settings, FindSection(root, "Simulator", false));
+                this.Oracle = new OracleSettings(_settings, FindSection(root, "Oracle", true));
+                this.App = new AppSettings(_settings, FindSection(root, "App", true));
+                this.Log = new LogSettings(_settings, FindSection(root, "Log", false));
+                this.RPC = new RPCSettings(_settings, FindSection(root, "RPC", true));
             }
             catch (Exception e)
             {
@@ -67,6 +67,24 @@ namespace Phantasma.Spook
                 logger.Warning($"There were issues loading settings from {this._configFile}, aborting...");
                 Environment.Exit(-1);
             }
+        }
+
+        private DataNode FindSection(DataNode root, string name, bool required)
+        {
+            var section = root.GetNode(name);
+            if (section == null)
+            {
+                if (required)
+                {
+                    throw new Exception("Settings is missing section: " + name);
+                }
+                else
+                {
+                    section = DataNode.CreateObject(name);
+                }
+            }
+
+            return section;
         }
 
         public string GetInteropWif(Nexus nexus, PhantasmaKeys nodeKeys, string platformName)
