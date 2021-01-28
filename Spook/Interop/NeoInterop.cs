@@ -84,12 +84,12 @@ namespace Phantasma.Spook.Interop
                 // initial start, we have to verify all processed swaps
                 if (initialStart)
                 {
-                    logger.Message($"Read all neo blocks now.");
+                    logger.Debug($"Read all neo blocks now.");
                     // TODO check if quick sync nodes are configured, if so use quick sync
                     // we need to find a better solution for that though
                     var allInteropBlocks = oracleReader.ReadAllBlocks("neo", "neo");
 
-                    logger.Message($"Found {allInteropBlocks.Count} blocks");
+                    logger.Debug($"Found {allInteropBlocks.Count} blocks");
 
                     foreach (var block in allInteropBlocks)
                     {
@@ -98,7 +98,7 @@ namespace Phantasma.Spook.Interop
 
                     initialStart = false;
 
-                    logger.Message($"QuickSync: " + quickSync);
+                    logger.Debug($"QuickSync: " + quickSync);
                     // quick sync is only done once after startup
                     if (quickSync)
                     {
@@ -106,11 +106,11 @@ namespace Phantasma.Spook.Interop
                         try
                         {
                             var blockIds = neoAPI.GetSwapBlocks("ed07cffad18f1308db51920d99a2af60ac66a7b3", LocalAddress, _interopBlockHeight.ToString());
-                            logger.Message($"Found {blockIds.Count} blocks to process ");
+                            logger.Debug($"Found {blockIds.Count} blocks to process ");
                             List<InteropBlock> blockList = new List<InteropBlock>();
                             foreach (var entry in blockIds)
                             {
-                                //logger.Message($"read block {entry.Value}");
+                                //logger.Debug($"read block {entry.Value}");
                                 var url = DomainExtensions.GetOracleBlockURL("neo", "neo", PBigInteger.Parse(entry.Value.ToString()));
                                 blockList.Add(oracleReader.Read<InteropBlock>(DateTime.Now, url));
                             }
@@ -120,11 +120,11 @@ namespace Phantasma.Spook.Interop
                                     .Select(x => new { block = x, id = blockIds[x.Hash.ToString()] })
                                     .OrderBy(x => x.id);
 
-                            logger.Message($"blocks to process: {blocksToProcess.Count()}");
+                            logger.Debug($"blocks to process: {blocksToProcess.Count()}");
 
                             foreach (var entry in blocksToProcess.OrderBy(x => x.id))
                             {
-                                logger.Message($"process block {entry.id}");
+                                logger.Debug($"process block {entry.id}");
                                 ProcessBlock(entry.block, result);
                                 oracleReader.SetCurrentHeight("neo", "neo", _interopBlockHeight.ToString());
                                 _interopBlockHeight = BigInteger.Parse(entry.id.ToString());
@@ -133,7 +133,7 @@ namespace Phantasma.Spook.Interop
                         }
                         catch (Exception e)
                         {
-                            logger.Message("Inital start failed: " + e.ToString());
+                            logger.Error("Inital start failed: " + e.ToString());
                         }
 
                     }
@@ -157,19 +157,19 @@ namespace Phantasma.Spook.Interop
                                 var blockId = _resyncBlockIds.ElementAt(i);
                                 if (blockId > _interopBlockHeight)
                                 {
-                                    this.logger.Message($"NeoInterop: Update() resync block {blockId} higher than current interop height, can't resync.");
+                                    this.logger.Debug($"NeoInterop: Update() resync block {blockId} higher than current interop height, can't resync.");
                                     _resyncBlockIds.RemoveAt(i);
                                     continue;
                                 }
 
-                                this.logger.Message($"NeoInterop: Update() resync block {blockId} now.");
+                                this.logger.Debug($"NeoInterop: Update() resync block {blockId} now.");
                                 var interopBlock = GetInteropBlock(blockId);
                                 ProcessBlock(interopBlock, result);
                                 _resyncBlockIds.RemoveAt(i);
                             }
                         }
 
-                        logger.Message($"Swaps: Current Neo chain height: {blockIterator.currentBlock}, interop: {_interopBlockHeight}, delta: {blockIterator.currentBlock - _interopBlockHeight}");
+                        logger.Debug($"Swaps: Current Neo chain height: {blockIterator.currentBlock}, interop: {_interopBlockHeight}, delta: {blockIterator.currentBlock - _interopBlockHeight}");
                         blockDifference = blockIterator.currentBlock - _interopBlockHeight;
                         batchCount = (blockDifference > 8) ? 8 : blockDifference;
 
@@ -207,7 +207,7 @@ namespace Phantasma.Spook.Interop
                 }
                 catch (Exception e)
                 {
-                    logger.Message("Neo block sync failed: " + e);
+                    logger.Error("Neo block sync failed: " + e);
                 }
                 return result;
             }
@@ -274,7 +274,7 @@ namespace Phantasma.Spook.Interop
                                }
                                logMessage += "\n\n" + e.StackTrace;
 
-                               logger.Message(logMessage.Contains("Neo block is null") ? "oracleReader.Read(): Neo block is null, possible connection failure" : logMessage);
+                               logger.Error(logMessage.Contains("Neo block is null") ? "oracleReader.Read(): Neo block is null, possible connection failure" : logMessage);
                            }
 
                            Thread.Sleep(delay);
@@ -368,7 +368,7 @@ namespace Phantasma.Spook.Interop
             {
                 assetID = assetID.Remove(0,2) ;
             }
-            //logger.Message("asset.... " + assetID);
+            //logger.Debug("asset.... " + assetID);
             switch (assetID)
             {
                 case "b3a766ac60afa2990d9251db08138fd1facf07ed": return "SOUL";
@@ -382,7 +382,7 @@ namespace Phantasma.Spook.Interop
         public static Tuple<InteropBlock, InteropTransaction[]> MakeInteropBlock(Logger logger, NeoBlock block, NeoAPI api, string swapAddress)
         {
             List<Hash> hashes = new List<Hash>();
-            //logger.Message($"Read block {block.Height} with hash {block.Hash}");
+            //logger.Debug($"Read block {block.Height} with hash {block.Hash}");
 
             // if the block has no swap tx, it's currently not of interest
             bool blockOfInterest = false;
@@ -411,7 +411,7 @@ namespace Phantasma.Spook.Interop
 
         public static InteropTransaction MakeInteropTx(Logger logger, NeoTx tx, NeoAPI api, string swapAddress)
         {
-            logger.Message("checking tx: " + tx.Hash);
+            logger.Debug("checking tx: " + tx.Hash);
 
             List<InteropTransfer> interopTransfers = new List<InteropTransfer>();
 
@@ -440,15 +440,15 @@ namespace Phantasma.Spook.Interop
 
             if (sourceAddress == interopAddress)
             {
-                logger.Message("self send tx found, ignoring: " + tx.Hash);
+                logger.Warning("self send tx found, ignoring: " + tx.Hash);
                 // self send, probably consolidation tx, ignore
                 return emptyTx;
             }
 
-            //logger.Message("interop address: " + interopAddress);
-            //logger.Message("xswapAddress: " + swapAddress);
-            //logger.Message("interop sourceAddress: " + sourceAddress);
-            //logger.Message("neo sourceAddress: " + NeoWallet.DecodeAddress(sourceAddress));
+            //logger.Debug("interop address: " + interopAddress);
+            //logger.Debug("xswapAddress: " + swapAddress);
+            //logger.Debug("interop sourceAddress: " + sourceAddress);
+            //logger.Debug("neo sourceAddress: " + NeoWallet.DecodeAddress(sourceAddress));
 
             if (tx.attributes != null && tx.attributes.Length > 0)
             {
@@ -462,7 +462,7 @@ namespace Phantasma.Spook.Interop
                             if (Address.IsValidAddress(text))
                             {
                                 interopAddress = Address.FromText(text);
-                                //logger.Message("new interop address: " + interopAddress);
+                                //logger.Debug("new interop address: " + interopAddress);
                             }
                         }
                         catch {}
@@ -475,14 +475,14 @@ namespace Phantasma.Spook.Interop
                 foreach (var output in tx.outputs)
                 {
                     var targetAddress = NeoWallet.EncodeByteArray(output.scriptHash.ToArray());
-                    //logger.Message("interop targetAddress : " + targetAddress);
-                    //logger.Message("neo targetAddress: " + NeoWallet.DecodeAddress(targetAddress));
-                    //logger.Message("interopSwapAddress: " + interopSwapAddress);
-                    //logger.Message("targetAddress: " + targetAddress);
+                    //logger.Debug("interop targetAddress : " + targetAddress);
+                    //logger.Debug("neo targetAddress: " + NeoWallet.DecodeAddress(targetAddress));
+                    //logger.Debug("interopSwapAddress: " + interopSwapAddress);
+                    //logger.Debug("targetAddress: " + targetAddress);
 
                     var swpAddress = NeoWallet.EncodeAddress(swapAddress);
-                    //logger.Message("interop swpAddress: " + swpAddress);
-                    //logger.Message("neo swpAddress: " + NeoWallet.DecodeAddress(swpAddress));
+                    //logger.Debug("interop swpAddress: " + swpAddress);
+                    //logger.Debug("neo swpAddress: " + NeoWallet.DecodeAddress(swpAddress));
                     //if (targetAddress.ToString() == swapAddress)
                     if (interopSwapAddress == targetAddress)
                     {
@@ -496,11 +496,11 @@ namespace Phantasma.Spook.Interop
                         else
                         {
                             // asset not swapable at the moment...
-                            //logger.Message("Asset not swapable");
+                            //logger.Debug("Asset not swapable");
                             return emptyTx;
                         }
 
-                        //logger.Message("UTXO " + amount);
+                        //logger.Debug("UTXO " + amount);
                         interopTransfers.Add
                         (
                             new InteropTransfer
@@ -522,16 +522,16 @@ namespace Phantasma.Spook.Interop
             {
                 var script = NeoDisassembler.Disassemble(tx.script, true);
 
-                //logger.Message("SCRIPT ====================");
+                //logger.Debug("SCRIPT ====================");
                 //foreach (var entry in script.lines)
                 //{
-                //    logger.Message($"{entry.name} : { entry.opcode }");
+                //    logger.Debug($"{entry.name} : { entry.opcode }");
                 //}
-                //logger.Message("SCRIPT ====================");
+                //logger.Debug("SCRIPT ====================");
 
                 if (script.lines.Count() < 7)
                 {
-                    //logger.Message("NO SCRIPT!!!!");
+                    //logger.Debug("NO SCRIPT!!!!");
                     return emptyTx;
                 }
 
@@ -539,17 +539,17 @@ namespace Phantasma.Spook.Interop
 
                 //if ( disasmEntry == null )
                 //{
-                //    logger.Message("disasmEntry is null");
+                //    logger.Debug("disasmEntry is null");
                 //}
                 //if ( disasmEntry != null )
                 //{
                 //    if ( disasmEntry.data == null)
-                //        logger.Message("disasmEntry.data is 0");
+                //        logger.Debug("disasmEntry.data is 0");
                 //}
 
                 if (disasmEntry.name != "APPCALL" || disasmEntry.data == null ||  disasmEntry.data.Length == 0)
                 {
-                    //logger.Message("NO APPCALL");
+                    //logger.Debug("NO APPCALL");
                     return emptyTx;
                 }
                 else
@@ -558,7 +558,7 @@ namespace Phantasma.Spook.Interop
                     var assetString = new UInt160(disasmEntry.data).ToString();
                     if (string.IsNullOrEmpty(assetString) || FindSymbolFromAsset(assetString) == null)
                     {
-                        //logger.Message("Ignore TX due to non swapable token.");
+                        //logger.Debug("Ignore TX due to non swapable token.");
                         return emptyTx;
                     }
                 }
@@ -582,11 +582,11 @@ namespace Phantasma.Spook.Interop
                         if (pos ==2)
                         {
                             var targetScriptHash = new UInt160(entry.data);
-                            //logger.Message("neo targetAddress: " + targetScriptHash.ToAddress());
+                            //logger.Debug("neo targetAddress: " + targetScriptHash.ToAddress());
                             var targetAddress = NeoWallet.EncodeByteArray(entry.data);
-                            //logger.Message("targetAddress : " + targetAddress);
-                            //logger.Message("interopSwapAddress: " + interopSwapAddress);
-                            //logger.Message("SwapAddress: " + swapAddress);
+                            //logger.Debug("targetAddress : " + targetAddress);
+                            //logger.Debug("interopSwapAddress: " + interopSwapAddress);
+                            //logger.Debug("SwapAddress: " + swapAddress);
                             if (interopSwapAddress == targetAddress)
                             {
                                 // found a swap, call getapplicationlog now to get transaction details and verify the tx was actually processed.
@@ -598,7 +598,7 @@ namespace Phantasma.Spook.Interop
                                 }
                                 catch (Exception e)
                                 {
-                                    logger.Message("Getting application logs failed: " + e.Message);
+                                    logger.Error("Getting application logs failed: " + e.Message);
                                     return new InteropTransaction(Hash.Null, interopTransfers.ToArray());
                                 }
 
@@ -606,10 +606,10 @@ namespace Phantasma.Spook.Interop
                                 {
                                     for (var i = 0; i < appLogs.Length; i++)
                                     {
-                                        //logger.Message("appLogs[i].contract" + appLogs[i].contract);
+                                        //logger.Debug("appLogs[i].contract" + appLogs[i].contract);
                                         var token = FindSymbolFromAsset(appLogs[i].contract);
-                                        //logger.Message("TOKEN::::::::::::::::::: " + token);
-                                        //logger.Message("amount: " + appLogs[i].amount + " " + token);
+                                        //logger.Debug("TOKEN::::::::::::::::::: " + token);
+                                        //logger.Debug("amount: " + appLogs[i].amount + " " + token);
                                         var sadd = NeoWallet.EncodeByteArray(appLogs[i].sourceAddress.ToArray());
                                         var tadd = NeoWallet.EncodeByteArray(appLogs[i].targetAddress.ToArray());
 
@@ -632,7 +632,7 @@ namespace Phantasma.Spook.Interop
                                 }
                                 else
                                 {
-                                    logger.Message("Neo swap is found but application log is not available for tx " + tx.Hash);
+                                    logger.Warning("Neo swap is found but application log is not available for tx " + tx.Hash);
                                 }
                             }
                         }
@@ -646,7 +646,16 @@ namespace Phantasma.Spook.Interop
                 }
             }
 
-            logger.Message($"Found {interopTransfers.Count()} in tx {tx.Hash}");
+            var total = interopTransfers.Count();
+            if (total > 0)
+            {
+                logger.Message($"Found {total} swaps in neo tx {tx.Hash}");
+            }
+            else
+            {
+                logger.Debug($"No swaps in neo tx {tx.Hash}");
+            }
+
             return ((interopTransfers.Count() > 0)
                 ? new InteropTransaction(Hash.Parse(tx.Hash.ToString()), interopTransfers.ToArray())
                 : new InteropTransaction(Hash.Null, interopTransfers.ToArray()));

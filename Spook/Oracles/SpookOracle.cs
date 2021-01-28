@@ -178,7 +178,7 @@ namespace Phantasma.Spook.Oracles
                         if ((Timestamp.Now - fee.Time) < 60)
                         {
                             var logMessage = $"PullFee({platform}): Cached fee pulled: {fee.Value}, GAS limit: {_cli.Settings.Oracle.EthGasLimit}, calculated fee: {fee.Value * _cli.Settings.Oracle.EthGasLimit}";
-                            logger.Message(logMessage);
+                            logger.Debug(logMessage);
 
                             return fee.Value * _cli.Settings.Oracle.EthGasLimit;
                         }
@@ -189,7 +189,7 @@ namespace Phantasma.Spook.Oracles
                     _feeCache[platform] = fee;
 
                     var logMessage2 = $"PullFee({platform}): New fee pulled: {fee.Value}, GAS limit: {_cli.Settings.Oracle.EthGasLimit}, calculated fee: {fee.Value * _cli.Settings.Oracle.EthGasLimit}";
-                    logger.Message(logMessage2);
+                    logger.Debug(logMessage2);
 
                     return fee.Value * _cli.Settings.Oracle.EthGasLimit;
 
@@ -303,11 +303,11 @@ namespace Phantasma.Spook.Oracles
 
         protected override InteropTransaction PullPlatformTransaction(string platformName, string chainName, Hash hash)
         {
-            logger.Message($"{platformName} pull tx: {hash}");
+            logger.Debug($"{platformName} pull tx: {hash}");
             InteropTransaction tx = Read<InteropTransaction>(platformName, chainName, hash, StorageConst.Transaction);
             if (tx != null && tx.Hash != null)
             {
-                logger.Message($"Found tx {hash} in oracle storage");
+                logger.Debug($"Found tx {hash} in oracle storage");
                 return tx;
             }
 
