@@ -506,10 +506,6 @@ namespace Phantasma.Spook
 
         public Spook(string[] args)
         {
-            var culture = new CultureInfo("en-US");
-            Thread.CurrentThread.CurrentCulture = culture;
-            CultureInfo.DefaultThreadCurrentCulture = culture;
-
             this.Settings = new SpookSettings(args);
 
             var loggers = new List<Logger>();
