@@ -106,12 +106,12 @@ namespace Phantasma.Spook.Interop
                                 var blockId = _resyncBlockIds.ElementAt(i);
                                 if (blockId > _interopBlockHeight)
                                 {
-                                    this.logger.Message($"NeoInterop: Update() resync block {blockId} higher than current interop height, can't resync.");
+                                    this.logger.Message($"EthInterop:Update() resync block {blockId} higher than current interop height, can't resync.");
                                     _resyncBlockIds.RemoveAt(i);
                                     continue;
                                 }
 
-                                this.logger.Message($"NeoInterop: Update() resync block {blockId} now.");
+                                this.logger.Message($"EthInterop:Update() resync block {blockId} now.");
                                 var block= GetInteropBlock(blockId);
                                 ProcessBlock(block, ref result);
                             }
