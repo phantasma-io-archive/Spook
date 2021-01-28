@@ -144,6 +144,7 @@ namespace Phantasma.Spook
         public bool RandomSwapData { get; } = false;
 
         public int NodePort { get; }
+        public string NodeHost { get; }
 
         public bool Validator { get; }
         public bool HasSync { get; }
@@ -206,6 +207,7 @@ namespace Phantasma.Spook
             this.ApiLog = settings.GetBool("api.log", section.GetBool("api.log"));
 
             this.NodePort = settings.GetInt("node.port", section.GetInt32("node.port"));
+            this.NodeHost = settings.GetString("node.host", section.GetString("node.host", "localhost"));
 
             this.ProfilerPath = settings.GetString("profiler.path", section.GetString("profiler.path"));
             if (string.IsNullOrEmpty(this.ProfilerPath)) this.ProfilerPath = null;

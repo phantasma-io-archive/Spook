@@ -279,6 +279,7 @@ namespace Phantasma.Spook
                         , _nexus
                         , _mempool
                         , _nodeKeys
+                        , Settings.Node.NodeHost
                         , Settings.Node.NodePort
                         , _peerCaps
                         , Settings.Node.Seeds
