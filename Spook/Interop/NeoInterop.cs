@@ -307,6 +307,11 @@ namespace Phantasma.Spook.Interop
                     continue;
                 }
 
+                if (interopTx.Transfers.Length == 0)
+                {
+                    continue;
+                }
+
                 InteropTransfer transfer;
 
                 if (interopTx.Transfers.Length != 1)
