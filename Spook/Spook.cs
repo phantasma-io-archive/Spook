@@ -29,6 +29,7 @@ using Logger = Phantasma.Core.Log.Logger;
 using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
 using NeoAPI = Phantasma.Neo.Core.NeoAPI;
 using EthAccount = Nethereum.Web3.Accounts.Account;
+using Phantasma.Core;
 
 namespace Phantasma.Spook
 {
@@ -43,14 +44,13 @@ namespace Phantasma.Spook
         }
     }
 
-    public class Spook
+    public class Spook : Runnable
     {
         public static readonly int Protocol = 5;
 
         public readonly string LogPath;
         public readonly SpookSettings Settings;
 
-        public bool Running { get; private set; }
         public static string Version { get; private set; }
         public static string TxIdentifier => $"SPK{Version}";
 
@@ -102,7 +102,7 @@ namespace Phantasma.Spook
             }
         }
 
-        public void Start()
+        protected override void OnStart()
         {
             Console.CancelKeyPress += delegate
             {
@@ -113,7 +113,11 @@ namespace Phantasma.Spook
 
             _nodeKeys = SetupNodeKeys();
 
-            Running = SetupNexus();
+            if (!SetupNexus())
+            {
+                this.Stop();
+                return;
+            }
 
             SetupOracleApis();
 
@@ -131,7 +135,7 @@ namespace Phantasma.Spook
 
             if (_node != null && Settings.App.NodeStart)
             {
-                _node.Start();
+                _node.StartInThread();
             }
 
             _commandDispatcher = SetupCommandDispatcher();
@@ -149,8 +153,6 @@ namespace Phantasma.Spook
             {
                 _tokenSwapper = StartTokenSwapper();
             }
-
-            this.Run();
         }
 
         public TokenSwapper StartTokenSwapper()
@@ -219,11 +221,22 @@ namespace Phantasma.Spook
             return dispatcher;
         }
 
+
+        private String prompt { get; set; } = "spook> ";
+
+        private CommandDispatcher _dispatcher;
+
         public void MakeReady(CommandDispatcher dispatcher)
         {
             var nodeMode = Settings.Node.NodeMode;
             Logger.Success($"Node is now running in {nodeMode} mode!");
             _nodeReady = true;
+        }
+
+        private string PromptGenerator()
+        {
+            var height = this.ExecuteAPIR("getBlockHeight", new string[] { "main" });
+            return string.Format(prompt, height.Trim(new char[] { '"' }));
         }
 
         private void SetupOracleApis()
@@ -402,7 +415,7 @@ namespace Phantasma.Spook
             }
             if (Settings.App.NodeStart)
             {
-                mempool.Start(ThreadPriority.AboveNormal);
+                mempool.StartInThread(ThreadPriority.AboveNormal);
             }
             return mempool;
 
@@ -453,7 +466,7 @@ namespace Phantasma.Spook
                 var rpcPort = Settings.Node.RpcPort;
                 Logger.Message($"RPC server listening on port {rpcPort}...");
                 var rpcServer = new RPCServer(nexusApi, "/rpc", rpcPort, (level, text) => WebLogMapper("rpc", level, text));
-                rpcServer.Start(ThreadPriority.AboveNormal);
+                rpcServer.StartInThread(ThreadPriority.AboveNormal);
             }
 
             // REST setup
@@ -462,7 +475,7 @@ namespace Phantasma.Spook
                 var restPort = Settings.Node.RestPort;
                 Logger.Message($"REST server listening on port {restPort}...");
                 var restServer = new RESTServer(nexusApi, "/api", restPort, (level, text) => WebLogMapper("rest", level, text));
-                restServer.Start(ThreadPriority.AboveNormal);
+                restServer.StartInThread(ThreadPriority.AboveNormal);
             }
 
             return nexusApi;
@@ -515,23 +528,48 @@ namespace Phantasma.Spook
             loggers.Add(new ConsoleLogger(Settings.Log.ShellLevel));
             loggers.Add(new FileLogger(LogPath, Settings.Log.FileLevel));
             Logger = new MultiLogger(loggers);
+        }
 
-            if (!Settings.App.UseShell)
+        protected override bool Run()
+        {
+
+            if (Settings.App.UseShell)
             {
-                this.Start();
+                _dispatcher = new CommandDispatcher(this);
+
+                List<string> completionList = new List<string>();
+
+                if (!string.IsNullOrEmpty(Settings.App.Prompt))
+                {
+                    prompt = Settings.App.Prompt;
+                }
+
+                var startupMsg = "Spook shell " + Version + "\nLogs are stored in " + LogPath + "\nTo exit use <ctrl-c> or \"exit\"!\n";
+
+                Prompt.Run(
+                    ((command, listCmd, list) =>
+                    {
+                        string command_main = command.Trim().Split(new char[] { ' ' }).First();
+
+                        if (!_dispatcher.OnCommand(command))
+                        {
+                            Console.WriteLine("error: Command not found");
+                        }
+
+                        return "";
+                    }), prompt, PromptGenerator, startupMsg, Path.GetTempPath() + Settings.App.History, _dispatcher.Verbs);
             }
+            else
+            {
+                // Do nothing in this thread...
+                Thread.Sleep(1000);
+            }
+
+            return this.Running;
         }
 
-        private void Run()
+        protected override void OnStop()
         {
-            Thread.Sleep(1000);
-            // Do nothing in this thread...
-        }
-
-        public void Stop()
-        {
-            Running = false;
-
             Logger.Message("Termination started...");
 
             if (_mempool != null && _mempool.IsRunning)
