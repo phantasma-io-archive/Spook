@@ -7,6 +7,18 @@ namespace Phantasma.Spook.Utils
 
     public static class SpookUtils
     {
+        public static string FixPath(string path)
+        {
+            path = path.Replace("\\", "/");
+
+            if (!path.EndsWith('/'))
+            {
+                path += '/';
+            }
+
+            return path;
+        }
+
         public static string LocateExec(String filename)
         {
             String path = Environment.GetEnvironmentVariable("PATH");

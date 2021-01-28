@@ -1,10 +1,12 @@
 using System;
+using System.Linq;
+
 using Phantasma.Cryptography;
 using Phantasma.Blockchain;
-using System.Linq;
 using Phantasma.Core.Log;
 using Phantasma.Numerics;
 using Phantasma.Spook.Command;
+
 namespace Phantasma.Spook.Modules
 {
     [Module("nexus")]

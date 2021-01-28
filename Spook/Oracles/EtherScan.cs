@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using LunarLabs.Parser.JSON;
+
 using Phantasma.Blockchain;
 using Phantasma.Cryptography;
 using Phantasma.Storage;
-using Phantasma.Numerics;
 using Phantasma.Pay.Chains;
 using Phantasma.Core;
 using Phantasma.Domain;

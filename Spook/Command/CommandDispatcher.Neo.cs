@@ -2,7 +2,6 @@ using System;
 using Phantasma.Core.Log;
 using Phantasma.Numerics;
 
-
 namespace Phantasma.Spook.Command
 {
     partial class CommandDispatcher

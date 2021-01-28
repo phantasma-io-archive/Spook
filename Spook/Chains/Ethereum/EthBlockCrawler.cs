@@ -1,3 +1,7 @@
+using System.Collections.Generic;
+using System.Numerics;
+using System.Threading;
+
 using Nethereum.BlockchainProcessing;
 using Nethereum.BlockchainProcessing.Processor;
 using Nethereum.Contracts;
@@ -8,15 +12,12 @@ using Nethereum.Web3;
 using Phantasma.Core.Log;
 using Phantasma.Domain;
 using Phantasma.Pay.Chains;
-using PBigInteger = Phantasma.Numerics.BigInteger;
-using System.Collections.Generic;
-using System.Numerics;
-using System.Threading;
 using Phantasma.Cryptography;
+using Phantasma.Spook.Interop;
 
+using PBigInteger = Phantasma.Numerics.BigInteger;
 using InteropTransfers = System.Collections.Generic.Dictionary<string,
       System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<Phantasma.Domain.InteropTransfer>>>;
-using Phantasma.Spook.Interop;
 
 namespace Phantasma.Spook.Chains
 {

@@ -1,16 +1,15 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
+using System.Threading;
+
 using Phantasma.VM.Utils;
 using Phantasma.Cryptography;
 using Phantasma.Blockchain;
 using Phantasma.API;
-using System.Linq;
 using Phantasma.Core.Log;
 using Phantasma.Numerics;
 using Phantasma.Core.Types;
-using System.Threading;
-using Phantasma.Blockchain.Contracts;
-using Phantasma.Domain;
 using Phantasma.Spook.Command;
 using Phantasma.Blockchain.Storage;
 

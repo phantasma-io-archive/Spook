@@ -1,6 +1,10 @@
 ﻿using System;
 using System.Threading;
+using System.IO;
+using System.Reflection;
+using System.Linq;
 using System.Collections.Generic;
+
 using Phantasma.VM.Utils;
 using Phantasma.Cryptography;
 using Phantasma.API;
@@ -14,9 +18,6 @@ using Phantasma.Spook.Oracles;
 using Phantasma.Spook.Command;
 using Phantasma.Blockchain;
 using Phantasma.Domain;
-using System.IO;
-using System.Reflection;
-using System.Linq;
 using Phantasma.VM;
 using Phantasma.Blockchain.Contracts;
 using Newtonsoft.Json;

@@ -1,7 +1,7 @@
+using System;
 using Phantasma.Spook.Modules;
 using Phantasma.Numerics;
 using Phantasma.Core.Types;
-using System;
 using Phantasma.Blockchain;
 
 namespace Phantasma.Spook.Command

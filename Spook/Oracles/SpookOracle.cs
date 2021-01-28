@@ -1,6 +1,7 @@
 ﻿using System;
-using NativeBigInt = System.Numerics.BigInteger;
+using System.Linq;
 using System.Collections.Generic;
+
 using Phantasma.Blockchain;
 using Phantasma.Numerics;
 using Phantasma.Core.Types;
@@ -12,10 +13,11 @@ using Phantasma.Storage.Context;
 using Phantasma.Neo.Cryptography;
 using Phantasma.Neo.Utils;
 using Phantasma.Spook.Interop;
+
 using NeoBlock = Phantasma.Neo.Core.Block;
 using NeoTx = Phantasma.Neo.Core.Transaction;
 using Logger = Phantasma.Core.Log.Logger;
-using System.Linq;
+using NativeBigInt = System.Numerics.BigInteger;
 
 namespace Phantasma.Spook.Oracles
 {

@@ -2,14 +2,13 @@
 using System.Collections.Generic;
 using System.Numerics;
 using System.Threading.Tasks;
-using Nethereum.Contracts;
-using Nethereum.RPC.Eth.DTOs;
-using Nethereum.StandardTokenEIP20.ContractDefinition;
 using Nethereum.Web3;
 using Nethereum.Web3.Accounts;
 using Nethereum.Hex.HexTypes;
-using Nethereum.RPC.TransactionReceipts;
-using System.Threading;
+using Nethereum.Contracts;
+using Nethereum.RPC.Eth.DTOs;
+using Nethereum.StandardTokenEIP20.ContractDefinition;
+using Phantasma.Core.Log;
 
 namespace Phantasma.Spook.Chains
 {
@@ -54,20 +53,14 @@ namespace Phantasma.Spook.Chains
 
         private static Random rnd = new Random();
 
-        private Action<string> _logger;
-        public Action<string> Logger
-        {
-            get
-            {
-                return _logger != null ? _logger : DummyLogger;
-            }
-        }
+        private readonly Logger Logger;
 
-        public EthAPI(Blockchain.Nexus nexus, SpookSettings settings, Account account)
+        public EthAPI(Blockchain.Nexus nexus, SpookSettings settings, Account account, Logger logger)
         {
             this.Nexus = nexus;
             this._settings = settings;
             this._account = account;
+            this.Logger = logger;
 
             this.urls = this._settings.Oracle.EthRpcNodes;
             if (this.urls.Count == 0)
@@ -79,17 +72,6 @@ namespace Phantasma.Spook.Chains
             {
                 web3Clients.Add(new Web3(_account, "https://"+url));
             }
-
-        }
-
-        public virtual void SetLogger(Action<string> logger = null)
-        {
-            this._logger = logger;
-        }
-
-        private void DummyLogger(string s)
-        {
-
         }
 
         public BigInteger GetBlockHeight()

@@ -1,10 +1,10 @@
 using System;
+using System.IO;
 using System.Linq;
-using Phantasma.Cryptography;
 using System.Reflection;
 using System.Collections.Generic;
+using Phantasma.Cryptography;
 using Phantasma.Spook.Command;
-using System.IO;
 
 namespace Phantasma.Spook.Shell
 {

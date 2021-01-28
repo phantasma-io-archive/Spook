@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+
 using Phantasma.CodeGen.Core;
 using Phantasma.VM.Utils;
 using Phantasma.VM;

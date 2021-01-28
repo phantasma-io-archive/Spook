@@ -1,41 +1,34 @@
 using System;
-using System.Net.Sockets;
-using System.Linq;
-using System.Collections.Generic;
-using System.Threading;
 using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Globalization;
+using System.Reflection;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 
-using LunarLabs.Parser.JSON;
-using LunarLabs.WebServer.Core;
-
+using Phantasma.API;
 using Phantasma.Blockchain;
 using Phantasma.Cryptography;
-using Phantasma.Numerics;
-using Phantasma.Core.Types;
-using Phantasma.API;
 using Phantasma.Network.P2P;
-using Phantasma.Spook.Utils;
 using Phantasma.Simulator;
-using Phantasma.VM.Utils;
-using Phantasma.Core;
-using Phantasma.Network.P2P.Messages;
 using Phantasma.RocksDB;
 using Phantasma.Storage;
 using Phantasma.Spook.Oracles;
 using Phantasma.Spook.Interop;
 using Phantasma.Domain;
-using Logger = Phantasma.Core.Log.Logger;
-using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
-using System.Globalization;
-using NeoAPI = Phantasma.Neo.Core.NeoAPI;
-using System.Reflection;
 using Phantasma.Spook.Shell;
 using Phantasma.Spook.Command;
 using Phantasma.Spook.Chains;
-using System.Threading.Tasks;
-using EthAccount = Nethereum.Web3.Accounts.Account;
-using Nethereum.Hex.HexConvertors.Extensions;
 using Phantasma.Pay.Chains;
+
+using LunarLabs.WebServer.Core;
+using Nethereum.Hex.HexConvertors.Extensions;
+
+using Logger = Phantasma.Core.Log.Logger;
+using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
+using NeoAPI = Phantasma.Neo.Core.NeoAPI;
+using EthAccount = Nethereum.Web3.Accounts.Account;
 
 namespace Phantasma.Spook
 {
@@ -104,18 +97,6 @@ namespace Phantasma.Spook
             }
         }
 
-        private static string FixPath(string path)
-        {
-            path = path.Replace("\\", "/");
-
-            if (!path.EndsWith('/'))
-            {
-                path += '/';
-            }
-
-            return path;
-        }
-
         public void Start()
         {
             Console.CancelKeyPress += delegate
@@ -179,7 +160,7 @@ namespace Phantasma.Spook
                 Logger.Message("Running token swapping service...");
                 while (_running)
                 {
-                    Logger.Message("Update TokenSwapper now");
+                    Logger.Debug("Update TokenSwapper now");
                     Task.Delay(5000).Wait();
                     if (_nodeReady)
                     {
@@ -209,7 +190,7 @@ namespace Phantasma.Spook
                     {
                         Thread.Sleep(5000);
                         blockNumber++;
-                        Logger.Message("Generating sim block #" + blockNumber);
+                        Logger.Debug("Generating sim block #" + blockNumber);
                         try
                         {
                             _simulator.CurrentTime = DateTime.UtcNow;
@@ -253,8 +234,7 @@ namespace Phantasma.Spook
             var ethWIF = _settings.GetInteropWif(Nexus, _nodeKeys, EthereumWallet.EthereumPlatform);
             var ethKeys = PhantasmaKeys.FromWIF(ethWIF);
             
-            this._ethAPI = new EthAPI(this.Nexus, this._settings, new EthAccount(ethKeys.PrivateKey.ToHex()));
-            this._ethAPI.SetLogger((s) => Logger.Message(s));
+            this._ethAPI = new EthAPI(this.Nexus, this._settings, new EthAccount(ethKeys.PrivateKey.ToHex()), Logger);
 
             this._neoScanAPI = new NeoScanAPI(neoScanURL, Logger, nexus, _nodeKeys);
 

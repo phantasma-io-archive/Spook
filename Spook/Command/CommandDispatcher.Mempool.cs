@@ -1,6 +1,5 @@
 using System;
 
-
 namespace Phantasma.Spook.Command
 {
     partial class CommandDispatcher

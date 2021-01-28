@@ -1,6 +1,4 @@
 ﻿using LunarLabs.Parser.JSON;
-using System;
-using System.Collections.Generic;
 
 namespace Phantasma.Spook.Oracles
 {

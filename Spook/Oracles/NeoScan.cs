@@ -1,6 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
+
 using LunarLabs.Parser.JSON;
+using Newtonsoft.Json;
+
 using Phantasma.Blockchain;
 using Phantasma.Cryptography;
 using Phantasma.Numerics;
@@ -9,8 +13,6 @@ using Phantasma.Core;
 using Phantasma.Core.Log;
 using Phantasma.Domain;
 using Phantasma.Neo.Core;
-using System.Text;
-using Newtonsoft.Json;
 
 namespace Phantasma.Spook.Oracles
 {
