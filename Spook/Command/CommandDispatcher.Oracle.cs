@@ -6,6 +6,7 @@ using Phantasma.Blockchain.Contracts;
 using Phantasma.VM.Utils;
 using Phantasma.Core.Types;
 using Phantasma.Blockchain;
+using Phantasma.Storage.Context;
 
 namespace Phantasma.Spook.Command
 {
@@ -62,18 +63,56 @@ namespace Phantasma.Spook.Command
         {
             if (args.Length != 2)
             {
-                Console.WriteLine("Platform and block height needed!");
+                Console.WriteLine("Platform and one or more block heights needed!");
             }
 
             var platform = args.ElementAtOrDefault(0);
-            var blockId = args.ElementAtOrDefault(1);
 
-            _cli.TokenSwapper.ResyncBlockOnChain(platform, blockId);
+            // start at index 1, 0 is platform
+            for (var i = 1; i < args.Count(); i++)
+            {
+                var blockId = args.ElementAtOrDefault(1);
 
-            Console.WriteLine($"Enqueued height {blockId} on chain {platform} to resync.");
+                if (string.IsNullOrEmpty(blockId))
+                {
+                    continue;
+                }
+
+                _cli.TokenSwapper.ResyncBlockOnChain(platform, blockId);
+            }
         }
 
+        [ConsoleCommand("remove swap", Category = "Oracle", Description = "resync certain blocks on a psecific platform")]
+        protected void onRemoveSwap(string[] args)
+        {
+            if (args.Length != 1)
+            {
+                Console.WriteLine("Only source hahs necessary");
+            }
 
+            var sourceHashStr = args.ElementAtOrDefault(0);
+
+            if (string.IsNullOrEmpty(sourceHashStr))
+            {
+                Console.WriteLine("SourceHash is null or empty!");
+            }
+
+            var sourceHash = Hash.Parse(sourceHashStr);
+
+            var InProgressTag = ".inprogress";
+            var storage = new KeyStoreStorage(_cli.Nexus.CreateKeyStoreAdapter("swaps"));
+            var inProgressMap = new StorageMap(InProgressTag, storage);
+
+            if (inProgressMap.ContainsKey(sourceHash))
+            {
+                inProgressMap.Remove(sourceHash);
+                Console.WriteLine($"SourceHash {sourceHash} has been removed from in progress swaps");
+            }
+            else
+            {
+                Console.WriteLine($"Swap with sourceHash {sourceHash} not in progress");
+            }
+        }
 
         [ConsoleCommand("platform address add", Category = "Oracle", Description = "Add swap address to platform")]
         protected void OnPlatformAddressAdd(string[] args)

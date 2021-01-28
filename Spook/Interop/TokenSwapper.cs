@@ -241,6 +241,10 @@ namespace Phantasma.Spook.Interop
                 this.logger.Message($"TokenSwapper: Resync block {blockId} on platform {platform}");
                 finder.ResyncBlock(bigIntBlock);
             }
+            else
+            {
+                this.logger.Error($"TokenSwapper: Resync block {blockId} on platform {platform} failed.");
+            }
         }
 
         public void Update()
