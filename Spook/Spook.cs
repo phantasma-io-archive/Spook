@@ -30,6 +30,8 @@ using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
 using NeoAPI = Phantasma.Neo.Core.NeoAPI;
 using EthAccount = Nethereum.Web3.Accounts.Account;
 using Phantasma.Core;
+using Phantasma.VM.Debug;
+using Phantasma.VM;
 
 namespace Phantasma.Spook
 {
@@ -152,6 +154,14 @@ namespace Phantasma.Spook
             if (Settings.Oracle.Swaps)
             {
                 _tokenSwapper = StartTokenSwapper();
+            }
+
+            if (Settings.App.UseDebugger)
+            {
+                Logger.Message($"Virtual machine debugger is enabled!");
+                var debugger = new DebugHost();
+                debugger.Start();
+                VirtualMachine.Debugger = debugger;
             }
         }
 

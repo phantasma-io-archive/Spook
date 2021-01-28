@@ -391,6 +391,7 @@ namespace Phantasma.Spook
     public class AppSettings
     {
         public bool UseShell { get; }
+        public bool UseDebugger { get; }
         public string AppName { get; }
         public bool NodeStart { get; }
         public string History { get; }
@@ -400,6 +401,7 @@ namespace Phantasma.Spook
         public AppSettings(Arguments settings, DataNode section)
         {
             this.UseShell = settings.GetBool("shell.enabled", section.GetBool("shell.enabled"));
+            this.UseDebugger = settings.GetBool("debugger.enabled", section.GetBool("debugger.enabled"));
             this.AppName = settings.GetString("app.name", section.GetString("app.name"));
             this.NodeStart = settings.GetBool("node.start", section.GetBool("node.start"));
             this.History = settings.GetString("history", section.GetString("history"));
