@@ -508,15 +508,6 @@ namespace Phantasma.Spook
         {
             this.Settings = new SpookSettings(args);
 
-            if (_settings.App.UseShell)
-            {
-                Logger = new ShellLogger(Path.GetTempPath() + settings.App.LogFile);
-            }
-            else
-            {
-                Logger = new ConsoleLogger();
-            }
-
             var loggers = new List<Logger>();
 
             this.LogPath = Settings.Log.LogPath + Settings.Log.LogName;
