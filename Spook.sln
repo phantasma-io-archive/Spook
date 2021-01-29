@@ -1,4 +1,3 @@
-﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29424.173
@@ -15,7 +14,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phantasma.Tests", "..\Phant
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phantasma.Storage", "..\PhantasmaChain\Phantasma.Storage\Phantasma.Storage.csproj", "{E3E744ED-212E-430F-B948-A543E1BC1EE7}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Spook", "Spook\Spook.csproj", "{0E67C572-3EC9-4E5B-9EF6-26B1D8594CDB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Spook.Node", "Spook\Spook.Node.csproj", "{0E67C572-3EC9-4E5B-9EF6-26B1D8594CDB}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phantasma.P2P", "..\PhantasmaChain\Phantasma.P2P\Phantasma.P2P.csproj", "{689394C7-9B6C-48CF-9F5F-7AAE8F7D9C75}"
 EndProject
@@ -38,8 +37,6 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StorageAnalyser", "StorageAnalyser\StorageAnalyser.csproj", "{98CB27AB-65CB-4CF8-AABD-C5DE92B162D7}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TxSender", "TxSender\TxSender.csproj", "{FDC2C82A-9B51-40C2-A092-8356764A2888}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phantasma.Ethereum", "..\PhantasmaChain\Phantasma.Ethereum\Phantasma.Ethereum.csproj", "{47520161-4679-490A-B2D7-0A5CF1065DFB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -119,10 +116,6 @@ Global
 		{FDC2C82A-9B51-40C2-A092-8356764A2888}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FDC2C82A-9B51-40C2-A092-8356764A2888}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FDC2C82A-9B51-40C2-A092-8356764A2888}.Release|Any CPU.Build.0 = Release|Any CPU
-		{47520161-4679-490A-B2D7-0A5CF1065DFB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{47520161-4679-490A-B2D7-0A5CF1065DFB}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{47520161-4679-490A-B2D7-0A5CF1065DFB}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{47520161-4679-490A-B2D7-0A5CF1065DFB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
