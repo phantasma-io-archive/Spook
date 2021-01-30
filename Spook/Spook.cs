@@ -149,7 +149,7 @@ namespace Phantasma.Spook
                 MakeReady(_commandDispatcher);
             }
 
-            if (Settings.Oracle.Swaps)
+            if (!string.IsNullOrEmpty(Settings.Oracle.Swaps))
             {
                 _tokenSwapper = StartTokenSwapper();
             }
@@ -157,9 +157,10 @@ namespace Phantasma.Spook
 
         public TokenSwapper StartTokenSwapper()
         {
+            var platforms = Settings.Oracle.Swaps.Split(',');
             var minimumFee = Settings.Node.MinimumFee;
             var oracleSettings = Settings.Oracle;
-            var tokenSwapper = new TokenSwapper(this, _nodeKeys, _nexusApi, _neoAPI, _ethAPI, minimumFee, Logger);
+            var tokenSwapper = new TokenSwapper(this, _nodeKeys, _nexusApi, _neoAPI, _ethAPI, minimumFee, platforms, Logger);
             _nexusApi.TokenSwapper = tokenSwapper;
 
             _tokenSwapperThread = new Thread(() =>
@@ -523,7 +524,7 @@ namespace Phantasma.Spook
                 }
             }
 
-            if (!Settings.Node.Validator && Settings.Oracle.Swaps) 
+            if (!Settings.Node.Validator && !string.IsNullOrEmpty(Settings.Oracle.Swaps))
             {
                     throw new Exception("Non-validator nodes cannot have swaps enabled");
             }

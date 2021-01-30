@@ -68,7 +68,7 @@
       "eth.block.confirmations": 12,
       "eth.gas.limit": 100000,
       "crypto.compare.key": "################################################################",
-      "swaps.enabled": true,
+      "swaps.platforms": "neo,ethereum",
       "phantasma.interop.height": "0",
       "neo.interop.height": "4261049",
       "eth.interop.height": "327",

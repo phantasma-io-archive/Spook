@@ -2,7 +2,6 @@
 using System.Linq;
 using System;
 using System.IO;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -151,7 +150,9 @@ namespace Phantasma.Spook.Interop
         private Dictionary<string, string> wifs = new Dictionary<string, string>(); 
         private Dictionary<string, ChainWatcher> _finders = new Dictionary<string, ChainWatcher>();
 
-        public TokenSwapper(Spook node, PhantasmaKeys swapKey, NexusAPI nexusAPI, NeoAPI neoAPI, EthAPI ethAPI, BigInteger minFee, Logger logger)
+        private HashSet<string> _supportedPlatforms = new HashSet<string>();
+
+        public TokenSwapper(Spook node, PhantasmaKeys swapKey, NexusAPI nexusAPI, NeoAPI neoAPI, EthAPI ethAPI, BigInteger minFee, string[] supportedPlatforms, Logger logger)
         {
             this.logger = logger;
             this._settings = node.Settings;
@@ -166,9 +167,25 @@ namespace Phantasma.Spook.Interop
 
             this.interopBlocks = new Dictionary<string, BigInteger>();
 
-            interopBlocks["phantasma"] = BigInteger.Parse(_settings.Oracle.PhantasmaInteropHeight);
+            interopBlocks[DomainSettings.PlatformName] = BigInteger.Parse(_settings.Oracle.PhantasmaInteropHeight);
             interopBlocks["neo"] = BigInteger.Parse(_settings.Oracle.NeoInteropHeight);
             interopBlocks["ethereum"] = BigInteger.Parse(_settings.Oracle.EthInteropHeight);
+
+            _supportedPlatforms.Add(DomainSettings.PlatformName);
+            foreach (var entry in supportedPlatforms)
+            {
+                if (_supportedPlatforms.Contains(entry))
+                {
+                    throw new SwapException($"Duplicated swap platform {entry}, check config");
+                }
+
+                if (!interopBlocks.ContainsKey(entry))
+                {
+                    throw new SwapException($"Unknown swap platform {entry}, check config");
+                }
+
+                _supportedPlatforms.Add(entry);
+            }
 
             InitWIF("neo");
             InitWIF("ethereum");
@@ -944,6 +961,11 @@ namespace Phantasma.Spook.Interop
             }
 
             return false;
+        }
+
+        public bool SupportsSwap(string sourcePlatform, string destPlatform)
+        {
+            return (sourcePlatform != destPlatform) && _supportedPlatforms.Contains(sourcePlatform) && _supportedPlatforms.Contains(destPlatform) && (sourcePlatform == DomainSettings.PlatformName || destPlatform == DomainSettings.PlatformName);
         }
     }
 }
