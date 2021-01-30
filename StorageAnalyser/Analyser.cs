@@ -41,10 +41,12 @@ namespace StorageDump
         Claim,
         SwapOut,
         SwapIn,
+        SwapFee,
         SwapCosmic,
         Mint,
         Burn,
         Name,
+        Market,
         Other
     }
 
@@ -289,6 +291,7 @@ namespace StorageDump
                         switch (first.Kind)
                         {
                             case EventKind.TokenClaim:
+                            case EventKind.TokenMint:
                                 return TxType.Claim;
 
                             case EventKind.TokenStake:
@@ -300,9 +303,11 @@ namespace StorageDump
                         switch (first.Kind)
                         {
                             case EventKind.TokenSend:
+                            case EventKind.TokenStake:
                                 return TxType.SwapIn;
 
                             case EventKind.TokenClaim:
+                            case EventKind.TokenMint:
                                 return TxType.SwapOut;
 
                         }
@@ -313,6 +318,12 @@ namespace StorageDump
                         {
                             case EventKind.TokenSend:
                                 return TxType.Transfer;
+
+                            case EventKind.TokenMint:
+                                return TxType.Mint;
+
+                            case EventKind.TokenBurn:
+                                return TxType.Burn;
                         }
                         break;
 
@@ -323,6 +334,9 @@ namespace StorageDump
                                 return TxType.Name;
                         }
                         break;
+
+                    case "market":
+                            return TxType.Market;
 
                     case "swap":
                         switch (first.Kind)
@@ -342,11 +356,15 @@ namespace StorageDump
                                 return TxType.Burn;
                         }
                         break;
-
                 }
-            }
 
-            return TxType.Other;
+
+                return TxType.Other;
+            }
+            else
+            {
+                return TxType.SwapFee;
+            }
         }
 
         private void DumpBlocks(Chain chain)
@@ -426,7 +444,7 @@ namespace StorageDump
             File.WriteAllLines($"{outputFolder}/{chain.Name}_blocks.csv", lines);
 
             lines.Clear();
-            txList.ForEach(x => lines.Add($"{x.height},{x.hash},{x.timestamp},{x.fee}"));
+            txList.ForEach(x => lines.Add($"{x.height},{x.hash},{x.timestamp},{x.fee},{x.type}"));
             File.WriteAllLines($"{outputFolder}/{chain.Name}_transactions.csv", lines);
 
             lines.Clear();
