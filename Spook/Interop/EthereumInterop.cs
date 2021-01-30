@@ -176,11 +176,11 @@ namespace Phantasma.Spook.Interop
                     var total = result.Count();
                     if (total > 0)
                     {
-                        logger.Message($"found {  total} ethereum swaps");
+                        logger.Message($"found {total} ethereum swaps");
                     }
                     else
                     {
-                        logger.Debug($"did not found any ethereum swaps");
+                        logger.Debug($"did not find any ethereum swaps");
                     }
                     return result;
                 }
