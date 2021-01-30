@@ -121,7 +121,7 @@ namespace Phantasma.Spook
 
             SetupOracleApis();
 
-            if (Settings.Node.HasMempool)
+            if (Settings.Node.HasMempool && !Settings.Node.Readonly)
             {
                 _mempool = SetupMempool();
             }
@@ -354,13 +354,23 @@ namespace Phantasma.Spook
         private PeerCaps SetupPeerCaps()
         {
             PeerCaps caps = PeerCaps.None;
-            if (Settings.Node.HasSync) { caps |= PeerCaps.Sync; }
-            if (Settings.Node.HasMempool) { caps |= PeerCaps.Mempool; }
+            if (Settings.Node.HasSync) { caps |= PeerCaps.Sync; }            
             if (Settings.Node.HasEvents) { caps |= PeerCaps.Events; }
             if (Settings.Node.HasRelay) { caps |= PeerCaps.Relay; }
             if (Settings.Node.HasArchive) { caps |= PeerCaps.Archive; }
             if (Settings.Node.HasRpc) { caps |= PeerCaps.RPC; }
             if (Settings.Node.HasRest) { caps |= PeerCaps.REST; }
+
+            if (Settings.Node.HasMempool) { 
+                if (Settings.Node.Readonly)
+                {
+                    Logger.Warning("Mempool will be disabled due to read-only mode");
+                }
+                else
+                {
+                    caps |= PeerCaps.Mempool;
+                }
+            }
 
             var possibleCaps = Enum.GetValues(typeof(PeerCaps)).Cast<PeerCaps>().ToArray();
             foreach (var cap in possibleCaps)
@@ -445,7 +455,6 @@ namespace Phantasma.Spook
             var hasREST = Settings.Node.HasRest;
 
             NexusAPI nexusApi = new NexusAPI(_nexus, apiCache, apiLog ? Logger : null);
-            nexusApi.Mempool = _mempool;
 
             if (apiProxyURL != null)
             {
@@ -459,8 +468,11 @@ namespace Phantasma.Spook
 
             if (readOnlyMode)
             {
-                nexusApi.acceptTransactions = false;
                 Logger.Warning($"Node will be running in read-only mode.");
+            }
+            else
+            {
+                nexusApi.Mempool = _mempool;
             }
 
             // RPC setup
