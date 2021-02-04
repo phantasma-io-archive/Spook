@@ -13,12 +13,7 @@ namespace Phantasma.Spook
             CultureInfo.DefaultThreadCurrentCulture = culture;
 
             var node = new Spook(args);
-
-            if (node.Settings.App.UseShell)
-            {
-                new SpookShell(args, node.Settings, node);
-                return;
-            }
+            node.Start();
         }
     }
 }

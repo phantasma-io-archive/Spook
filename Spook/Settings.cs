@@ -144,6 +144,7 @@ namespace Phantasma.Spook
         public bool RandomSwapData { get; } = false;
 
         public int NodePort { get; }
+        public string NodeHost { get; }
 
         public bool Validator { get; }
         public bool HasSync { get; }
@@ -206,6 +207,7 @@ namespace Phantasma.Spook
             this.ApiLog = settings.GetBool("api.log", section.GetBool("api.log"));
 
             this.NodePort = settings.GetInt("node.port", section.GetInt32("node.port"));
+            this.NodeHost = settings.GetString("node.host", section.GetString("node.host", "localhost"));
 
             this.ProfilerPath = settings.GetString("profiler.path", section.GetString("profiler.path"));
             if (string.IsNullOrEmpty(this.ProfilerPath)) this.ProfilerPath = null;
@@ -311,7 +313,7 @@ namespace Phantasma.Spook
         public List<string> EthRpcNodes { get; }
         public List<FeeUrl> EthFeeURLs { get; }
         public string CryptoCompareAPIKey { get; }
-        public bool Swaps { get; }
+        public string Swaps { get; }
         public string PhantasmaInteropHeight { get; } = "0";
         public string NeoInteropHeight { get; } = "4261049";
         public string EthInteropHeight { get; }
@@ -343,7 +345,7 @@ namespace Phantasma.Spook
             this.EthConfirmations = settings.GetUInt("eth.block.confirmations", section.GetUInt32("eth.block.confirmations"));
             this.EthGasLimit = settings.GetUInt("eth.gas.limit", section.GetUInt32("eth.gas.limit"));
             this.CryptoCompareAPIKey = settings.GetString("crypto.compare.key", section.GetString("crypto.compare.key"));
-            this.Swaps = settings.GetBool("swaps.enabled", section.GetBool("swaps.enabled"));
+            this.Swaps = settings.GetString("swaps.platforms", section.GetString("swaps.platforms"));
             this.PhantasmaInteropHeight = settings.GetString("phantasma.interop.height", section.GetString("phantasma.interop.height"));
             this.NeoInteropHeight = settings.GetString("neo.interop.height", section.GetString("neo.interop.height"));
             this.EthInteropHeight = settings.GetString("eth.interop.height", section.GetString("eth.interop.height"));

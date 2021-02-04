@@ -24,8 +24,8 @@ namespace Phantasma.Spook.Command
         protected void OnStartCommand()
         {
             Console.WriteLine("Node starting...");
-            _cli.Mempool.Start();
-            _cli.Node.Start();
+            _cli.Mempool.StartInThread();
+            _cli.Node.StartInThread();
             Console.WriteLine("Node started");
         }
 

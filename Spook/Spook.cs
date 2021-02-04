@@ -29,6 +29,7 @@ using Logger = Phantasma.Core.Log.Logger;
 using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
 using NeoAPI = Phantasma.Neo.Core.NeoAPI;
 using EthAccount = Nethereum.Web3.Accounts.Account;
+using Phantasma.Core;
 
 namespace Phantasma.Spook
 {
@@ -43,14 +44,13 @@ namespace Phantasma.Spook
         }
     }
 
-    public class Spook
+    public class Spook : Runnable
     {
         public static readonly int Protocol = 5;
 
         public readonly string LogPath;
         public readonly SpookSettings Settings;
 
-        public bool Running { get; private set; }
         public static string Version { get; private set; }
         public static string TxIdentifier => $"SPK{Version}";
 
@@ -102,7 +102,7 @@ namespace Phantasma.Spook
             }
         }
 
-        public void Start()
+        protected override void OnStart()
         {
             Console.CancelKeyPress += delegate
             {
@@ -113,11 +113,15 @@ namespace Phantasma.Spook
 
             _nodeKeys = SetupNodeKeys();
 
-            Running = SetupNexus();
+            if (!SetupNexus())
+            {
+                this.Stop();
+                return;
+            }
 
             SetupOracleApis();
 
-            if (Settings.Node.HasMempool)
+            if (Settings.Node.HasMempool && !Settings.Node.Readonly)
             {
                 _mempool = SetupMempool();
             }
@@ -131,7 +135,7 @@ namespace Phantasma.Spook
 
             if (_node != null && Settings.App.NodeStart)
             {
-                _node.Start();
+                _node.StartInThread();
             }
 
             _commandDispatcher = SetupCommandDispatcher();
@@ -145,19 +149,18 @@ namespace Phantasma.Spook
                 MakeReady(_commandDispatcher);
             }
 
-            if (Settings.Oracle.Swaps)
+            if (!string.IsNullOrEmpty(Settings.Oracle.Swaps))
             {
                 _tokenSwapper = StartTokenSwapper();
             }
-
-            this.Run();
         }
 
         public TokenSwapper StartTokenSwapper()
         {
+            var platforms = Settings.Oracle.Swaps.Split(',');
             var minimumFee = Settings.Node.MinimumFee;
             var oracleSettings = Settings.Oracle;
-            var tokenSwapper = new TokenSwapper(this, _nodeKeys, _nexusApi, _neoAPI, _ethAPI, minimumFee, Logger);
+            var tokenSwapper = new TokenSwapper(this, _nodeKeys, _nexusApi, _neoAPI, _ethAPI, minimumFee, platforms, Logger);
             _nexusApi.TokenSwapper = tokenSwapper;
 
             _tokenSwapperThread = new Thread(() =>
@@ -219,11 +222,22 @@ namespace Phantasma.Spook
             return dispatcher;
         }
 
+
+        private String prompt { get; set; } = "spook> ";
+
+        private CommandDispatcher _dispatcher;
+
         public void MakeReady(CommandDispatcher dispatcher)
         {
             var nodeMode = Settings.Node.NodeMode;
             Logger.Success($"Node is now running in {nodeMode} mode!");
             _nodeReady = true;
+        }
+
+        private string PromptGenerator()
+        {
+            var height = this.ExecuteAPIR("getBlockHeight", new string[] { "main" });
+            return string.Format(prompt, height.Trim(new char[] { '"' }));
         }
 
         private void SetupOracleApis()
@@ -266,6 +280,7 @@ namespace Phantasma.Spook
                         , _nexus
                         , _mempool
                         , _nodeKeys
+                        , Settings.Node.NodeHost
                         , Settings.Node.NodePort
                         , _peerCaps
                         , Settings.Node.Seeds
@@ -319,7 +334,9 @@ namespace Phantasma.Spook
                     }
                     else
                     {
-                        Logger.Success("Loaded Nexus with genesis " + _nexus.GetGenesisHash(_nexus.RootStorage));
+                        var chainHeight = _nexus.RootChain.Height;
+                        var genesisHash = _nexus.GetGenesisHash(_nexus.RootStorage);
+                        Logger.Success($"Loaded Nexus with genesis {genesisHash } with {chainHeight} blocks");
                     }
                 }
             }
@@ -338,13 +355,23 @@ namespace Phantasma.Spook
         private PeerCaps SetupPeerCaps()
         {
             PeerCaps caps = PeerCaps.None;
-            if (Settings.Node.HasSync) { caps |= PeerCaps.Sync; }
-            if (Settings.Node.HasMempool) { caps |= PeerCaps.Mempool; }
+            if (Settings.Node.HasSync) { caps |= PeerCaps.Sync; }            
             if (Settings.Node.HasEvents) { caps |= PeerCaps.Events; }
             if (Settings.Node.HasRelay) { caps |= PeerCaps.Relay; }
             if (Settings.Node.HasArchive) { caps |= PeerCaps.Archive; }
             if (Settings.Node.HasRpc) { caps |= PeerCaps.RPC; }
             if (Settings.Node.HasRest) { caps |= PeerCaps.REST; }
+
+            if (Settings.Node.HasMempool) { 
+                if (Settings.Node.Readonly)
+                {
+                    Logger.Warning("Mempool will be disabled due to read-only mode");
+                }
+                else
+                {
+                    caps |= PeerCaps.Mempool;
+                }
+            }
 
             var possibleCaps = Enum.GetValues(typeof(PeerCaps)).Cast<PeerCaps>().ToArray();
             foreach (var cap in possibleCaps)
@@ -402,7 +429,7 @@ namespace Phantasma.Spook
             }
             if (Settings.App.NodeStart)
             {
-                mempool.Start(ThreadPriority.AboveNormal);
+                mempool.StartInThread(ThreadPriority.AboveNormal);
             }
             return mempool;
 
@@ -429,7 +456,6 @@ namespace Phantasma.Spook
             var hasREST = Settings.Node.HasRest;
 
             NexusAPI nexusApi = new NexusAPI(_nexus, apiCache, apiLog ? Logger : null);
-            nexusApi.Mempool = _mempool;
 
             if (apiProxyURL != null)
             {
@@ -443,8 +469,11 @@ namespace Phantasma.Spook
 
             if (readOnlyMode)
             {
-                nexusApi.acceptTransactions = false;
                 Logger.Warning($"Node will be running in read-only mode.");
+            }
+            else
+            {
+                nexusApi.Mempool = _mempool;
             }
 
             // RPC setup
@@ -453,7 +482,7 @@ namespace Phantasma.Spook
                 var rpcPort = Settings.Node.RpcPort;
                 Logger.Message($"RPC server listening on port {rpcPort}...");
                 var rpcServer = new RPCServer(nexusApi, "/rpc", rpcPort, (level, text) => WebLogMapper("rpc", level, text));
-                rpcServer.Start(ThreadPriority.AboveNormal);
+                rpcServer.StartInThread(ThreadPriority.AboveNormal);
             }
 
             // REST setup
@@ -462,7 +491,7 @@ namespace Phantasma.Spook
                 var restPort = Settings.Node.RestPort;
                 Logger.Message($"REST server listening on port {restPort}...");
                 var restServer = new RESTServer(nexusApi, "/api", restPort, (level, text) => WebLogMapper("rest", level, text));
-                restServer.Start(ThreadPriority.AboveNormal);
+                restServer.StartInThread(ThreadPriority.AboveNormal);
             }
 
             return nexusApi;
@@ -495,7 +524,7 @@ namespace Phantasma.Spook
                 }
             }
 
-            if (!Settings.Node.Validator && Settings.Oracle.Swaps) 
+            if (!Settings.Node.Validator && !string.IsNullOrEmpty(Settings.Oracle.Swaps))
             {
                     throw new Exception("Non-validator nodes cannot have swaps enabled");
             }
@@ -515,23 +544,48 @@ namespace Phantasma.Spook
             loggers.Add(new ConsoleLogger(Settings.Log.ShellLevel));
             loggers.Add(new FileLogger(LogPath, Settings.Log.FileLevel));
             Logger = new MultiLogger(loggers);
+        }
 
-            if (!Settings.App.UseShell)
+        protected override bool Run()
+        {
+
+            if (Settings.App.UseShell)
             {
-                this.Start();
+                _dispatcher = new CommandDispatcher(this);
+
+                List<string> completionList = new List<string>();
+
+                if (!string.IsNullOrEmpty(Settings.App.Prompt))
+                {
+                    prompt = Settings.App.Prompt;
+                }
+
+                var startupMsg = "Spook shell " + Version + "\nLogs are stored in " + LogPath + "\nTo exit use <ctrl-c> or \"exit\"!\n";
+
+                Prompt.Run(
+                    ((command, listCmd, list) =>
+                    {
+                        string command_main = command.Trim().Split(new char[] { ' ' }).First();
+
+                        if (!_dispatcher.OnCommand(command))
+                        {
+                            Console.WriteLine("error: Command not found");
+                        }
+
+                        return "";
+                    }), prompt, PromptGenerator, startupMsg, Path.GetTempPath() + Settings.App.History, _dispatcher.Verbs);
             }
+            else
+            {
+                // Do nothing in this thread...
+                Thread.Sleep(1000);
+            }
+
+            return this.Running;
         }
 
-        private void Run()
+        protected override void OnStop()
         {
-            Thread.Sleep(1000);
-            // Do nothing in this thread...
-        }
-
-        public void Stop()
-        {
-            Running = false;
-
             Logger.Message("Termination started...");
 
             if (_mempool != null && _mempool.IsRunning)

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -14,6 +14,7 @@ using Phantasma.Storage.Context;
 using Phantasma.RocksDB;
 using Phantasma.Core.Log;
 using Phantasma.Blockchain;
+using Phantasma.Storage;
 
 namespace StorageDump
 {
@@ -33,19 +34,37 @@ namespace StorageDump
         }
     }
 
+    public enum TxType
+    {
+        Transfer,
+        Stake,
+        Claim,
+        SwapOut,
+        SwapIn,
+        SwapFee,
+        SwapCosmic,
+        Mint,
+        Burn,
+        Name,
+        Market,
+        Other
+    }
+
     public struct TxEntry
     {
         public BigInteger height;
         public string hash;
         public uint timestamp;
         public decimal fee;
+        public TxType type;
 
-        public TxEntry(BigInteger height, string hash, uint timestamp, decimal fee)
+        public TxEntry(BigInteger height, string hash, uint timestamp, decimal fee, TxType type)
         {
             this.height = height;
             this.hash = hash;
             this.timestamp = timestamp;
             this.fee = fee;
+            this.type = type;
         }
     }
 
@@ -68,6 +87,30 @@ namespace StorageDump
             this.address = address;
             this.contract = contract;
             this.data = data;
+        }
+    }
+
+    public struct TransferEntry
+    {
+        public BigInteger height;
+        public string hash;
+        public uint timestamp;
+        public EventKind kind;
+        public string address;
+        public string symbol;
+        public string amount;
+        public string balance;
+
+        public TransferEntry(BigInteger height, string hash, uint timestamp, EventKind kind, string address, string symbol, string amount, string balance)
+        {
+            this.height = height;
+            this.hash = hash;
+            this.timestamp = timestamp;
+            this.kind = kind;
+            this.address = address;
+            this.symbol = symbol;
+            this.amount = amount;
+            this.balance = balance;
         }
     }
 
@@ -236,6 +279,94 @@ namespace StorageDump
             File.WriteAllLines($"{outputFolder}/{chain.Name}_balances_{symbol}.csv", lines);
         }
 
+        private TxType DetectTransactionType(IEnumerable<Event> events)
+        {
+            if (events.Any())
+            {
+                var first = events.First();
+
+                switch (first.Contract)
+                {
+                    case "stake":
+                        switch (first.Kind)
+                        {
+                            case EventKind.TokenClaim:
+                            case EventKind.TokenMint:
+                                return TxType.Claim;
+
+                            case EventKind.TokenStake:
+                                return TxType.Stake;
+                        }
+                        break;
+
+                    case "interop":
+                        switch (first.Kind)
+                        {
+                            case EventKind.TokenSend:
+                            case EventKind.TokenStake:
+                                return TxType.SwapIn;
+
+                            case EventKind.TokenClaim:
+                            case EventKind.TokenMint:
+                                return TxType.SwapOut;
+
+                        }
+                        break;
+
+                    case "entry":
+                        switch (first.Kind)
+                        {
+                            case EventKind.TokenSend:
+                                return TxType.Transfer;
+
+                            case EventKind.TokenMint:
+                                return TxType.Mint;
+
+                            case EventKind.TokenBurn:
+                                return TxType.Burn;
+                        }
+                        break;
+
+                    case "account":
+                        switch (first.Kind)
+                        {
+                            case EventKind.AddressRegister:
+                                return TxType.Name;
+                        }
+                        break;
+
+                    case "market":
+                            return TxType.Market;
+
+                    case "swap":
+                        switch (first.Kind)
+                        {
+                            case EventKind.TokenStake:
+                                return TxType.SwapCosmic;
+                        }
+                        break;
+
+                    default:
+                        switch (first.Kind)
+                        {
+                            case EventKind.TokenMint:
+                                return TxType.Mint;
+
+                            case EventKind.TokenBurn:
+                                return TxType.Burn;
+                        }
+                        break;
+                }
+
+
+                return TxType.Other;
+            }
+            else
+            {
+                return TxType.SwapFee;
+            }
+        }
+
         private void DumpBlocks(Chain chain)
         {
             Console.WriteLine($"Analysing blocks on {chain.Name} chain");
@@ -243,7 +374,9 @@ namespace StorageDump
             var blockList = new List<BlockEntry>();
             var txList = new List<TxEntry>();
             var eventList = new List<EventEntry>();
+            var transferList = new List<TransferEntry>();
             var addresses = new Dictionary<string, AddressEntry>();
+            var balances = new Dictionary<string, BigInteger>();
 
             for (uint i=1; i<chain.Height; i++)
             {
@@ -257,9 +390,11 @@ namespace StorageDump
                     var tx = chain.GetTransactionByHash(txHash);
 
                     var fee = chain.GetTransactionFee(tx);
-                    txList.Add(new TxEntry(block.Height, tx.Hash.ToString(), block.Timestamp.Value, UnitConversion.ToDecimal(fee, DomainSettings.FuelTokenDecimals)));
-
                     var events = block.GetEventsForTransaction(txHash);
+
+                    var txType = DetectTransactionType(events.Where(x => x.Contract != "gas"));
+                    txList.Add(new TxEntry(block.Height, tx.Hash.ToString(), block.Timestamp.Value, UnitConversion.ToDecimal(fee, DomainSettings.FuelTokenDecimals), txType));
+
                     foreach (var evt in events)
                     {
                         var addr = evt.Address.Text;
@@ -270,6 +405,36 @@ namespace StorageDump
                         {
                             addresses[addr] = new AddressEntry(addr, block.Timestamp.Value);
                         }
+
+                        int mult = 0;
+                        switch (evt.Kind)
+                        {
+                            case EventKind.TokenReceive:
+                            case EventKind.TokenClaim:
+                            case EventKind.TokenMint:
+                                mult = 1;
+                                break;
+
+                            case EventKind.TokenStake:
+                            case EventKind.TokenBurn:
+                            case EventKind.TokenSend:
+                                mult = -1;
+                                break;
+                        }
+
+                        if (mult != 0)
+                        {
+                            var data = Serialization.Unserialize<TokenEventData>(evt.Data);
+                            var amount = data.Value * mult;
+                            var key = addr + data.Symbol;
+
+                            BigInteger balance = balances.ContainsKey(key) ? balances[key] : 0;
+
+                            transferList.Add(new TransferEntry(block.Height, tx.Hash.ToString(), block.Timestamp.Value, evt.Kind, addr, data.Symbol, amount.ToString(), balance.ToString()));
+
+                            balance += amount;
+                            balances[key] = balance;
+                        }
                     }
                 }
             }
@@ -279,26 +444,43 @@ namespace StorageDump
             File.WriteAllLines($"{outputFolder}/{chain.Name}_blocks.csv", lines);
 
             lines.Clear();
-            txList.ForEach(x => lines.Add($"{x.height},{x.hash},{x.timestamp},{x.fee}"));
+            txList.ForEach(x => lines.Add($"{x.height},{x.hash},{x.timestamp},{x.fee},{x.type}"));
             File.WriteAllLines($"{outputFolder}/{chain.Name}_transactions.csv", lines);
 
             lines.Clear();
             eventList.ForEach(x => lines.Add($"{x.height},{x.hash},{x.timestamp},{x.kind},{x.contract},{x.address},{x.data}"));
             File.WriteAllLines($"{outputFolder}/{chain.Name}_events.csv", lines);
 
+            lines.Clear();
+            transferList.ForEach(x => lines.Add($"{x.height},{x.hash},{x.timestamp},{x.kind},{x.address},{x.symbol},{x.amount},{x.balance}"));
+            File.WriteAllLines($"{outputFolder}/{chain.Name}_transfers.csv", lines);
+
             var addressList = addresses.Values.ToList();
             addressList.Sort((x, y) => x.timestamp.CompareTo(y.timestamp));
             lines.Clear();
             addressList.ForEach(x => lines.Add($"{x.timestamp},{x.address}"));
             File.WriteAllLines($"{outputFolder}/{chain.Name}_addresses.csv", lines);
+
+            /*string connstring = string.Format("Server={0}; database={1}; UID={2}; password={3}", "localhost", "phantasma", "root", "root");
+            var connection = new MySqlConnection(connstring);
+            connection.Open();
+
+            ExecuteQuery(connection, "DROP TABLE IF EXISTS `events`;);*/
         }
+
+        /*private void ExecuteQuery(MySqlConnection connection, string query)
+        {
+
+        }*/
 
         private void Execute()
         {
             var logger = new ConsoleLogger(LogLevel.Maximum);
 
+            var path = @"C:\Code\Spook\Spook\bin\Debug\netcoreapp3.1\Storage\";
+
             this.nexus = new Nexus("mainnet", logger,
-                (name) => new DBPartition(logger, "New/" + name));
+                (name) => new DBPartition(logger, path + name));
 
             var chains = nexus.GetChains(nexus.RootStorage).Select(x => nexus.GetChainByName(x)).ToArray();
             var tokens = nexus.GetTokens(nexus.RootStorage).Select(x => nexus.GetTokenInfo(nexus.RootStorage, x)).ToArray();
