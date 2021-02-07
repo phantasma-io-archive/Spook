@@ -115,7 +115,7 @@ namespace Phantasma.Spook
 
             if (!SetupNexus())
             {
-                this.Stop();
+                this.OnStop();
                 return;
             }
 
@@ -613,7 +613,7 @@ namespace Phantasma.Spook
                 Prompt.running = false;
             }
 
-            this.Stop();
+            this.OnStop();
 
             //Thread.Sleep(3000);
             if (Prompt.running)
