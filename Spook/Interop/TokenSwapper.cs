@@ -20,9 +20,9 @@ using Phantasma.API;
 using Phantasma.Storage.Context;
 using Phantasma.Storage;
 using Phantasma.Storage.Utils;
-using Phantasma.Spook.Chains;
 using EthereumKey = Phantasma.Ethereum.EthereumKey;
 using Nethereum.RPC.Eth.DTOs;
+using Phantasma.Spook.Chains;
 
 namespace Phantasma.Spook.Interop
 {
@@ -762,11 +762,18 @@ namespace Phantasma.Spook.Interop
             try
             {
                 logger.Debug($"ETHSWAP: Trying transfer of {total} {token.Symbol} from {ethKeys.Address} to {destAddress}");
-                tx = ethAPI.TransferAsset(token.Symbol, destAddress, total, token.Decimals);
+                var transferResult = ethAPI.TryTransferAsset(token.Symbol, destAddress, total, token.Decimals, out tx);
 
-                // persist resulting tx hash as in progress
-                inProgressMap.Set<Hash, string>(sourceHash, tx);
-                logger.Debug("broadcasted eth tx: " + tx);
+                if (transferResult == EthTransferResult.Success)
+                {
+                    // persist resulting tx hash as in progress
+                    inProgressMap.Set<Hash, string>(sourceHash, tx);
+                    logger.Debug("broadcasted eth tx: " + tx);
+                }
+                else
+                {
+                    logger.Error($"ETHSWAP: Transfer of {total} {token.Symbol} from {ethKeys.Address} to {destAddress} failed, no tx generated");
+                }
             }
             catch (Exception e)
             {

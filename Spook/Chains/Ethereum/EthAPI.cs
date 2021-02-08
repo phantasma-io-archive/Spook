@@ -9,9 +9,16 @@ using Nethereum.Contracts;
 using Nethereum.RPC.Eth.DTOs;
 using Nethereum.StandardTokenEIP20.ContractDefinition;
 using Phantasma.Core.Log;
+using Phantasma.Domain;
 
 namespace Phantasma.Spook.Chains
 {
+    public enum EthTransferResult
+    {
+        Failure,
+        Success
+    }
+
     public class BlockIterator
     {
         public BigInteger currentBlock;
@@ -70,7 +77,8 @@ namespace Phantasma.Spook.Chains
 
             foreach (var url in this.urls)
             {
-                web3Clients.Add(new Web3(_account, "https://"+url));
+                //web3Clients.Add(new Web3(_account, "https://"+url));
+                web3Clients.Add(new Web3(_account, "http://"+url));
             }
         }
 
@@ -136,7 +144,7 @@ namespace Phantasma.Spook.Chains
 
         }
 
-        public string TransferAsset(string symbol, string toAddress, decimal amount, int decimals)
+        public EthTransferResult TryTransferAsset(string symbol, string toAddress, decimal amount, int decimals, out string result)
         {
             if (symbol.Equals("ETH", StringComparison.InvariantCultureIgnoreCase))
             {
@@ -144,23 +152,44 @@ namespace Phantasma.Spook.Chains
                 var fees = Phantasma.Numerics.BigInteger.FromUnsignedArray(bytes, true);
                 var gasPrice = Numerics.UnitConversion.ToDecimal(fees / _settings.Oracle.EthGasLimit, 9);
 
-                return EthUtils.RunSync(() => GetWeb3Client().Eth.GetEtherTransferService()
+                result = EthUtils.RunSync(() => GetWeb3Client().Eth.GetEtherTransferService()
                         .TransferEtherAsync(toAddress, amount, gasPrice, _settings.Oracle.EthGasLimit));
+
+                return EthTransferResult.Success;
             }
             else
             {
-                var swapIn = new SwapInFunction()
+                var nativeAsset = false;
+                if (symbol == DomainSettings.StakingTokenSymbol || symbol == DomainSettings.FuelTokenSymbol)
                 {
-                    Source = _account.Address,
-                    Target = toAddress,
-                    Amount = Nethereum.Util.UnitConversion.Convert.ToWei(amount, decimals)
-                };
+                    nativeAsset = true;
+                }
 
-                string contractAddress;
                 var hash = Nexus.GetTokenPlatformHash(symbol, "ethereum", Nexus.RootStorage);
-                if (!hash.IsNull)
+
+                if (hash.IsNull)
                 {
-                    contractAddress = hash.ToString().Substring(0, 40);
+                    result = null;
+                    return EthTransferResult.Failure;
+                }
+
+                var contractAddress = hash.ToString().Substring(0, 40);
+                if (string.IsNullOrEmpty(contractAddress))
+                {
+                    result = null;
+                    return EthTransferResult.Failure;
+                }
+
+                string outTransactionHash = null;
+                if (nativeAsset)
+                {
+                    var swapIn = new SwapInFunction()
+                    {
+                        Source = _account.Address,
+                        Target = toAddress,
+                        Amount = Nethereum.Util.UnitConversion.Convert.ToWei(amount, decimals)
+                    };
+
                     var swapInHandler = GetWeb3Client().Eth.GetContractTransactionHandler<SwapInFunction>();
 
                     swapIn.Gas = _settings.Oracle.EthGasLimit;
@@ -168,13 +197,24 @@ namespace Phantasma.Spook.Chains
                     var fees = Phantasma.Numerics.BigInteger.FromUnsignedArray(bytes, true);
                     swapIn.GasPrice = System.Numerics.BigInteger.Parse(fees.ToString()) / swapIn.Gas;
 
-                    var result = EthUtils.RunSync(() => swapInHandler
+                    outTransactionHash = EthUtils.RunSync(() => swapInHandler
                             .SendRequestAsync(contractAddress, swapIn));
-                    return result;
-
+                }
+                else
+                {
+                    var transferHandler = GetWeb3Client().Eth.GetContractTransactionHandler<TransferFunction>();
+                    var transfer = new TransferFunction()
+                    {
+                        To = toAddress,
+                        TokenAmount = Nethereum.Util.UnitConversion.Convert.ToWei(amount, decimals)
+                    };
+                    outTransactionHash = EthUtils.RunSync(() => transferHandler
+                            .SendRequestAndWaitForReceiptAsync(contractAddress, transfer)).TransactionHash;
                 }
 
-                return null;
+                result = outTransactionHash;
+
+                return EthTransferResult.Success;
             }
         }
 

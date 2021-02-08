@@ -114,6 +114,7 @@ namespace Phantasma.Spook.Interop
                                 this.logger.Debug($"EthInterop:Update() resync block {blockId} now.");
                                 var block= GetInteropBlock(blockId);
                                 ProcessBlock(block, ref result);
+                                _resyncBlockIds.RemoveAt(i);
                             }
                         }
 
@@ -363,7 +364,7 @@ namespace Phantasma.Spook.Interop
             var combinedAddresses = contracts.ToList();
             combinedAddresses.Add(swapAddress);
 
-            Dictionary<string, Dictionary<string, List<InteropTransfer>>> transfers = null;
+            Dictionary<string, Dictionary<string, List<InteropTransfer>>> transfers = new Dictionary<string, Dictionary<string, List<InteropTransfer>>>();
             try
             {
                 var crawler = new EthBlockCrawler(logger, combinedAddresses.ToArray(), confirmations, api);
@@ -373,7 +374,7 @@ namespace Phantasma.Spook.Interop
             }
             catch (Exception e)
             {
-                logger.Error("Failed to fetch eth blocks: " + e.Message);
+                logger.Error("Failed to fetch eth blocks: " + e);
             }
 
             if (transfers.Count == 0)
