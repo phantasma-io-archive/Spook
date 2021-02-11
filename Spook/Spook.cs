@@ -267,89 +267,87 @@ namespace Phantasma.Spook
         private Node SetupNode()
         {
             Node node = null;
-            if (Settings.Node.HasSync)
+
+            if (this._mempool != null)
             {
-                if (this._mempool != null)
+                this._mempool.SetKeys(_nodeKeys);
+            }
+
+            Spook.Version = Assembly.GetAssembly(typeof(Spook)).GetVersion();
+
+            if (!Settings.Node.IsValidator && Settings.Node.Seeds.Count == 0 && _peerCaps.HasFlag(PeerCaps.Sync))
+            {
+                throw new Exception("A non-validator node with sync enabled must specificy a non-empty list of seed endpoints");
+            }
+
+            node = new Node("Spook v" + Version
+                    , _nexus
+                    , _mempool
+                    , _nodeKeys
+                    , Settings.Node.NodeHost
+                    , Settings.Node.NodePort
+                    , _peerCaps
+                    , Settings.Node.Seeds
+                    , Logger);
+
+            var missingNexus = !_nexus.HasGenesis;
+
+            if (missingNexus)
+            {
+                if (Settings.Node.IsValidator)
                 {
-                    this._mempool.SetKeys(_nodeKeys);
-                }
-
-                Spook.Version = Assembly.GetAssembly(typeof(Spook)).GetVersion();
-
-                if (!Settings.Node.IsValidator && Settings.Node.Seeds.Count == 0 && _peerCaps.HasFlag(PeerCaps.Sync))
-                {
-                    throw new Exception("A non-validator node with sync enabled must specificy a non-empty list of seed endpoints");
-                }
-
-                node = new Node("Spook v" + Version
-                        , _nexus
-                        , _mempool
-                        , _nodeKeys
-                        , Settings.Node.NodeHost
-                        , Settings.Node.NodePort
-                        , _peerCaps
-                        , Settings.Node.Seeds
-                        , Logger);
-
-                var missingNexus = !_nexus.HasGenesis;
-
-                if (missingNexus)
-                {
-                    if (Settings.Node.IsValidator)
+                    var nexusName = Settings.Node.NexusName;
+                    if (Settings.Node.NexusBootstrap)
                     {
-                        var nexusName = Settings.Node.NexusName;
-                        if (Settings.Node.NexusBootstrap)
+                        if (!ValidationUtils.IsValidIdentifier(nexusName))
                         {
-                            if (!ValidationUtils.IsValidIdentifier(nexusName))
-                            {
-                                Logger.Error("Invalid nexus name: " + nexusName);
-                                this.Terminate();
-                            }
-
-                            Logger.Message($"Boostraping {nexusName} nexus using {_nodeKeys.Address}...");
-
-                            var genesisTimestamp = Settings.Node.GenesisTimestamp;
-
-                            if (!_nexus.CreateGenesisBlock(_nodeKeys, genesisTimestamp, Phantasma.Spook.Spook.Protocol))
-                            {
-                                throw new ChainException("Genesis block failure");
-                            }
-
-                            Logger.Success("Genesis block created: " + _nexus.GetGenesisHash(_nexus.RootStorage));
-
-                            missingNexus = false;
+                            Logger.Error("Invalid nexus name: " + nexusName);
+                            this.Terminate();
                         }
-                    }
-                    else
-                    {
-                        if (_mempool != null)
+
+                        Logger.Message($"Boostraping {nexusName} nexus using {_nodeKeys.Address}...");
+
+                        var genesisTimestamp = Settings.Node.GenesisTimestamp;
+
+                        if (!_nexus.CreateGenesisBlock(_nodeKeys, genesisTimestamp, Phantasma.Spook.Spook.Protocol))
                         {
-                            _mempool.SubmissionCallback = (tx, chain) =>
-                            {
-                                Logger.Message($"Relaying tx {tx.Hash} to other node");
-                            };
+                            throw new ChainException("Genesis block failure");
                         }
-                    }
 
-                    if (missingNexus && !_peerCaps.HasFlag(PeerCaps.Sync))
-                    {
-                        Logger.Error("No Nexus found.");
-                        this.Terminate();
+                        Logger.Success("Genesis block created: " + _nexus.GetGenesisHash(_nexus.RootStorage));
+
+                        missingNexus = false;
                     }
                 }
                 else
                 {
-                    var genesisAddress = _nexus.GetGenesisAddress(_nexus.RootStorage);
-                    if (Settings.Node.IsValidator && _nodeKeys.Address != genesisAddress && !Settings.Node.Readonly)
+                    if (_mempool != null)
                     {
-                        throw new Exception("Specified node key does not match genesis address " + genesisAddress.Text);
+                        _mempool.SubmissionCallback = (tx, chain) =>
+                        {
+                            Logger.Message($"Relaying tx {tx.Hash} to other node");
+                        };
                     }
-                    else
-                    {
-                        var chainHeight = _nexus.RootChain.Height;
-                        var genesisHash = _nexus.GetGenesisHash(_nexus.RootStorage);
-                        Logger.Success($"Loaded Nexus with genesis {genesisHash } with {chainHeight} blocks");
-                    }
+                }
+
+                if (missingNexus && !_peerCaps.HasFlag(PeerCaps.Sync))
+                {
+                    Logger.Error("No Nexus found.");
+                    this.Terminate();
+                }
+            }
+            else
+            {
+                var genesisAddress = _nexus.GetGenesisAddress(_nexus.RootStorage);
+                if (Settings.Node.IsValidator && _nodeKeys.Address != genesisAddress && !Settings.Node.Readonly)
+                {
+                    throw new Exception("Specified node key does not match genesis address " + genesisAddress.Text);
+                }
+                else
+                {
+                    var chainHeight = _nexus.RootChain.Height;
+                    var genesisHash = _nexus.GetGenesisHash(_nexus.RootStorage);
+                    Logger.Success($"Loaded {Nexus.Name} Nexus with genesis {genesisHash } with {chainHeight} blocks");
                 }
             }
 
