@@ -60,6 +60,17 @@ namespace Phantasma.Spook
                 this.App = new AppSettings(_settings, FindSection(root, "App", true));
                 this.Log = new LogSettings(_settings, FindSection(root, "Log", false));
                 this.RPC = new RPCSettings(_settings, FindSection(root, "RPC", true));
+
+                var usedPorts = new HashSet<int>();
+                int expected = 0;
+                usedPorts.Add(this.Node.NodePort); expected++;
+                usedPorts.Add(this.Node.RestPort); expected++;
+                usedPorts.Add(this.Node.RpcPort); expected++;
+
+                if (usedPorts.Count != expected)
+                {
+                    throw new Exception("One or more ports are being re-used for different services, check the config");
+                }
             }
             catch (Exception e)
             {
