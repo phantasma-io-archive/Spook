@@ -12,7 +12,7 @@
       "api.log": false,
       "node.port": 7777,
       "profiler.path": "",
-      "has.sync": true,
+      "has.sync": false,
       "has.mempool": true,
       "mempool.log": false,
       "has.events": false,

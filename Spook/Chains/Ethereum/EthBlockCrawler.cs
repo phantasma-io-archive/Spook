@@ -46,13 +46,13 @@ namespace Phantasma.Spook.Chains
 
         public EthBlockCrawler(Logger logger, string[] addresses, uint blockConfirmations, EthAPI api)
         {
-            addressesToWatch = addresses;
+            this.addressesToWatch = addresses;
             this.web3 = api.GetWeb3Client();
             this.logger = logger;
 
             processor = web3.Processing.Blocks.CreateBlockProcessor(steps =>
                 {
-                    steps.TransactionStep.SetMatchCriteria(t => t.Transaction.IsToAny(addresses));
+                    steps.TransactionStep.SetMatchCriteria(t => t.Transaction.IsToAny(addressesToWatch));
                     steps.TransactionReceiptStep.AddSynchronousProcessorHandler(tx => AddTxrVO(tx));
                }, 
                blockConfirmations // block confirmations count

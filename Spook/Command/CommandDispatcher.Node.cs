@@ -175,52 +175,63 @@ namespace Phantasma.Spook.Command
                 return;
             }
 
-            var hashStr = args[2];
-            if (string.IsNullOrEmpty(hashStr)) 
+            Transaction tx = null;
+            if (platform == DomainSettings.PlatformName)
             {
-                Console.WriteLine("Hash has to be set!");
-                return;
-            }
-
-            if (hashStr.StartsWith("0x"))
-            {
-                hashStr = hashStr.Substring(2);
-            }
-
-            Hash hash;
-
-            try
-            {
-                hash = Hash.FromUnpaddedHex(hashStr);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Parsing hash failed: " + e.Message);
-                return;
-            }
-
-            var script = ScriptUtils.BeginScript()
-                .AllowGas(_cli.NodeKeys.Address, Address.Null, 100000, 1500)
-                .CallInterop("Nexus.SetTokenPlatformHash", symbol.ToUpper(), platform, hash)
-                .SpendGas(_cli.NodeKeys.Address).EndScript();
-
-            var expire = Timestamp.Now + TimeSpan.FromMinutes(2);
-            var tx = new Phantasma.Blockchain.Transaction(_cli.Nexus.Name, _cli.Nexus.RootChain.Name, script, expire, Spook.TxIdentifier);
-
-            tx.Mine((int)ProofOfWork.Minimal);
-            tx.Sign(_cli.NodeKeys);
-
-            if (_cli.Mempool != null)
-            {
-                _cli.Mempool.Submit(tx);
+                //TODO phantasma token creation
             }
             else
             {
-                Console.WriteLine("No mempool available");
-                return;
+                var hashStr = args[2];
+                if (string.IsNullOrEmpty(hashStr)) 
+                {
+                    Console.WriteLine("Hash has to be set!");
+                    return;
+                }
+
+                if (hashStr.StartsWith("0x"))
+                {
+                    hashStr = hashStr.Substring(2);
+                }
+
+                Hash hash;
+
+                try
+                {
+                    hash = Hash.FromUnpaddedHex(hashStr);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Parsing hash failed: " + e.Message);
+                    return;
+                }
+
+                var script = ScriptUtils.BeginScript()
+                    .AllowGas(_cli.NodeKeys.Address, Address.Null, 100000, 1500)
+                    .CallInterop("Nexus.SetTokenPlatformHash", symbol.ToUpper(), platform, hash)
+                    .SpendGas(_cli.NodeKeys.Address).EndScript();
+
+                var expire = Timestamp.Now + TimeSpan.FromMinutes(2);
+                tx = new Phantasma.Blockchain.Transaction(_cli.Nexus.Name, _cli.Nexus.RootChain.Name, script, expire, Spook.TxIdentifier);
             }
 
-            Console.WriteLine($"Token {symbol}/{platform} created.");
+            if (tx != null)
+            {
+                tx.Mine((int)ProofOfWork.Minimal);
+                tx.Sign(_cli.NodeKeys);
+
+                if (_cli.Mempool != null)
+                {
+                    _cli.Mempool.Submit(tx);
+                }
+                else
+                {
+                    Console.WriteLine("No mempool available");
+                    return;
+                }
+
+                Console.WriteLine($"Token {symbol}/{platform} created.");
+            }
         }
 
         [ConsoleCommand("node convert", Category = "Node", Description = "")]
