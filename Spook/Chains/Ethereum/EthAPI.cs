@@ -70,7 +70,7 @@ namespace Phantasma.Spook.Chains
 
             foreach (var url in this.urls)
             {
-                web3Clients.Add(new Web3(_account, "https://"+url));
+                web3Clients.Add(new Web3(_account, url));
             }
         }
 
