@@ -229,8 +229,8 @@ namespace Phantasma.Spook
 
         public void MakeReady(CommandDispatcher dispatcher)
         {
-            var nodeMode = Settings.Node.NodeMode;
-            Logger.Success($"Node is now running in {nodeMode} mode!");
+            var nodeMode = Settings.Node.Mode;
+            Logger.Success($"Node is now running in {nodeMode.ToString().ToLower()} mode!");
             _nodeReady = true;
         }
 
@@ -288,7 +288,7 @@ namespace Phantasma.Spook
 
                 if (!_nexus.HasGenesis)
                 {
-                    if (Settings.Node.Validator)
+                    if (Settings.Node.IsValidator)
                     {
                         var nexusName = Settings.Node.NexusName;
                         if (Settings.Node.NexusBootstrap)
@@ -329,7 +329,7 @@ namespace Phantasma.Spook
                 else
                 {
                     var genesisAddress = _nexus.GetGenesisAddress(_nexus.RootStorage);
-                    if (Settings.Node.Validator && _nodeKeys.Address != genesisAddress && !Settings.Node.Readonly)
+                    if (Settings.Node.IsValidator && _nodeKeys.Address != genesisAddress && !Settings.Node.Readonly)
                     {
                         throw new Exception("Specified node key does not match genesis address " + genesisAddress.Text);
                     }
@@ -507,7 +507,7 @@ namespace Phantasma.Spook
                     throw new Exception("A proxy node must have api cache enabled.");
                 }
 
-                if (Settings.Node.Validator)
+                if (Settings.Node.IsValidator)
                 {
                     throw new Exception("A validator node cannot have a proxy url specified.");
                 }
@@ -519,13 +519,13 @@ namespace Phantasma.Spook
             }
             else
             {
-                if (!Settings.Node.Validator && !Settings.Node.HasSync )
+                if (!Settings.Node.IsValidator && !Settings.Node.HasSync )
                 {
                     throw new Exception("Non-validator nodes require sync to be enabled");
                 }
             }
 
-            if (!Settings.Node.Validator && !string.IsNullOrEmpty(Settings.Oracle.Swaps))
+            if (!Settings.Node.IsValidator && !string.IsNullOrEmpty(Settings.Oracle.Swaps))
             {
                     throw new Exception("Non-validator nodes cannot have swaps enabled");
             }

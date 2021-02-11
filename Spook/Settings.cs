@@ -137,12 +137,19 @@ namespace Phantasma.Spook
         RocksDB,
     }
 
+    public enum NodeMode
+    {
+        Invalid,
+        Normal,
+        Validator,
+    }
+
     public class NodeSettings
     {
         public string ApiProxyUrl { get; }
         public string NexusName { get; }
         public string ProfilerPath { get; }
-        public string NodeMode { get; }
+        public NodeMode Mode { get; }
         public string NodeWif { get; }
 
         public string StoragePath { get; }
@@ -157,7 +164,8 @@ namespace Phantasma.Spook
         public int NodePort { get; }
         public string NodeHost { get; }
 
-        public bool Validator { get; }
+        public bool IsValidator => Mode == NodeMode.Validator;
+
         public bool HasSync { get; }
         public bool HasMempool { get; }
         public bool MempoolLog { get; }
@@ -211,8 +219,13 @@ namespace Phantasma.Spook
 
             this.Seeds = section.GetNode("seeds").Children.Select(p => p.Value).ToList();
 
+            this.Mode = settings.GetEnum<NodeMode>("node.mode", section.GetEnum<NodeMode>("node.mode", NodeMode.Invalid));
+            if (this.Mode == NodeMode.Invalid)
+            {
+                throw new Exception("Unknown node mode specified");
+            }
+
             this.NexusName = settings.GetString("nexus.name", section.GetString("nexus.name"));
-            this.NodeMode = settings.GetString("node.mode", section.GetString("node.mode"));
             this.NodeWif = settings.GetString("node.wif", section.GetString("node.wif"));
             this.StorageConversion = settings.GetBool("convert.storage", section.GetBool("convert.storage"));
             this.ApiLog = settings.GetBool("api.log", section.GetBool("api.log"));
@@ -222,8 +235,6 @@ namespace Phantasma.Spook
 
             this.ProfilerPath = settings.GetString("profiler.path", section.GetString("profiler.path"));
             if (string.IsNullOrEmpty(this.ProfilerPath)) this.ProfilerPath = null;
-
-            this.Validator = (this.NodeMode == "validator") ? true : false;
 
             this.HasSync = settings.GetBool("has.sync", section.GetBool("has.sync"));
             this.HasMempool = settings.GetBool("has.mempool", section.GetBool("has.mempool"));
