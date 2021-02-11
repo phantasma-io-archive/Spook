@@ -276,6 +276,11 @@ namespace Phantasma.Spook
 
                 Spook.Version = Assembly.GetAssembly(typeof(Spook)).GetVersion();
 
+                if (!Settings.Node.IsValidator && Settings.Node.Seeds.Count == 0 && _peerCaps.HasFlag(PeerCaps.Sync))
+                {
+                    throw new Exception("A non-validator node with sync enabled must specificy a non-empty list of seed endpoints");
+                }
+
                 node = new Node("Spook v" + Version
                         , _nexus
                         , _mempool
@@ -521,13 +526,6 @@ namespace Phantasma.Spook
                 if (!Settings.Node.HasRpc && !Settings.Node.HasRest)
                 {
                     throw new Exception("API proxy must have REST or RPC enabled.");
-                }
-            }
-            else
-            {
-                if (!Settings.Node.IsValidator && !Settings.Node.HasSync )
-                {
-                    throw new Exception("Non-validator nodes require sync to be enabled");
                 }
             }
 
