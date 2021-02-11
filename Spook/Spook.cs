@@ -286,7 +286,9 @@ namespace Phantasma.Spook
                         , Settings.Node.Seeds
                         , Logger);
 
-                if (!_nexus.HasGenesis)
+                var missingNexus = !_nexus.HasGenesis;
+
+                if (missingNexus)
                 {
                     if (Settings.Node.IsValidator)
                     {
@@ -299,7 +301,7 @@ namespace Phantasma.Spook
                                 this.Terminate();
                             }
 
-                            Logger.Debug($"Boostraping {nexusName} nexus using {_nodeKeys.Address}...");
+                            Logger.Message($"Boostraping {nexusName} nexus using {_nodeKeys.Address}...");
 
                             var genesisTimestamp = Settings.Node.GenesisTimestamp;
 
@@ -308,22 +310,26 @@ namespace Phantasma.Spook
                                 throw new ChainException("Genesis block failure");
                             }
 
-                            Logger.Debug("Genesis block created: " + _nexus.GetGenesisHash(_nexus.RootStorage));
-                        }
-                        else
-                        {
-                            Logger.Error("No Nexus found.");
-                            this.Terminate();
+                            Logger.Success("Genesis block created: " + _nexus.GetGenesisHash(_nexus.RootStorage));
+
+                            missingNexus = false;
                         }
                     }
                     else
-                    if (_mempool != null)
                     {
-                        _mempool.SubmissionCallback = (tx, chain) =>
+                        if (_mempool != null)
                         {
-                            Logger.Message($"Relaying tx {tx.Hash} to other node");
-                            //this.node.
-                        };
+                            _mempool.SubmissionCallback = (tx, chain) =>
+                            {
+                                Logger.Message($"Relaying tx {tx.Hash} to other node");
+                            };
+                        }
+                    }
+
+                    if (missingNexus && !_peerCaps.HasFlag(PeerCaps.Sync))
+                    {
+                        Logger.Error("No Nexus found.");
+                        this.Terminate();
                     }
                 }
                 else
