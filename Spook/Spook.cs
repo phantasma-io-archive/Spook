@@ -111,6 +111,8 @@ namespace Phantasma.Spook
 
             ValidateConfig();
 
+            Version = Assembly.GetAssembly(typeof(Spook)).GetVersion();
+
             _nodeKeys = SetupNodeKeys();
 
             if (!SetupNexus())
@@ -278,8 +280,6 @@ namespace Phantasma.Spook
             {
                 this._mempool.SetKeys(_nodeKeys);
             }
-
-            Spook.Version = Assembly.GetAssembly(typeof(Spook)).GetVersion();
 
             if (!Settings.Node.IsValidator && Settings.Node.Seeds.Count == 0 && _peerCaps.HasFlag(PeerCaps.Sync))
             {
