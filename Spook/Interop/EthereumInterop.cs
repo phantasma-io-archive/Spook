@@ -19,31 +19,29 @@ using Phantasma.Core.Utils;
 using Nethereum.RPC.Eth.DTOs;
 using Nethereum.Contracts;
 using Nethereum.StandardTokenEIP20.ContractDefinition;
+
 using EthereumKey = Phantasma.Ethereum.EthereumKey;
 using PBigInteger = Phantasma.Numerics.BigInteger;
+using Phantasma.Storage.Context;
 
 namespace Phantasma.Spook.Interop
 {
-    public class EthereumInterop: ChainWatcher
+    public class EthereumInterop: ChainSwapper
     {
-        private Logger logger;
         private EthAPI ethAPI;
-        private OracleReader oracleReader;
-        private Nexus _nexus;
         private List<string> contracts;
         private uint confirmations;
         private List<BigInteger> _resyncBlockIds = new List<BigInteger>();
         private static bool initialStart = true;
 
-        public EthereumInterop(TokenSwapper swapper, EthAPI ethAPI, string wif, PBigInteger interopBlockHeight
-            ,OracleReader oracleReader, string[] contracts, uint confirmations, Nexus nexus, Logger logger)
-                : base(swapper, wif, EthereumWallet.EthereumPlatform)
+        public EthereumInterop(TokenSwapper swapper, EthAPI ethAPI, PBigInteger interopBlockHeight, string[] contracts, uint confirmations)
+                : base(swapper, EthereumWallet.EthereumPlatform)
         {
-            string lastBlockHeight = oracleReader.GetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform);
+            string lastBlockHeight = OracleReader.GetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform);
             if(string.IsNullOrEmpty(lastBlockHeight))
-                oracleReader.SetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, new BigInteger(interopBlockHeight.ToSignedByteArray()).ToString());
+                OracleReader.SetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, new BigInteger(interopBlockHeight.ToSignedByteArray()).ToString());
 
-            logger.Message($"interopHeight: {oracleReader.GetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform)}");
+            Logger.Message($"interopHeight: {OracleReader.GetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform)}");
 
             this.contracts = contracts.ToList();
 
@@ -52,9 +50,6 @@ namespace Phantasma.Spook.Interop
 
             this.confirmations = confirmations;
             this.ethAPI = ethAPI;
-            this.oracleReader = oracleReader;
-            this._nexus = nexus;
-            this.logger = logger;
         }
 
         protected override string GetAvailableAddress(string wif)
@@ -76,10 +71,10 @@ namespace Phantasma.Spook.Interop
                     // initial start, we have to verify all processed swaps
                     if (initialStart)
                     {
-                        logger.Debug($"Read all ethereum blocks now.");
-                        var allInteropBlocks = oracleReader.ReadAllBlocks(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform);
+                        Logger.Debug($"Read all ethereum blocks now.");
+                        var allInteropBlocks = OracleReader.ReadAllBlocks(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform);
 
-                        logger.Debug($"Found {allInteropBlocks.Count} blocks");
+                        Logger.Debug($"Found {allInteropBlocks.Count} blocks");
 
                         foreach (var block in allInteropBlocks)
                         {
@@ -93,8 +88,8 @@ namespace Phantasma.Spook.Interop
                     }
 
                     var currentHeight = ethAPI.GetBlockHeight();
-                    var _interopBlockHeight = BigInteger.Parse(oracleReader.GetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform));
-                    logger.Debug($"Swaps: Current Eth chain height: {currentHeight}, interop: {_interopBlockHeight}, delta: {currentHeight - _interopBlockHeight}");
+                    var _interopBlockHeight = BigInteger.Parse(OracleReader.GetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform));
+                    Logger.Debug($"Swaps: Current Eth chain height: {currentHeight}, interop: {_interopBlockHeight}, delta: {currentHeight - _interopBlockHeight}");
 
                     var blocksProcessedInOneBatch = 0;
                     while (blocksProcessedInOneBatch < 50)
@@ -106,13 +101,13 @@ namespace Phantasma.Spook.Interop
                                 var blockId = _resyncBlockIds.ElementAt(i);
                                 if (blockId > _interopBlockHeight)
                                 {
-                                    this.logger.Warning($"EthInterop:Update() resync block {blockId} higher than current interop height, can't resync.");
+                                    this.Logger.Warning($"EthInterop:Update() resync block {blockId} higher than current interop height, can't resync.");
                                     _resyncBlockIds.RemoveAt(i);
                                     continue;
                                 }
 
-                                this.logger.Debug($"EthInterop:Update() resync block {blockId} now.");
-                                var block= GetInteropBlock(blockId);
+                                this.Logger.Debug($"EthInterop:Update() resync block {blockId} now.");
+                                var block = GetInteropBlock(blockId);
                                 ProcessBlock(block, ref result);
                                 _resyncBlockIds.RemoveAt(i);
                             }
@@ -164,7 +159,7 @@ namespace Phantasma.Spook.Interop
                         var url = DomainExtensions.GetOracleBlockURL(
                                 EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, PBigInteger.FromUnsignedArray(_interopBlockHeight.ToByteArray(), true));
 
-                        var interopBlock = oracleReader.Read<InteropBlock>(DateTime.Now, url);
+                        var interopBlock = OracleReader.Read<InteropBlock>(DateTime.Now, url);
 
                         ProcessBlock(interopBlock, ref result);
 
@@ -172,16 +167,16 @@ namespace Phantasma.Spook.Interop
                         //}
                     }
 
-                    oracleReader.SetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, _interopBlockHeight.ToString());
+                    OracleReader.SetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, _interopBlockHeight.ToString());
 
                     var total = result.Count();
                     if (total > 0)
                     {
-                        logger.Message($"found {total} ethereum swaps");
+                        Logger.Message($"found {total} ethereum swaps");
                     }
                     else
                     {
-                        logger.Debug($"did not find any ethereum swaps");
+                        Logger.Debug($"did not find any ethereum swaps");
                     }
                     return result;
                 }
@@ -197,7 +192,7 @@ namespace Phantasma.Spook.Interop
                 }
                 logMessage += "\n\n" + e.StackTrace;
 
-                logger.Error(logMessage);
+                Logger.Error(logMessage);
 
                 return new List<PendingSwap>();
             }
@@ -225,7 +220,7 @@ namespace Phantasma.Spook.Interop
             List<Task<InteropBlock>> taskList = new List<Task<InteropBlock>>();
             if (blockIds == null)
             {
-                var _interopBlockHeight = BigInteger.Parse(oracleReader.GetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform));
+                var _interopBlockHeight = BigInteger.Parse(OracleReader.GetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform));
                 var nextCurrentBlockHeight = _interopBlockHeight + batchCount;
 
                 if (nextCurrentBlockHeight > currentHeight)
@@ -264,7 +259,7 @@ namespace Phantasma.Spook.Interop
                        {
                            try
                            {
-                               return oracleReader.Read<InteropBlock>(DateTime.Now, url);
+                               return OracleReader.Read<InteropBlock>(DateTime.Now, url);
                            }
                            catch (Exception e)
                            {
@@ -277,7 +272,7 @@ namespace Phantasma.Spook.Interop
                                }
                                logMessage += "\n\n" + e.StackTrace;
 
-                               logger.Error(logMessage.Contains("Ethereum block is null") ? "oracleReader.Read(): Ethereum block is null, possible connection failure" : logMessage);
+                               Logger.Error(logMessage.Contains("Ethereum block is null") ? "oracleReader.Read(): Ethereum block is null, possible connection failure" : logMessage);
                            }
 
                            Thread.Sleep(delay);
@@ -293,7 +288,7 @@ namespace Phantasma.Spook.Interop
         {
             foreach (var txHash in block.Transactions)
             {
-                var interopTx = oracleReader.ReadTransaction(EthereumWallet.EthereumPlatform, "ethethereum", txHash);
+                var interopTx = OracleReader.ReadTransaction(EthereumWallet.EthereumPlatform, "ethethereum", txHash);
 
                 foreach (var interopTransfer in interopTx.Transfers)
                 {
@@ -314,7 +309,7 @@ namespace Phantasma.Spook.Interop
                 EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform,
                 PBigInteger.FromUnsignedArray(blockId.ToByteArray(), true));
 
-            return oracleReader.Read<InteropBlock>(DateTime.Now, url);
+            return OracleReader.Read<InteropBlock>(DateTime.Now, url);
         }
 
 
@@ -607,5 +602,101 @@ namespace Phantasma.Spook.Interop
 
             return (sortedArray[mid] + value2) * 0.5;
         }
+
+        private Hash VerifyEthTx(Hash sourceHash, string txHash)
+        {
+            TransactionReceipt txr;
+
+            try
+            {
+                var retries = 0;
+                do
+                {
+                    // Checking if tx is mined.
+                    txr = ethAPI.GetTransactionReceipt(txHash);
+                    if (txr == null)
+                    {
+                        if (retries == 12) // Waiting for 1 minute max.
+                            break;
+
+                        Thread.Sleep(5000);
+                        retries++;
+                    }
+                } while (txr == null);
+
+                if (txr == null)
+                {
+                    Logger.Error($"Ethereum transaction {txHash} not mined yet.");
+                    return Hash.Null;
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.Error($"Exception during polling for receipt: {e}");
+                return Hash.Null;
+            }
+
+            if (txr.Status.Value == 0) // Status == 0 = error
+            {
+                Logger.Error($"Possible failed eth swap sourceHash: {sourceHash} txHash: {txHash}");
+
+                Logger.Error($"EthAPI error, tx {txr.TransactionHash} ");
+                return Hash.Null;
+            }
+
+            return Hash.Parse(txr.TransactionHash.Substring(2));
+        }
+
+
+        // NOTE no locks happen here because this callback is called from within a lock
+        internal override Hash SettleSwap(Hash sourceHash, Address destination, IToken token, Numerics.BigInteger amount)
+        {
+            // check if tx was sent but not minded yet
+            string tx = null;
+
+            var inProgressMap = new StorageMap(TokenSwapper.InProgressTag, Swapper.Storage);
+
+            if (inProgressMap.ContainsKey<Hash>(sourceHash))
+            {
+                tx = inProgressMap.Get<Hash, string>(sourceHash);
+
+                if (!string.IsNullOrEmpty(tx))
+                {
+                    return VerifyEthTx(sourceHash, tx);
+                }
+            }
+
+            var total = Numerics.UnitConversion.ToDecimal(amount, token.Decimals);
+
+            var ethKeys = EthereumKey.FromWIF(this.WIF);
+
+            var destAddress = EthereumWallet.DecodeAddress(destination);
+
+            try
+            {
+                Logger.Debug($"ETHSWAP: Trying transfer of {total} {token.Symbol} from {ethKeys.Address} to {destAddress}");
+                var transferResult = ethAPI.TryTransferAsset(token.Symbol, destAddress, total, token.Decimals, out tx);
+
+                if (transferResult == EthTransferResult.Success)
+                {
+                    // persist resulting tx hash as in progress
+                    inProgressMap.Set<Hash, string>(sourceHash, tx);
+                    Logger.Debug("broadcasted eth tx: " + tx);
+                }
+                else
+                {
+                    Logger.Error($"ETHSWAP: Transfer of {total} {token.Symbol} from {ethKeys.Address} to {destAddress} failed, no tx generated");
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.Error($"Exception during transfer: {e}");
+                // we don't know if the transfer happend or not, therefore can't delete from inProgressMap yet.
+                return Hash.Null;
+            }
+
+            return VerifyEthTx(sourceHash, tx);
+        }
+
     }
 }

@@ -1,30 +1,31 @@
 ﻿using System;
-using System.Collections.Generic;
-using LunarLabs.Parser;
-using PBigInteger = Phantasma.Numerics.BigInteger;
 using System.Numerics;
-using Phantasma.Blockchain;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+
+using LunarLabs.Parser;
+
 using Phantasma.Neo.Core;
 using Phantasma.Neo.Cryptography;
-using NeoBlock = Phantasma.Neo.Core.Block;
-using NeoTx = Phantasma.Neo.Core.Transaction;
 using Phantasma.Domain;
 using Phantasma.Pay;
 using Phantasma.Pay.Chains;
 using Phantasma.Cryptography;
 using Phantasma.Core.Log;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Text;
-using System.Threading;
+using Phantasma.Storage.Context;
+
+using PBigInteger = Phantasma.Numerics.BigInteger;
+using NeoBlock = Phantasma.Neo.Core.Block;
+using NeoTx = Phantasma.Neo.Core.Transaction;
 
 namespace Phantasma.Spook.Interop
 {
-    public class NeoInterop : ChainWatcher
+    public class NeoInterop : ChainSwapper
     {
-        private Logger logger;
         private NeoAPI neoAPI;
-        private OracleReader oracleReader;
         private DateTime lastScan;
         private static bool initialStart = true;
         private bool quickSync = false;
@@ -39,24 +40,19 @@ namespace Phantasma.Spook.Interop
             { "SOUL", new CryptoCurrencyInfo("SOUL", "Phantasma Stake", 8, NeoWallet.NeoPlatform, CryptoCurrencyCaps.Balance) },
         };
 
-        public NeoInterop(TokenSwapper swapper, NeoAPI neoAPI, string wif, PBigInteger interopBlockHeight
-            ,OracleReader oracleReader, bool quickSync, Logger logger)
-                : base(swapper, wif, NeoWallet.NeoPlatform)
+        public NeoInterop(TokenSwapper swapper, NeoAPI neoAPI, PBigInteger interopBlockHeight, bool quickSync)
+                : base(swapper, NeoWallet.NeoPlatform)
         {
-            string lastBlockHeight = oracleReader.GetCurrentHeight("neo", "neo");
+            string lastBlockHeight = OracleReader.GetCurrentHeight("neo", "neo");
             if (string.IsNullOrEmpty(lastBlockHeight))
-                oracleReader.SetCurrentHeight("neo", "neo", new BigInteger(interopBlockHeight.ToUnsignedByteArray()).ToString());
+                OracleReader.SetCurrentHeight("neo", "neo", new BigInteger(interopBlockHeight.ToUnsignedByteArray()).ToString());
 
             this.quickSync = quickSync;
 
-            logger.Message($"interopHeight: {oracleReader.GetCurrentHeight("neo", "neo")}");
+            Logger.Message($"interopHeight: {OracleReader.GetCurrentHeight("neo", "neo")}");
             this.neoAPI = neoAPI;
 
-            this.oracleReader = oracleReader;
-
             this.lastScan = DateTime.UtcNow.AddYears(-1);;
-
-            this.logger = logger;
         }
 
         protected override string GetAvailableAddress(string wif)
@@ -79,17 +75,17 @@ namespace Phantasma.Spook.Interop
             {
                 var result = new List<PendingSwap>();
 
-                var _interopBlockHeight = BigInteger.Parse(oracleReader.GetCurrentHeight("neo", "neo"));
+                var _interopBlockHeight = BigInteger.Parse(OracleReader.GetCurrentHeight("neo", "neo"));
 
                 // initial start, we have to verify all processed swaps
                 if (initialStart)
                 {
-                    logger.Debug($"Read all neo blocks now.");
+                    Logger.Debug($"Read all neo blocks now.");
                     // TODO check if quick sync nodes are configured, if so use quick sync
                     // we need to find a better solution for that though
-                    var allInteropBlocks = oracleReader.ReadAllBlocks("neo", "neo");
+                    var allInteropBlocks = OracleReader.ReadAllBlocks("neo", "neo");
 
-                    logger.Debug($"Found {allInteropBlocks.Count} blocks");
+                    Logger.Debug($"Found {allInteropBlocks.Count} blocks");
 
                     foreach (var block in allInteropBlocks)
                     {
@@ -98,7 +94,7 @@ namespace Phantasma.Spook.Interop
 
                     initialStart = false;
 
-                    logger.Debug($"QuickSync: " + quickSync);
+                    Logger.Debug($"QuickSync: " + quickSync);
                     // quick sync is only done once after startup
                     if (quickSync)
                     {
@@ -106,13 +102,13 @@ namespace Phantasma.Spook.Interop
                         try
                         {
                             var blockIds = neoAPI.GetSwapBlocks("ed07cffad18f1308db51920d99a2af60ac66a7b3", LocalAddress, _interopBlockHeight.ToString());
-                            logger.Debug($"Found {blockIds.Count} blocks to process ");
+                            Logger.Debug($"Found {blockIds.Count} blocks to process ");
                             List<InteropBlock> blockList = new List<InteropBlock>();
                             foreach (var entry in blockIds)
                             {
                                 //logger.Debug($"read block {entry.Value}");
                                 var url = DomainExtensions.GetOracleBlockURL("neo", "neo", PBigInteger.Parse(entry.Value.ToString()));
-                                blockList.Add(oracleReader.Read<InteropBlock>(DateTime.Now, url));
+                                blockList.Add(OracleReader.Read<InteropBlock>(DateTime.Now, url));
                             }
 
                             // get blocks and order them for processing
@@ -120,20 +116,20 @@ namespace Phantasma.Spook.Interop
                                     .Select(x => new { block = x, id = blockIds[x.Hash.ToString()] })
                                     .OrderBy(x => x.id);
 
-                            logger.Debug($"blocks to process: {blocksToProcess.Count()}");
+                            Logger.Debug($"blocks to process: {blocksToProcess.Count()}");
 
                             foreach (var entry in blocksToProcess.OrderBy(x => x.id))
                             {
-                                logger.Debug($"process block {entry.id}");
+                                Logger.Debug($"process block {entry.id}");
                                 ProcessBlock(entry.block, result);
-                                oracleReader.SetCurrentHeight("neo", "neo", _interopBlockHeight.ToString());
+                                OracleReader.SetCurrentHeight("neo", "neo", _interopBlockHeight.ToString());
                                 _interopBlockHeight = BigInteger.Parse(entry.id.ToString());
                             }
 
                         }
                         catch (Exception e)
                         {
-                            logger.Error("Inital start failed: " + e.ToString());
+                            Logger.Error("Inital start failed: " + e.ToString());
                         }
 
                     }
@@ -157,19 +153,19 @@ namespace Phantasma.Spook.Interop
                                 var blockId = _resyncBlockIds.ElementAt(i);
                                 if (blockId > _interopBlockHeight)
                                 {
-                                    this.logger.Debug($"NeoInterop: Update() resync block {blockId} higher than current interop height, can't resync.");
+                                    Logger.Debug($"NeoInterop: Update() resync block {blockId} higher than current interop height, can't resync.");
                                     _resyncBlockIds.RemoveAt(i);
                                     continue;
                                 }
 
-                                this.logger.Debug($"NeoInterop: Update() resync block {blockId} now.");
+                                Logger.Debug($"NeoInterop: Update() resync block {blockId} now.");
                                 var interopBlock = GetInteropBlock(blockId);
                                 ProcessBlock(interopBlock, result);
                                 _resyncBlockIds.RemoveAt(i);
                             }
                         }
 
-                        logger.Debug($"Swaps: Current Neo chain height: {blockIterator.currentBlock}, interop: {_interopBlockHeight}, delta: {blockIterator.currentBlock - _interopBlockHeight}");
+                        Logger.Debug($"Swaps: Current Neo chain height: {blockIterator.currentBlock}, interop: {_interopBlockHeight}, delta: {blockIterator.currentBlock - _interopBlockHeight}");
                         blockDifference = blockIterator.currentBlock - _interopBlockHeight;
                         batchCount = (blockDifference > 8) ? 8 : blockDifference;
 
@@ -191,7 +187,7 @@ namespace Phantasma.Spook.Interop
                                 ProcessBlock(block, result);
                             }
 
-                            oracleReader.SetCurrentHeight("neo", "neo", _interopBlockHeight.ToString());
+                            OracleReader.SetCurrentHeight("neo", "neo", _interopBlockHeight.ToString());
                             _interopBlockHeight += batchCount;
                         }
                         else
@@ -200,14 +196,14 @@ namespace Phantasma.Spook.Interop
 
                             ProcessBlock(interopBlock, result);
 
-                            oracleReader.SetCurrentHeight("neo", "neo", _interopBlockHeight.ToString());
+                            OracleReader.SetCurrentHeight("neo", "neo", _interopBlockHeight.ToString());
                             _interopBlockHeight++;
                         }
                     }
                 }
                 catch (Exception e)
                 {
-                    logger.Error("Neo block sync failed: " + e);
+                    Logger.Error("Neo block sync failed: " + e);
                 }
                 return result;
             }
@@ -218,7 +214,7 @@ namespace Phantasma.Spook.Interop
             var url = DomainExtensions.GetOracleBlockURL(
                 "neo", "neo", PBigInteger.FromUnsignedArray(blockId.ToByteArray(), true));
 
-            return oracleReader.Read<InteropBlock>(DateTime.Now, url);
+            return OracleReader.Read<InteropBlock>(DateTime.Now, url);
         }
 
         private List<Task<InteropBlock>> CreateTaskList(BigInteger batchCount, BigInteger[] blockIds = null)
@@ -226,7 +222,7 @@ namespace Phantasma.Spook.Interop
             List<Task<InteropBlock>> taskList = new List<Task<InteropBlock>>();
             if (blockIds == null)
             {
-                var _interopBlockHeight = BigInteger.Parse(oracleReader.GetCurrentHeight("neo", "neo"));
+                var _interopBlockHeight = BigInteger.Parse(OracleReader.GetCurrentHeight("neo", "neo"));
 
                 var nextCurrentBlockHeight = _interopBlockHeight + batchCount;
                 
@@ -261,7 +257,7 @@ namespace Phantasma.Spook.Interop
                        {
                            try
                            {
-                               return oracleReader.Read<InteropBlock>(DateTime.Now, url);
+                               return OracleReader.Read<InteropBlock>(DateTime.Now, url);
                            }
                            catch (Exception e)
                            {
@@ -274,7 +270,7 @@ namespace Phantasma.Spook.Interop
                                }
                                logMessage += "\n\n" + e.StackTrace;
 
-                               logger.Error(logMessage.Contains("Neo block is null") ? "oracleReader.Read(): Neo block is null, possible connection failure" : logMessage);
+                               Logger.Error(logMessage.Contains("Neo block is null") ? "oracleReader.Read(): Neo block is null, possible connection failure" : logMessage);
                            }
 
                            Thread.Sleep(delay);
@@ -290,7 +286,7 @@ namespace Phantasma.Spook.Interop
         {
             foreach (var txHash in block.Transactions)
             {
-                var interopTx = oracleReader.ReadTransaction("neo", "neo", txHash);
+                var interopTx = OracleReader.ReadTransaction("neo", "neo", txHash);
 
                 if (interopTx.Transfers.Length == 0)
                 {
@@ -659,6 +655,165 @@ namespace Phantasma.Spook.Interop
             return ((interopTransfers.Count() > 0)
                 ? new InteropTransaction(Hash.Parse(tx.Hash.ToString()), interopTransfers.ToArray())
                 : new InteropTransaction(Hash.Null, interopTransfers.ToArray()));
+        }
+
+
+        private bool TxInBlockNeo(string txHash)
+        {
+            string strHeight;
+            try
+            {
+                strHeight = this.neoAPI.GetTransactionHeight(txHash);
+                Logger.Debug("neo tx included in block: " + strHeight);
+            }
+            catch (Exception e)
+            {
+                Logger.Error("Error during neo api call: " + e);
+                return false;
+            }
+
+            int height;
+
+            if (int.TryParse(strHeight, out height) && height > 0)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private Hash VerifyNeoTx(Hash sourceHash, string txHash)
+        {
+            var counter = 0;
+            do
+            {
+
+                Thread.Sleep(15000); // wait 15 seconds
+
+                if (txHash.StartsWith("0x"))
+                {
+                    txHash = txHash.Substring(2);
+                }
+
+                if (TxInBlockNeo(txHash))
+                {
+                    return Hash.Parse(txHash);
+                }
+                else
+                {
+                    counter++;
+                    if (counter > 5)
+                    {
+                        string node = null;
+
+                        var rpcMap = new StorageMap(TokenSwapper.UsedRpcTag, Swapper.Storage);
+                        node = rpcMap.Get<Hash, string>(sourceHash);
+
+                        // tx could still be in mempool
+                        bool inMempool = true;
+                        try
+                        {
+                            inMempool = this.neoAPI.CheckMempool(node, txHash);
+                        }
+                        catch (Exception e)
+                        {
+                            // If we can't check mempool, we are unable to verify if the tx has gone through or not,
+                            // therefore we have to wait until we are able to check this nodes mempool again, or find 
+                            // the tx in a block in the next round.
+                            Logger.Error("Exception during mempool check: " + e);
+                            return Hash.Null;
+                        }
+
+                        if (inMempool)
+                        {
+                            // tx still in mempool, do nothing
+                            return Hash.Null;
+                        }
+                        else
+                        {
+                            // to make sure it wasn't moved out from mempool and is already processed check again if the tx is already added to a block
+                            if (TxInBlockNeo(txHash))
+                            {
+                                return Hash.Parse(txHash);
+                            }
+                            else
+                            {
+                                // tx is neither in a block, nor in mempool, either dropped out of mempool or mempool was full already
+                                Logger.Error($"Possible failed neo swap sourceHash: {sourceHash} txHash: {txHash}");
+                            }
+                        }
+                        return Hash.Null;
+                    }
+                }
+
+            } while (true);
+        }
+
+
+        // NOTE no locks happen here because this callback is called from within a lock
+        internal override Hash SettleSwap(Hash sourceHash, Address destination, IToken token, Numerics.BigInteger amount)
+        {
+            Hash txHash = Hash.Null;
+            string txStr = null;
+
+            var inProgressMap = new StorageMap(TokenSwapper.InProgressTag, Swapper.Storage);
+            var rpcMap = new StorageMap(TokenSwapper.UsedRpcTag, Swapper.Storage);
+
+            if (inProgressMap.ContainsKey<Hash>(sourceHash))
+            {
+                txStr = inProgressMap.Get<Hash, string>(sourceHash);
+
+                if (!string.IsNullOrEmpty(txStr))
+                {
+                    return VerifyNeoTx(sourceHash, txStr);
+                }
+            }
+
+            var total = Numerics.UnitConversion.ToDecimal(amount, token.Decimals);
+
+            var neoKeys = NeoKeys.FromWIF(this.WIF);
+
+            var destAddress = NeoWallet.DecodeAddress(destination);
+
+            Logger.Debug($"NEOSWAP: Trying transfer of {total} {token.Symbol} from {neoKeys.Address} to {destAddress}");
+
+            var nonce = sourceHash.ToByteArray();
+
+            Neo.Core.Transaction tx = null;
+            string usedRpc = null;
+            try
+            {
+                if (token.Symbol == "NEO" || token.Symbol == "GAS")
+                {
+                    tx = neoAPI.SendAsset(neoKeys, destAddress, token.Symbol, total, out usedRpc);
+                }
+                else
+                {
+                    var nep5 = neoAPI.GetToken(token.Symbol);
+                    tx = nep5.Transfer(neoKeys, destAddress, total, nonce, x => usedRpc = x);
+                }
+
+                // persist resulting tx hash as in progress
+                inProgressMap.Set<Hash, string>(sourceHash, tx.Hash.ToString());
+                rpcMap.Set<Hash, string>(sourceHash, usedRpc);
+
+                Logger.Debug("broadcasted neo tx: " + tx);
+            }
+            catch (Exception e)
+            {
+                Logger.Error("Error during transfering {token.Symbol}: " + e);
+                return Hash.Null;
+            }
+
+            if (tx == null)
+            {
+                Logger.Error($"NeoAPI error {neoAPI.LastError} or possible failed neo swap sourceHash: {sourceHash} no transfer happend.");
+                return Hash.Null;
+            }
+
+            var strHash = tx.Hash.ToString();
+
+            return VerifyNeoTx(sourceHash, strHash);
         }
     }
 }

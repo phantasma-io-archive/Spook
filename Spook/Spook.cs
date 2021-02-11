@@ -160,7 +160,7 @@ namespace Phantasma.Spook
             var platforms = Settings.Oracle.Swaps.Split(',');
             var minimumFee = Settings.Node.MinimumFee;
             var oracleSettings = Settings.Oracle;
-            var tokenSwapper = new TokenSwapper(this, _nodeKeys, _nexusApi, _neoAPI, _ethAPI, minimumFee, platforms, Logger);
+            var tokenSwapper = new TokenSwapper(this, _nodeKeys, _neoAPI, _ethAPI, minimumFee, platforms);
             _nexusApi.TokenSwapper = tokenSwapper;
 
             _tokenSwapperThread = new Thread(() =>
