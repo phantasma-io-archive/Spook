@@ -317,6 +317,7 @@ namespace Phantasma.Spook
                         }
                     }
                     else
+                    if (_mempool != null)
                     {
                         _mempool.SubmissionCallback = (tx, chain) =>
                         {
