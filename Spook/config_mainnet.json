@@ -52,8 +52,8 @@
       "neo.rpc.specific.nodes": [ "http://135.181.45.206:10332" ],
 
       "eth.rpc.nodes": [
-        "mainnet.infura.io/v3/34a7c02e7f2f458181180c72c4de58a6",
-        "mainnet.infura.io/v3/780d5a9837de47649be4c10836b5dbcf"
+        "https://mainnet.infura.io/v3/34a7c02e7f2f458181180c72c4de58a6",
+        "https://mainnet.infura.io/v3/780d5a9837de47649be4c10836b5dbcf"
       ],
 
       "eth.fee.urls": [
