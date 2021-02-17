@@ -4,7 +4,6 @@ using System.IO;
 using System.Text;
 using Nethereum.Hex.HexConvertors.Extensions;
 using Phantasma.Blockchain;
-using Phantasma.Blockchain.Contracts;
 using Phantasma.Blockchain.Storage;
 using Phantasma.Core.Types;
 using Phantasma.Cryptography;
@@ -12,6 +11,7 @@ using Phantasma.Domain;
 using Phantasma.Ethereum;
 using Phantasma.Pay.Chains;
 using Phantasma.RocksDB;
+using Phantasma.Spook.Interop;
 using Phantasma.Storage;
 using Phantasma.Storage.Context;
 using Phantasma.VM.Utils;
@@ -146,7 +146,28 @@ namespace Phantasma.Spook.Command
             Console.WriteLine($"SetValue {key}:{value} ts: {tx.Hash}");
         }
 
-        [ConsoleCommand("create token", Category = "Node", Description = "Bounce a node to reload configuration")]
+        [ConsoleCommand("drop swap", Category = "Node", Description = "Drop a stuck swap")]
+        protected void OnDropInProgressSwap(string[] args)
+        {
+            if (args.Length == 0)
+            {
+                Console.WriteLine("Source hash needs to be set!");
+                return;
+            }
+
+            var sourceHash = Hash.Parse(args[0]);
+
+            var inProgressMap = new StorageMap(TokenSwapper.InProgressTag, _cli.TokenSwapper.Storage);
+
+            if (inProgressMap.ContainsKey<Hash>(sourceHash))
+            {
+                inProgressMap.Remove<Hash>(sourceHash);
+            }
+
+            Console.WriteLine($"Removed hash {sourceHash} from in progress map!");
+        }
+
+        [ConsoleCommand("create token", Category = "Node", Description = "Create a token, foreign or native")]
         protected void OnCreatePlatformToken(string[] args)
         {
 
