@@ -172,11 +172,6 @@ namespace StorageDump
 
         private void DumpBalances(Chain chain, IToken token)
         {
-            if (!token.IsFungible())
-            {
-                return; // unsupported for now
-            }
-
             var symbol = token.Symbol;
 
             Console.WriteLine($"Analysing {symbol} balances on {chain.Name} chain");
@@ -184,14 +179,15 @@ namespace StorageDump
             var list = new List<BalanceEntry>();
             balances[symbol] = list;
 
-            var prefix = BalanceSheet.MakePrefix(symbol);
+            var fungible = token.IsFungible();
+
+            var prefix = fungible ? BalanceSheet.MakePrefix(symbol) : OwnershipSheet.MakePrefix(symbol);
 
             var store = chain.Storage;
-
             
             var stakeMapKey = SmartContract.GetKeyForField(NativeContractKind.Stake, "_stakeMap", true);
             var stakeMap = new StorageMap(stakeMapKey, store);
-            var stakeCount = stakeMap.Count();
+            //var stakeCount = stakeMap.Count();
 
             var addresses = new HashSet<Address>();
 
@@ -200,26 +196,53 @@ namespace StorageDump
             {
                 if (HasPrefix(prefix, key))
                 {
-                    var bytes = new byte[key.Length - prefix.Length];
+                    var diff = key.Length - prefix.Length;
+                    if (diff < Address.LengthInBytes)
+                    {
+                        return;
+                    }
+
+                    var bytes = new byte[Address.LengthInBytes];
+
                     ByteArrayUtils.CopyBytes(key, prefix.Length, bytes, 0, bytes.Length);
 
                     var addr = Address.FromBytes(bytes);
 
                     BigInteger amount;
 
-                    if (value.Length > 0)
+                    if (!fungible)
                     {
-                        amount = BigInteger.FromSignedArray(value);
+                        if (addresses.Contains(addr))
+                        {
+                            return; // already visited
+                        }
+
+                        var newKey = ByteArrayUtils.ConcatBytes(prefix, bytes);
+                        var map = new StorageMap(newKey, store);
+
+                        amount = map.Count();
                     }
                     else
                     {
-                        amount = 0;
+                        if (value.Length > 0)
+                        {
+                            amount = BigInteger.FromSignedArray(value);
+                        }
+                        else
+                        {
+                            amount = 0;
+                        }
+
+                        if (symbol == DomainSettings.StakingTokenSymbol && stakeMap.ContainsKey<Address>(addr))
+                        {
+                            var temp = stakeMap.Get<Address, EnergyStake>(addr);
+                            amount += temp.stakeAmount;
+                        }
                     }
 
-                    if (symbol == DomainSettings.StakingTokenSymbol && stakeMap.ContainsKey<Address>(addr))
+                    if (amount < 1)
                     {
-                        var temp = stakeMap.Get<Address, EnergyStake>(addr);
-                        amount += temp.stakeAmount;
+                        return; 
                     }
 
                     addresses.Add(addr);
@@ -487,12 +510,12 @@ namespace StorageDump
 
             foreach (var chain in chains)
             {
-                DumpBlocks(chain);
-
                 foreach (var token in tokens)
                 {
                     DumpBalances(chain, token);
                 }
+
+                DumpBlocks(chain);
             }
         }
 
