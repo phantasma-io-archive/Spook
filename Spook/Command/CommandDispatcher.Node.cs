@@ -229,7 +229,7 @@ namespace Phantasma.Spook.Command
 
                 var script = ScriptUtils.BeginScript()
                     .AllowGas(_cli.NodeKeys.Address, Address.Null, 100000, 1500)
-                    .CallInterop("Nexus.SetTokenPlatformHash", symbol.ToUpper(), platform, hash)
+                    .CallInterop("Nexus.SetPlatformTokenHash", symbol.ToUpper(), platform, hash)
                     .SpendGas(_cli.NodeKeys.Address).EndScript();
 
                 var expire = Timestamp.Now + TimeSpan.FromMinutes(2);

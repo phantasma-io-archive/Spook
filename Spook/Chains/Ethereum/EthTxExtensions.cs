@@ -23,7 +23,17 @@ namespace Nethereum.RPC.Eth.DTOs
 
             foreach (var address in addresses)
             {
-                if (toAddress.IsTheSameAddress(address))
+                string checkAddress;
+                if (address.StartsWith("0x"))
+                {
+                    checkAddress = address.Substring(2);
+                }
+                else
+                {
+                   checkAddress = address;
+                }
+
+                if (toAddress.IsTheSameAddress(checkAddress))
                 {
                     return true;
                 }
