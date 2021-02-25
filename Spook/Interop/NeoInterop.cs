@@ -749,6 +749,11 @@ namespace Phantasma.Spook.Interop
             } while (true);
         }
 
+        internal override Hash VerifyExternalTx(Hash sourceHash, string txStr)
+        {
+            return VerifyNeoTx(sourceHash, txStr);
+        }
+
 
         // NOTE no locks happen here because this callback is called from within a lock
         internal override Hash SettleSwap(Hash sourceHash, Address destination, IToken token, Numerics.BigInteger amount)
