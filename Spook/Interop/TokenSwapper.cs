@@ -131,6 +131,7 @@ namespace Phantasma.Spook.Interop
         public abstract void ResyncBlock(System.Numerics.BigInteger blockId);
 
         internal abstract Hash SettleSwap(Hash sourceHash, Address destination, IToken token, BigInteger amount);
+        internal abstract Hash VerifyExternalTx(Hash sourceHash, string txStr);
     }
 
     public class TokenSwapper : ITokenSwapper
@@ -428,7 +429,23 @@ namespace Phantasma.Spook.Interop
                 if (inProgressMap.ContainsKey(sourceHash))
                 {
                     Logger.Debug("Hash already known, swap currently in progress: " + sourceHash);
-                    return Hash.Null;
+
+                    var tx = inProgressMap.Get<Hash, string>(sourceHash);
+
+                    if (string.IsNullOrEmpty(tx))
+                    {
+                        // no tx was created, so no reason to keep the entry, we can't verify anything anyway.
+                        Logger.Debug("No tx hash set as in progress, removing source: " + sourceHash);
+                        inProgressMap.Remove<Hash>(sourceHash);
+                        return Hash.Null;
+                    }
+                    else
+                    {
+                        var chainSwapper = _swappers[destPlatform];
+                        var destHash = chainSwapper.VerifyExternalTx(sourceHash, tx);
+
+                        return destHash;
+                    }
                 }
                 else
                 {

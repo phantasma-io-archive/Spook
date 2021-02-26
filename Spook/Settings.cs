@@ -141,6 +141,7 @@ namespace Phantasma.Spook
     {
         Invalid,
         Normal,
+        Proxy,
         Validator,
     }
 

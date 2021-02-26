@@ -111,6 +111,8 @@ namespace Phantasma.Spook
 
             ValidateConfig();
 
+            Version = Assembly.GetAssembly(typeof(Spook)).GetVersion();
+
             _nodeKeys = SetupNodeKeys();
 
             if (!SetupNexus())
@@ -266,14 +268,18 @@ namespace Phantasma.Spook
 
         private Node SetupNode()
         {
+            if (Settings.Node.Mode == NodeMode.Proxy)
+            {
+                Logger.Warning("No nexus will be setup locally due to proxy mode being enabled");
+                return null;
+            }
+
             Node node = null;
 
             if (this._mempool != null)
             {
                 this._mempool.SetKeys(_nodeKeys);
             }
-
-            Spook.Version = Assembly.GetAssembly(typeof(Spook)).GetVersion();
 
             if (!Settings.Node.IsValidator && Settings.Node.Seeds.Count == 0 && _peerCaps.HasFlag(PeerCaps.Sync))
             {
@@ -516,14 +522,21 @@ namespace Phantasma.Spook
                     throw new Exception("A proxy node must have api cache enabled.");
                 }
 
-                if (Settings.Node.IsValidator)
+                if (Settings.Node.Mode != NodeMode.Proxy)
                 {
-                    throw new Exception("A validator node cannot have a proxy url specified.");
+                    throw new Exception($"A {Settings.Node.Mode.ToString().ToLower()} node cannot have a proxy url specified.");
                 }
 
                 if (!Settings.Node.HasRpc && !Settings.Node.HasRest)
                 {
                     throw new Exception("API proxy must have REST or RPC enabled.");
+                }
+            }
+            else
+            {
+                if (Settings.Node.Mode == NodeMode.Proxy)
+                {
+                    throw new Exception($"A {Settings.Node.Mode.ToString().ToLower()} node must have a proxy url specified.");
                 }
             }
 

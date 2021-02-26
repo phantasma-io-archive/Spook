@@ -6,19 +6,34 @@ namespace Nethereum.RPC.Eth.DTOs
     {
         public static bool IsToAny(this Transaction txn, string[] addresses)
         {
-            foreach(var address in addresses)
+            if (string.IsNullOrEmpty(txn.To))
             {
-                string toAddress = null;
-                if (txn.To.StartsWith("0x"))
+                return false;
+            }
+
+            string toAddress;
+            if (txn.To.StartsWith("0x"))
+            {
+                toAddress = txn.To.Substring(2);
+            }
+            else
+            {
+                toAddress = txn.To;
+            }
+
+            foreach (var address in addresses)
+            {
+                string checkAddress;
+                if (address.StartsWith("0x"))
                 {
-                    toAddress = txn.To.Substring(2);
+                    checkAddress = address.Substring(2);
                 }
                 else
                 {
-                    toAddress = txn.To;
+                   checkAddress = address;
                 }
 
-                if (toAddress.IsTheSameAddress(address))
+                if (toAddress.IsTheSameAddress(checkAddress))
                 {
                     return true;
                 }
