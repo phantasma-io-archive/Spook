@@ -22,29 +22,78 @@ namespace TxSender
         static string nexusName = null;
         static PhantasmaKeys signerKeys;
 
+
+        static bool FetchAnswer(string question)
+        {
+            Console.Write($"{question}?: (y/n)");
+
+            do
+            {
+                var ch = Console.ReadLine().ToLower();
+
+                switch (ch)
+                {
+                    case "y": return true;
+                    case "n": return false;
+                }
+            } while (true);
+        }
+
         static byte[] GenDAOTransfer()
         {
-            //var orgAddress = Address.FromText("S3dGUjVwYa31AxdthdpsuyBKgX1N65FnoQhUkSgYbUEdRp4");
-            var orgAddress = Address.FromText("S3dDUXfgGosu3urCrNSUAZKx7xsLTrxDzcn4CDYQEogUbao");
-            var signerAddress = Address.FromText("P2KFNXEbt65rQiWqogAzqkVGMqFirPmqPw8mQyxvRKsrXV8");
+            Console.Write("Organization address? ");
+            string orgStr = Console.ReadLine();
+            var orgAddress = Address.FromText(orgStr);
+
+            Console.Write("Target address? ");
+            string targetStr = Console.ReadLine();
+            var targetAddress = Address.FromText(targetStr);
+
+            var symbol = "SOUL";
+
+            Console.Write($"Amount of {symbol} to transfer from {orgAddress} to {targetStr}?: ");
+
+            decimal amount;
+            if (!decimal.TryParse(Console.ReadLine(), out amount) || amount <= 0)
+            {
+                Console.Write("Invalid amount");
+                return null;
+            }
+
+            bool needUnstake = FetchAnswer("Is unstaking necessary for this operation");
+
+            //S3dGUjVwYa31AxdthdpsuyBKgX1N65FnoQhUkSgYbUEdRp4
+            //S3dDUXfgGosu3urCrNSUAZKx7xsLTrxDzcn4CDYQEogUbao
+
+
+
 
             var transfers = new Dictionary<string, BigInteger>();
 
             //transfers["P2KCmWd4iYXed7i9HmMbANeYNA8HFeSJ1aar5yiCjz96tjt"] = UnitConversion.ToBigInteger(35000, DomainSettings.StakingTokenDecimals);
             //transfers["P2K61GfcUbfWqCur644iLECZ62NAefuKgBkB6FrpMsqYHv6"] = UnitConversion.ToBigInteger(50000, DomainSettings.StakingTokenDecimals);
-            transfers["P2KFNXEbt65rQiWqogAzqkVGMqFirPmqPw8mQyxvRKsrXV8"] = UnitConversion.ToBigInteger(128866, DomainSettings.StakingTokenDecimals);
+            //transfers["P2KFNXEbt65rQiWqogAzqkVGMqFirPmqPw8mQyxvRKsrXV8"] = UnitConversion.ToBigInteger(128866, DomainSettings.StakingTokenDecimals);
+
+            transfers[targetAddress.Text] = UnitConversion.ToBigInteger(amount, DomainSettings.StakingTokenDecimals);
 
 
-            var sb = new ScriptBuilder().AllowGas(signerAddress, Address.Null, 100000, 99999);
+            var sb = new ScriptBuilder().AllowGas(signerKeys.Address, Address.Null, 100000, 99999);
 
             foreach (var entry in transfers)
             {
-                var targetAddress = Address.FromText(entry.Key);
-                sb.CallContract(NativeContractKind.Stake, nameof(StakeContract.Unstake), orgAddress, entry.Value);
-                sb.TransferTokens(DomainSettings.StakingTokenSymbol, orgAddress, targetAddress, entry.Value);
+                var target = Address.FromText(entry.Key);
+                if (needUnstake)
+                {
+                    sb.CallContract(NativeContractKind.Stake, nameof(StakeContract.Unstake), orgAddress, entry.Value);
+                }
+
+                if (target != orgAddress)
+                {
+                    sb.TransferTokens(DomainSettings.StakingTokenSymbol, orgAddress, target, entry.Value);
+                }
             }
 
-            var script = sb.SpendGas(signerAddress).
+            var script = sb.SpendGas(signerKeys.Address).
                 EndScript();
 
             return script;
@@ -70,24 +119,7 @@ namespace TxSender
 
             foreach (var val in possibleValues)
             {
-
-                Console.Write($"Is {symbol} {val}?: (y/n)");
-
-                var ch = Console.ReadLine().ToLower();
-
-                bool answer;
-                switch (ch)
-                {
-                    case "y": answer = true; break;
-                    case "n": answer = false; break;
-                    default:
-                        {
-                            Console.Write("Invalid answer");
-                            return null;
-                        }
-                }
-
-                if (answer)
+                if (FetchAnswer($"Is {symbol} {val}?"))
                 {
                     flags |= val;
                 }
