@@ -372,7 +372,7 @@ namespace TxSender
                 return null;
             }
 
-            Console.Write("Addresses (separated by comma or newline, or filename): ");
+            Console.Write("Addresses (separated by comma or filename): ");
             var str = Console.ReadLine();
 
             if (str.Contains("."))
@@ -396,7 +396,7 @@ namespace TxSender
 
             foreach (var addr in addresses)
             {
-                sb.CallContract(NativeContractKind.Sale, nameof(SaleContract.AddToWhitelist), signerKeys.Address, hash, addr);
+                sb.CallContract(NativeContractKind.Sale, nameof(SaleContract.AddToWhitelist), hash, addr);
             }
 
             var script = sb.SpendGas(signerKeys.Address).
@@ -469,7 +469,7 @@ namespace TxSender
 
                         var sb = new ScriptBuilder().AllowGas(signerKeys.Address, Address.Null, 100000, 99999);
 
-                            sb.CallContract(NativeContractKind.Sale, nameof(SaleContract.EditSalePrice), signerKeys.Address, Hash.Parse("8D02B87F8C132BE7FC5DA25E80E3222EF183EFC3AB9F8F20B5455CB402A7A4E6"), 4);
+                            sb.CallContract(NativeContractKind.Sale, nameof(SaleContract.EditSalePrice), Hash.Parse("043D730801A8FDCD17F1E540C08282E91A387FA6236D43A39A10EAA01622BC4D"), 4);
 
                         script = sb.SpendGas(signerKeys.Address).
                             EndScript();
@@ -517,7 +517,7 @@ namespace TxSender
 
             url = baseUrl + "/api/sendRawTransaction/" + hexRawTx;
 
-            if (url.Length > 2000)
+            if (url.Length > 2040)
             {
                 Console.WriteLine("Script is too big");
                 return;
