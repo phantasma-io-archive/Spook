@@ -13,6 +13,7 @@ using Phantasma.Storage;
 using System.Linq;
 using Phantasma.CodeGen.Assembler;
 using Phantasma.VM;
+using System.IO;
 
 namespace TxSender
 {
@@ -226,9 +227,9 @@ namespace TxSender
             SaleFlags flags = SaleFlags.Whitelist;
 
             Console.Write("Start date?: ");
-            DateTime startDate;
+            uint startDate;
 
-            if (!DateTime.TryParse(Console.ReadLine(), out startDate))
+            if (!uint.TryParse(Console.ReadLine(), out startDate))
             {
                 Console.Write("Invalid start date");
                 return null;
@@ -237,8 +238,8 @@ namespace TxSender
             Console.WriteLine($"Start time set to {startTimeStamp}");
 
             Console.Write("End date?: ");
-            DateTime endDate;
-            if (!DateTime.TryParse(Console.ReadLine(), out endDate))
+            uint endDate;
+            if (!uint.TryParse(Console.ReadLine(), out endDate) || endDate <= startDate)
             {
                 Console.Write("Invalid end date");
                 return null;
@@ -258,22 +259,22 @@ namespace TxSender
             }
 
             int decimals;
-            Console.Write($"How many decimals {receiveSymbol} has?: ");
+            Console.Write($"How many decimals {sellSymbol} has?: ");
             if (!int.TryParse(Console.ReadLine(), out decimals) || decimals < 0 || decimals > 18)
             {
                 Console.Write("Invalid decimals");
                 return null;
             }
 
-            Console.Write($"Price: How many {receiveSymbol} per 1 {sellSymbol}?: ");
-            decimal price;
-            if (!decimal.TryParse(Console.ReadLine(), out price) || price <= 0)
+            Console.Write($"Price: How many {sellSymbol} per 1 {receiveSymbol}? (must be integer number): ");
+            int price;
+            if (!int.TryParse(Console.ReadLine(), out price) || price <= 0)
             {
                 Console.Write("Invalid decimals");
                 return null;
             }
 
-            Console.Write($"Softcap: How many {receiveSymbol} minimum? (Or zero if no soft-cap): ");
+            Console.Write($"Softcap: How many {sellSymbol} to sell minimum for sale to be succesful? (Or zero if no soft-cap): ");
             decimal globalSoftCap;
             if (!decimal.TryParse(Console.ReadLine(), out globalSoftCap) || globalSoftCap < 0)
             {
@@ -281,7 +282,7 @@ namespace TxSender
                 return null;
             }
 
-            Console.Write($"Hardcap: How many {receiveSymbol} maximum?: ");
+            Console.Write($"Hardcap: How many {sellSymbol} maximum?: ");
             decimal globalHardCap;
             if (!decimal.TryParse(Console.ReadLine(), out globalHardCap) || globalHardCap <= 0)
             {
@@ -289,7 +290,7 @@ namespace TxSender
                 return null;
             }
 
-            Console.Write($"How many {receiveSymbol} must a user buy minimum? (Or zero if no minimum): ");
+            Console.Write($"How many {sellSymbol} must a user buy minimum? (Or zero if no minimum): ");
             decimal userSoftCap;
             if (!decimal.TryParse(Console.ReadLine(), out userSoftCap) || userSoftCap < 0)
             {
@@ -297,7 +298,7 @@ namespace TxSender
                 return null;
             }
 
-            Console.Write($"What is the maximum {receiveSymbol} a user can buy?: ");
+            Console.Write($"What is the maximum {sellSymbol} a user can buy?: ");
             decimal userHardCap;
             if (!decimal.TryParse(Console.ReadLine(), out userHardCap) || userHardCap < userSoftCap)
             {
@@ -307,32 +308,10 @@ namespace TxSender
 
             var sb = new ScriptBuilder().AllowGas(signerKeys.Address, Address.Null, 100000, 99999);
 
-            sb.CallContract(NativeContractKind.Sale, nameof(SaleContract.CreateSale), signerKeys.Address, name, flags, startTimeStamp, endTimeStamp, sellSymbol, receiveSymbol, UnitConversion.ToBigInteger(price, decimals), UnitConversion.ToBigInteger(globalSoftCap, decimals), UnitConversion.ToBigInteger(globalHardCap, decimals), UnitConversion.ToBigInteger(userSoftCap, decimals), UnitConversion.ToBigInteger(userHardCap, decimals));
+            sb.CallContract(NativeContractKind.Sale, nameof(SaleContract.CreateSale), signerKeys.Address, name, flags, startTimeStamp, endTimeStamp, sellSymbol, receiveSymbol, price, UnitConversion.ToBigInteger(globalSoftCap, decimals), UnitConversion.ToBigInteger(globalHardCap, decimals), UnitConversion.ToBigInteger(userSoftCap, decimals), UnitConversion.ToBigInteger(userHardCap, decimals));
 
             var script = sb.SpendGas(signerKeys.Address).
                 EndScript();
-
-
-            var sale = new SaleInfo()
-            {
-                Creator = signerKeys.Address,
-                Name = name,
-                Flags = flags,
-                StartDate = startDate,
-                EndDate = endDate,
-                SellSymbol = sellSymbol,
-                ReceiveSymbol = receiveSymbol,
-                Price = UnitConversion.ToBigInteger(price, decimals),
-                GlobalSoftCap = UnitConversion.ToBigInteger(globalSoftCap, decimals),
-                GlobalHardCap = UnitConversion.ToBigInteger(globalHardCap, decimals),
-                UserSoftCap = UnitConversion.ToBigInteger(userSoftCap, decimals),
-                UserHardCap = UnitConversion.ToBigInteger(userHardCap, decimals),
-            };
-
-            var bytes = Serialization.Serialize(sale);
-            var hash = Hash.FromBytes(bytes);
-
-            Console.WriteLine("SALE HASH: " + hash);
 
             return script;
         }
@@ -348,8 +327,22 @@ namespace TxSender
                 return null;
             }
 
-            Console.Write("Addresses (separated by comma or newline): ");
+            Console.Write("Addresses (separated by comma or newline, or filename): ");
             var str = Console.ReadLine();
+
+            if (str.Contains("."))
+            {
+                if (File.Exists(str))
+                {
+                    str = File.ReadAllText(str);
+                }
+                else
+                {
+                    Console.Write("File not found");
+                    return null;
+                }
+            }
+
 
             var addresses = str.Replace("\n", ",").Split(',').Select(x => x.Trim()).Select(x => Address.FromText(x)).ToArray();
 
@@ -370,6 +363,10 @@ namespace TxSender
 
         static void Main(string[] args)
         {
+            /*var obj = Serialization.Unserialize<VMObject>(Base16.Decode("0821204DBC2216A0EA109AA3436D23A67F381AE98282C040E5F117CDFDA80108733D04"));
+            var hash = obj.AsInterop<Hash>();
+            Console.WriteLine(hash);*/
+
             Console.Write($"Enter nexus name: ");
             nexusName = Console.ReadLine();
 
