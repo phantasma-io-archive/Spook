@@ -11,14 +11,16 @@ using System.Net;
 using System.Threading;
 using Phantasma.Storage;
 using System.Linq;
+using Phantasma.CodeGen.Assembler;
+using Phantasma.VM;
 
 namespace TxSender
 {
     class Program
     {
-        static BigInteger gasPrice = 100000;
+        static BigInteger MinimumFee = 100000;
+        static string nexusName = null;
         static PhantasmaKeys signerKeys;
-
 
         static byte[] GenDAOTransfer()
         {
@@ -44,6 +46,141 @@ namespace TxSender
 
             var script = sb.SpendGas(signerAddress).
                 EndScript();
+
+            return script;
+        }
+
+        static byte[] GenCreateToken()
+        {
+            Console.Write("Token symbol? ");
+            string symbol = Console.ReadLine();
+
+            if (!ValidationUtils.IsValidTicker(symbol))
+            {
+                Console.Write("Invalid token symbol");
+                return null;
+            }
+
+            Console.Write("Token name? ");
+            string name = Console.ReadLine();
+
+            TokenFlags flags = TokenFlags.Transferable;
+
+            var possibleValues = new[] { TokenFlags.Burnable, TokenFlags.Divisible, TokenFlags.Finite, TokenFlags.Fungible };
+
+            foreach (var val in possibleValues)
+            {
+
+                Console.Write($"Is {symbol} {val}?: (y/n)");
+
+                var ch = Console.ReadLine().ToLower();
+
+                bool answer;
+                switch (ch)
+                {
+                    case "y": answer = true; break;
+                    case "n": answer = false; break;
+                    default:
+                        {
+                            Console.Write("Invalid answer");
+                            return null;
+                        }
+                }
+
+                if (answer)
+                {
+                    flags |= val;
+                }
+            }
+
+            int decimals;
+
+            if (flags.HasFlag(TokenFlags.Divisible))
+            {
+                Console.Write($"How many decimals {symbol} has?: ");
+                if (!int.TryParse(Console.ReadLine(), out decimals) || decimals < 0 || decimals > 18)
+                {
+                    Console.Write("Invalid decimals");
+                    return null;
+                }
+            }
+            else
+            {
+                decimals = 0;
+            }
+
+            BigInteger maxSupply;
+            if (flags.HasFlag(TokenFlags.Finite))
+            {
+                Console.Write($"What is the max supply of {symbol}?: ");
+
+                decimal val;
+                if (!decimal.TryParse(Console.ReadLine(), out val) || val <= 0)
+                {
+                    Console.Write("Invalid decimals");
+                    return null;
+                }
+
+                maxSupply = UnitConversion.ToBigInteger(val, decimals);
+            }
+            else
+            {
+                maxSupply = 0;
+            }
+
+
+            var labels = new Dictionary<string, int>();
+            var addressStr = Base16.Encode(signerKeys.Address.ToByteArray());
+            string[] scriptString;
+
+            scriptString = new string[] {
+                $"alias r3, $result",
+                $"alias r4, $owner",
+                $"@{AccountTrigger.OnMint}: nop",
+                $"load $owner 0x{addressStr}",
+                "push $owner",
+                "extcall \"Address()\"",
+                "extcall \"Runtime.IsWitness\"",
+                "pop $result",
+                $"jmpif $result, @end",
+                $"load r0 \"invalid witness\"",
+                $"throw r0",
+
+                $"@end: ret"
+                };
+
+            DebugInfo debugInfo;
+            var tokenScript = AssemblerUtils.BuildScript(scriptString, "GenerateToken", out debugInfo, out labels);
+
+            var sb = ScriptUtils.
+                BeginScript().
+                AllowGas(signerKeys.Address, Address.Null, MinimumFee, 9999);
+
+            var triggerMap = new Dictionary<AccountTrigger, int>();
+
+            var onMintLabel = AccountTrigger.OnMint.ToString();
+            if (labels.ContainsKey(onMintLabel))
+            {
+                triggerMap[AccountTrigger.OnMint] = labels[onMintLabel];
+            }
+
+            var methods = AccountContract.GetTriggersForABI(triggerMap);
+
+            var abi = new ContractInterface(methods, Enumerable.Empty<ContractEvent>());
+            var abiBytes = abi.ToByteArray();
+
+            sb.CallInterop("Nexus.CreateToken", signerKeys.Address, symbol, name, maxSupply, decimals, flags, tokenScript, abiBytes);
+
+            if (!flags.HasFlag(TokenFlags.Fungible))
+            {
+                Console.Write("NFT deployment not supported yet");
+                return null;
+            }
+
+            sb.SpendGas(signerKeys.Address);
+
+            var script = sb.EndScript();
+
 
             return script;
         }
@@ -172,7 +309,7 @@ namespace TxSender
         {
             Console.Write("Sale hash? ");
             Hash hash;
-            
+
             if (!Hash.TryParse(Console.ReadLine(), out hash))
             {
                 Console.Write("Invalid sale hash");
@@ -201,16 +338,19 @@ namespace TxSender
 
         static void Main(string[] args)
         {
+            Console.Write($"Enter nexus name: ");
+            nexusName = Console.ReadLine();
 
-            Console.WriteLine($"Enter WIF for signing transaction");
+            Console.Write($"Enter WIF for signing transaction: ");
             var wif = Console.ReadLine();
             signerKeys = PhantasmaKeys.FromWIF(wif);
 
             Console.WriteLine("Select operation: ");
             Console.WriteLine("0 - Exit");
             Console.WriteLine("1 - DAO Transfer");
-            Console.WriteLine("2 - Create sale");
-            Console.WriteLine("3 - Whitelist sale address");
+            Console.WriteLine("2 - Create token");
+            Console.WriteLine("3 - Create sale");
+            Console.WriteLine("4 - Whitelist sale address");
 
             var str = Console.ReadLine();
 
@@ -234,10 +374,14 @@ namespace TxSender
                     break;
 
                 case 2:
-                    script = GenCreateSale();
+                    script = GenCreateToken();
                     break;
 
                 case 3:
+                    script = GenCreateSale();
+                    break;
+
+                case 4:
                     script = GenWhitelist();
                     break;
 
@@ -253,7 +397,8 @@ namespace TxSender
             }
 
             var expiration = new Timestamp(Timestamp.Now.Value + 1000);
-            var tx = new Transaction("mainnet", "main", script, expiration, "TXSNDER1.0");
+            var tx = new Transaction(nexusName, "main", script, expiration, "TXSNDER1.0");
+            tx.Mine(ProofOfWork.Minimal);
             tx.Sign(signerKeys);
 
             var rawTx = tx.ToByteArray(true);
@@ -261,12 +406,20 @@ namespace TxSender
             var hexRawTx = Base16.Encode(rawTx);
 
 
-            Console.Write("URL: ");
+            Console.Write("Node REST URL: ");
             var url = Console.ReadLine();
 
             if (!url.StartsWith("http"))
             {
                 url = "http://" + url;
+            }
+
+            // check for port
+            if (!url.Replace("http://", "").Contains(":"))
+            {
+                var defaultPort = 7078;
+                Console.WriteLine("No port specified, using defaul port " + defaultPort);
+                url += ":" + defaultPort;
             }
 
             var baseUrl = url;
