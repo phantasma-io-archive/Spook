@@ -64,6 +64,8 @@ namespace TxSender
                 Console.Write("Invalid start date");
                 return null;
             }
+            var startTimeStamp = (Timestamp)startDate;
+            Console.WriteLine($"Start time set to {startTimeStamp}");
 
             Console.Write("End date?: ");
             DateTime endDate;
@@ -72,13 +74,15 @@ namespace TxSender
                 Console.Write("Invalid end date");
                 return null;
             }
+            var endTimeStamp = (Timestamp)endDate;
+            Console.WriteLine($"End time set to {endTimeStamp}");
 
-            string sellSymbol = "SOUL";
+            string receiveSymbol = "SOUL";
 
             Console.Write("What token symbol will be sold?: ");
-            string receiveSymbol = Console.ReadLine();
+            string sellSymbol = Console.ReadLine();
 
-            if (receiveSymbol == DomainSettings.StakingTokenSymbol || receiveSymbol == DomainSettings.FuelTokenSymbol || !ValidationUtils.IsValidTicker(receiveSymbol))
+            if (sellSymbol == DomainSettings.StakingTokenSymbol || receiveSymbol == DomainSettings.FuelTokenSymbol || !ValidationUtils.IsValidTicker(receiveSymbol))
             {
                 Console.Write("Invalid token symbol");
                 return null;
@@ -134,7 +138,7 @@ namespace TxSender
 
             var sb = new ScriptBuilder().AllowGas(signerKeys.Address, Address.Null, 100000, 99999);
 
-            sb.CallContract(NativeContractKind.Sale, nameof(SaleContract.CreateSale), signerKeys.Address, name, flags, startDate, endDate, sellSymbol, receiveSymbol, UnitConversion.ToBigInteger(price, decimals), UnitConversion.ToBigInteger(globalSoftCap, decimals), UnitConversion.ToBigInteger(globalHardCap, decimals), UnitConversion.ToBigInteger(userSoftCap, decimals), UnitConversion.ToBigInteger(userHardCap, decimals));
+            sb.CallContract(NativeContractKind.Sale, nameof(SaleContract.CreateSale), signerKeys.Address, name, flags, startTimeStamp, endTimeStamp, sellSymbol, receiveSymbol, UnitConversion.ToBigInteger(price, decimals), UnitConversion.ToBigInteger(globalSoftCap, decimals), UnitConversion.ToBigInteger(globalHardCap, decimals), UnitConversion.ToBigInteger(userSoftCap, decimals), UnitConversion.ToBigInteger(userHardCap, decimals));
 
             var script = sb.SpendGas(signerKeys.Address).
                 EndScript();
