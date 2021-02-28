@@ -218,6 +218,51 @@ namespace TxSender
             return script;
         }
 
+        static byte[] GenMintToken()
+        {
+            Console.Write("Token symbol? ");
+            string symbol = Console.ReadLine();
+
+            if (!ValidationUtils.IsValidTicker(symbol))
+            {
+                Console.Write("Invalid token symbol");
+                return null;
+            }
+
+            int decimals;
+            Console.Write($"How many decimals {symbol} has?: ");
+            if (!int.TryParse(Console.ReadLine(), out decimals) || decimals < 0 || decimals > 18)
+            {
+                Console.Write("Invalid decimals");
+                return null;
+            }
+
+            Console.Write($"Token amount? ");
+            BigInteger amount;
+
+            decimal val;
+            if (!decimal.TryParse(Console.ReadLine(), out val) || val <= 0)
+            {
+                Console.Write("Invalid amount");
+                return null;
+            }
+
+            amount = UnitConversion.ToBigInteger(val, decimals);
+
+
+            var sb = ScriptUtils.
+                BeginScript().
+                AllowGas(signerKeys.Address, Address.Null, MinimumFee, 9999);
+            sb.MintTokens(symbol, signerKeys.Address, signerKeys.Address, amount);
+            sb.SpendGas(signerKeys.Address);
+
+            var script = sb.EndScript();
+
+
+            return script;
+        }
+
+
         static byte[] GenCreateSale()
         {
             Console.Write("Sale name? ");
@@ -378,8 +423,9 @@ namespace TxSender
             Console.WriteLine("0 - Exit");
             Console.WriteLine("1 - DAO Transfer");
             Console.WriteLine("2 - Create token");
-            Console.WriteLine("3 - Create sale");
-            Console.WriteLine("4 - Whitelist sale address");
+            Console.WriteLine("3 - Mint tokens");
+            Console.WriteLine("4 - Create sale");
+            Console.WriteLine("5 - Whitelist sale address");
 
             var str = Console.ReadLine();
 
@@ -407,12 +453,28 @@ namespace TxSender
                     break;
 
                 case 3:
-                    script = GenCreateSale();
+                    script = GenMintToken();
                     break;
 
                 case 4:
+                    script = GenCreateSale();
+                    break;
+
+                case 5:
                     script = GenWhitelist();
                     break;
+
+                case 6:
+                    {
+
+                        var sb = new ScriptBuilder().AllowGas(signerKeys.Address, Address.Null, 100000, 99999);
+
+                            sb.CallContract(NativeContractKind.Sale, nameof(SaleContract.EditSalePrice), signerKeys.Address, Hash.Parse("8D02B87F8C132BE7FC5DA25E80E3222EF183EFC3AB9F8F20B5455CB402A7A4E6"), 4);
+
+                        script = sb.SpendGas(signerKeys.Address).
+                            EndScript();
+                        break;
+                    }
 
                 default:
                     Console.WriteLine("Unsupported option...");
