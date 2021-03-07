@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System;
+using System.Numerics;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -8,7 +9,6 @@ using Phantasma.Numerics;
 using Phantasma.Cryptography;
 using Phantasma.Core.Log;
 using Phantasma.Core.Types;
-using Phantasma.Neo.Core;
 using Phantasma.Blockchain;
 using Phantasma.Domain;
 using Phantasma.Pay.Chains;

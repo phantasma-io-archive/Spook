@@ -19,12 +19,12 @@ namespace Phantasma.Spook.Chains
         Success
     }
 
-    public class BlockIterator
+    public class EthBlockIterator
     {
         public BigInteger currentBlock;
         public uint currentTransaction;
 
-        public BlockIterator(EthAPI api)
+        public EthBlockIterator(EthAPI api)
         {
             this.currentBlock = api.GetBlockHeight();
             this.currentTransaction = 0;
@@ -148,7 +148,7 @@ namespace Phantasma.Spook.Chains
             if (symbol.Equals("ETH", StringComparison.InvariantCultureIgnoreCase))
             {
                 var bytes = Nexus.GetOracleReader().Read<byte[]>(DateTime.Now, Domain.DomainExtensions.GetOracleFeeURL("ethereum"));
-                var fees = Phantasma.Numerics.BigInteger.FromUnsignedArray(bytes, true);
+                var fees = new BigInteger(bytes);
                 var gasPrice = Numerics.UnitConversion.ToDecimal(fees / _settings.Oracle.EthGasLimit, 9);
 
                 result = EthUtils.RunSync(() => GetWeb3Client().Eth.GetEtherTransferService()
@@ -193,8 +193,8 @@ namespace Phantasma.Spook.Chains
 
                     swapIn.Gas = _settings.Oracle.EthGasLimit;
                     var bytes = Nexus.GetOracleReader().Read<byte[]>(DateTime.Now, Domain.DomainExtensions.GetOracleFeeURL("ethereum"));
-                    var fees = Phantasma.Numerics.BigInteger.FromUnsignedArray(bytes, true);
-                    swapIn.GasPrice = System.Numerics.BigInteger.Parse(fees.ToString()) / swapIn.Gas;
+                    var fees = new BigInteger(bytes);
+                    swapIn.GasPrice = BigInteger.Parse(fees.ToString()) / swapIn.Gas;
 
                     outTransactionHash = EthUtils.RunSync(() => swapInHandler
                             .SendRequestAsync(contractAddress, swapIn));

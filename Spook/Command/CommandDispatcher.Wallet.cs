@@ -1,8 +1,8 @@
 using System;
+using System.Numerics;
 using Phantasma.Spook.Modules;
 using Phantasma.Numerics;
 using Phantasma.Core.Types;
-using Phantasma.Blockchain;
 
 namespace Phantasma.Spook.Command
 {
@@ -11,7 +11,7 @@ namespace Phantasma.Spook.Command
         [ConsoleCommand("wallet balance", Category = "Wallet")]
         protected void OnWalletBalanceCommand(string[] args)
         {
-            WalletModule.Balance(_cli.NexusAPI, _cli.Settings.Node.RestPort, _cli.NeoScanAPI, args);
+            WalletModule.Balance(_cli.NexusAPI, _cli.Settings.Node.RestPort, args);
         }
 
         [ConsoleCommand("wallet transfer", Category = "Wallet")]

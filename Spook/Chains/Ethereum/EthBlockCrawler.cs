@@ -15,7 +15,6 @@ using Phantasma.Pay.Chains;
 using Phantasma.Cryptography;
 using Phantasma.Spook.Interop;
 
-using PBigInteger = Phantasma.Numerics.BigInteger;
 using InteropTransfers = System.Collections.Generic.Dictionary<string,
       System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<Phantasma.Domain.InteropTransfer>>>;
 
@@ -133,7 +132,7 @@ namespace Phantasma.Spook.Chains
 
                             
                             var sourceAddress = EthereumWallet.EncodeAddress(evt.Event.From);
-                            var amount = PBigInteger.Parse(evt.Event.Value.ToString());
+                            var amount = BigInteger.Parse(evt.Event.Value.ToString());
 
                             logger.Message("nodeSwapAddress: " + nodeSwapAddress);
                             logger.Message("sourceAddress: " + sourceAddress);
@@ -183,7 +182,7 @@ namespace Phantasma.Spook.Chains
                         }
 
                         var sourceAddress = EthereumWallet.EncodeAddress(tx.From);
-                        var amount = PBigInteger.Parse(tx.Value.ToString());
+                        var amount = BigInteger.Parse(tx.Value.ToString());
 
                         interopTransfers[block.BlockHash][tx.TransactionHash].Add
                             (

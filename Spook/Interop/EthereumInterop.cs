@@ -21,7 +21,6 @@ using Nethereum.Contracts;
 using Nethereum.StandardTokenEIP20.ContractDefinition;
 
 using EthereumKey = Phantasma.Ethereum.EthereumKey;
-using PBigInteger = Phantasma.Numerics.BigInteger;
 using Phantasma.Storage.Context;
 
 namespace Phantasma.Spook.Interop
@@ -34,12 +33,12 @@ namespace Phantasma.Spook.Interop
         private List<BigInteger> _resyncBlockIds = new List<BigInteger>();
         private static bool initialStart = true;
 
-        public EthereumInterop(TokenSwapper swapper, EthAPI ethAPI, PBigInteger interopBlockHeight, string[] contracts, uint confirmations)
+        public EthereumInterop(TokenSwapper swapper, EthAPI ethAPI, BigInteger interopBlockHeight, string[] contracts, uint confirmations)
                 : base(swapper, EthereumWallet.EthereumPlatform)
         {
             string lastBlockHeight = OracleReader.GetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform);
             if(string.IsNullOrEmpty(lastBlockHeight))
-                OracleReader.SetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, new BigInteger(interopBlockHeight.ToSignedByteArray()).ToString());
+                OracleReader.SetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, interopBlockHeight.ToString());
 
             Logger.Message($"interopHeight: {OracleReader.GetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform)}");
 
@@ -157,7 +156,7 @@ namespace Phantasma.Spook.Interop
 
                         /* Future improvement, implement oracle call to fetch multiple blocks */
                         var url = DomainExtensions.GetOracleBlockURL(
-                                EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, PBigInteger.FromUnsignedArray(_interopBlockHeight.ToByteArray(), true));
+                                EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, _interopBlockHeight);
 
                         var interopBlock = OracleReader.Read<InteropBlock>(DateTime.Now, url);
 
@@ -231,7 +230,7 @@ namespace Phantasma.Spook.Interop
                 for (var i = _interopBlockHeight; i <= nextCurrentBlockHeight; i++)
                 {
                     var url = DomainExtensions.GetOracleBlockURL(
-                            EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, PBigInteger.FromUnsignedArray(i.ToByteArray(), true));
+                            EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, i);
                 
                     taskList.Add(CreateTask(url));
                 }
@@ -241,7 +240,7 @@ namespace Phantasma.Spook.Interop
                 foreach (var blockId in blockIds)
                 {
                     var url = DomainExtensions.GetOracleBlockURL(
-                            EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, PBigInteger.FromUnsignedArray(blockId.ToByteArray(), true));
+                            EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, blockId);
                     taskList.Add(CreateTask(url));
                 }
             }
@@ -306,8 +305,7 @@ namespace Phantasma.Spook.Interop
         private InteropBlock GetInteropBlock(BigInteger blockId)
         {
             var url = DomainExtensions.GetOracleBlockURL(
-                EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform,
-                PBigInteger.FromUnsignedArray(blockId.ToByteArray(), true));
+                EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, blockId);
 
             return OracleReader.Read<InteropBlock>(DateTime.Now, url);
         }
@@ -337,10 +335,13 @@ namespace Phantasma.Spook.Interop
             {
                 accountSenderRecovered = Nethereum.Signer.EthECKey.RecoverFromSignature(transaction.Signature, transaction.RawHash);
             }
-            var pubKey = accountSenderRecovered.GetPubKey();
 
-            var point = Cryptography.ECC.ECPoint.DecodePoint(pubKey, Cryptography.ECC.ECCurve.Secp256k1);
-            pubKey = point.EncodePoint(true);
+            var pubKey = accountSenderRecovered.GetPubKey();
+            var ecCurve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp256k1");
+            var q = ecCurve.Curve.DecodePoint(pubKey);
+            var dom = new Org.BouncyCastle.Crypto.Parameters.ECDomainParameters(ecCurve.Curve, ecCurve.G, ecCurve.N, ecCurve.H);
+            var publicParams = new Org.BouncyCastle.Crypto.Parameters.ECPublicKeyParameters(q, dom);
+            pubKey = publicParams.Q.GetEncoded(true);
 
             var bytes = new byte[34];
             bytes[0] = (byte)AddressKind.User;
@@ -443,7 +444,7 @@ namespace Phantasma.Spook.Interop
 
                 var targetAddress = EthereumWallet.EncodeAddress(evt.Event.To);
                 var sourceAddress = EthereumWallet.EncodeAddress(evt.Event.From);
-                var amount = PBigInteger.Parse(evt.Event.Value.ToString());
+                var amount = BigInteger.Parse(evt.Event.Value.ToString());
 
                 if (targetAddress.Equals(nodeSwapAddress))
                 {
@@ -475,7 +476,7 @@ namespace Phantasma.Spook.Interop
 
                 if (targetAddress.Equals(nodeSwapAddress))
                 {
-                    var amount = PBigInteger.Parse(tx.Value.ToString());
+                    var amount = BigInteger.Parse(tx.Value.ToString());
 
                     if (!interopTransfers.ContainsKey(tx.TransactionHash))
                     {
@@ -655,7 +656,7 @@ namespace Phantasma.Spook.Interop
 
 
         // NOTE no locks happen here because this callback is called from within a lock
-        internal override Hash SettleSwap(Hash sourceHash, Address destination, IToken token, Numerics.BigInteger amount)
+        internal override Hash SettleSwap(Hash sourceHash, Address destination, IToken token, BigInteger amount)
         {
             // check if tx was sent but not minded yet
             string tx = null;

@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using System.Globalization;
 using System.Reflection;
 using System.Threading.Tasks;
 using System.Collections.Generic;
@@ -27,9 +26,10 @@ using Nethereum.Hex.HexConvertors.Extensions;
 
 using Logger = Phantasma.Core.Log.Logger;
 using ConsoleLogger = Phantasma.Core.Log.ConsoleLogger;
-using NeoAPI = Phantasma.Neo.Core.NeoAPI;
+using NeoAPI = Phantasma.Spook.Chains.NeoAPI;
 using EthAccount = Nethereum.Web3.Accounts.Account;
 using Phantasma.Core;
+using Phantasma.Ethereum;
 
 namespace Phantasma.Spook
 {
@@ -64,7 +64,6 @@ namespace Phantasma.Spook
         private List<string> _seeds = new List<string>();
         private NeoAPI _neoAPI;
         private EthAPI _ethAPI;
-        private NeoScanAPI _neoScanAPI;
         private CommandDispatcher _commandDispatcher;
         private TokenSwapper _tokenSwapper;
         private NexusSimulator _simulator;
@@ -75,7 +74,6 @@ namespace Phantasma.Spook
         public Nexus Nexus { get { return _nexus; } }
         public NeoAPI NeoAPI { get { return _neoAPI; } }
         public EthAPI EthAPI { get { return _ethAPI; } }
-        public NeoScanAPI NeoScanAPI { get { return _neoScanAPI; } }
         public string CryptoCompareAPIKey  { get { return _cryptoCompareAPIKey; } }
         public TokenSwapper TokenSwapper { get { return _tokenSwapper; } }
         public Mempool Mempool { get { return _mempool; } }
@@ -247,18 +245,15 @@ namespace Phantasma.Spook
             var neoScanURL = Settings.Oracle.NeoscanUrl;
 
             var neoRpcList = Settings.Oracle.NeoRpcNodes;
-            this._neoAPI = new Neo.Core.RemoteRPCNode(neoScanURL, neoRpcList.ToArray());
+            this._neoAPI = new RemoteRPCNode(neoScanURL, neoRpcList.ToArray());
             this._neoAPI.SetLogger((s) => Logger.Message(s));
 
             var ethRpcList = Settings.Oracle.EthRpcNodes;
             
             var ethWIF = Settings.GetInteropWif(Nexus, _nodeKeys, EthereumWallet.EthereumPlatform);
-            var ethKeys = PhantasmaKeys.FromWIF(ethWIF);
-            
+            var ethKeys = PhantasmaKeys.FromWIF("L4GcHJVrUPz6nW2EKJJGV2yxfa5UoaG8nfnaTAgzmWyuAmt3BYKg");
+
             this._ethAPI = new EthAPI(this.Nexus, this.Settings, new EthAccount(ethKeys.PrivateKey.ToHex()), Logger);
-
-            this._neoScanAPI = new NeoScanAPI(neoScanURL, Logger, _nexus, _nodeKeys);
-
             this._cryptoCompareAPIKey = Settings.Oracle.CryptoCompareAPIKey;
             if (!string.IsNullOrEmpty(this._cryptoCompareAPIKey))
             {

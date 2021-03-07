@@ -1,6 +1,7 @@
 using System;
-using Phantasma.Core.Log;
+using Neo.SmartContract;
 using Phantasma.Numerics;
+using Phantasma.Spook.Chains;
 
 namespace Phantasma.Spook.Command
 {
@@ -21,12 +22,12 @@ namespace Phantasma.Spook.Command
 
             var keys = Neo.Core.NeoKeys.FromWIF(args[0]);
             var script = System.IO.File.ReadAllBytes(avmPath);
-            var scriptHash = Neo.Utils.CryptoUtils.ToScriptHash(script);
+            var scriptHash = script.ToScriptHash();
             Console.WriteLine("Deploying contract " + scriptHash);
 
             try
             {
-            var tx = _cli.NeoAPI.DeployContract(keys, script, Base16.Decode("0710"), 0x05, Neo.Core.ContractProperties.HasStorage | Neo.Core.ContractProperties.Payable, "Contract", "1.0", "Author", "email@gmail.com", "Description");
+            var tx = _cli.NeoAPI.DeployContract(keys, script, Base16.Decode("0710"), 0x05, ContractProperties.HasStorage | ContractProperties.Payable, "Contract", "1.0", "Author", "email@gmail.com", "Description");
             Console.WriteLine("Deployed contract via transaction: " + tx.Hash);
             }
             catch (Exception e)

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Numerics;
 using System.Threading;
 using System.IO;
 using System.Reflection;
@@ -14,13 +15,14 @@ using Phantasma.Core.Types;
 using Phantasma.Pay.Chains;
 using Phantasma.Pay;
 using Phantasma.Neo.Core;
-using Phantasma.Spook.Oracles;
 using Phantasma.Spook.Command;
 using Phantasma.Blockchain;
 using Phantasma.Domain;
 using Phantasma.VM;
 using Phantasma.Blockchain.Contracts;
+using NeoTx = Neo.Network.P2P.Payloads.Transaction;
 using Newtonsoft.Json;
+using Phantasma.Spook.Chains;
 
 namespace Phantasma.Spook.Modules
 {
@@ -50,7 +52,6 @@ namespace Phantasma.Spook.Modules
             {
                 logger.Message($"Failed to open wallet. Make sure you valid a correct WIF key.");
             }
-
         }
 
         [ConsoleCommand("wallet create", "Wallet", "Create a new wallet")]
@@ -75,7 +76,7 @@ namespace Phantasma.Spook.Modules
 
         }
 
-        public static void Balance(NexusAPI api, int phantasmaRestPort, NeoScanAPI neoScanAPI, string[] args)
+        public static void Balance(NexusAPI api, int phantasmaRestPort, string[] args)
         {
             if (phantasmaRestPort <= 0)
             {
@@ -96,7 +97,6 @@ namespace Phantasma.Spook.Modules
             logger.Message("Fetching balances...");
             var wallets = new List<CryptoWallet>();
             wallets.Add(new PhantasmaWallet(Keys, $"http://localhost:{phantasmaRestPort}/api"));
-            wallets.Add(new NeoWallet(Keys, neoScanAPI.URL));
 
             foreach (var wallet in wallets)
             {
@@ -127,7 +127,7 @@ namespace Phantasma.Spook.Modules
 
         private static Hash NeoTransfer(NeoKeys neoKeys, string toAddress, string tokenSymbol, decimal tempAmount, NeoAPI neoAPI)
         {
-            Neo.Core.Transaction neoTx;
+            NeoTx neoTx;
 
             logger.Message($"Sending {tempAmount} {tokenSymbol} to {toAddress}...");
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Numerics;
 using System.Collections.Generic;
 
 using Phantasma.Blockchain;
@@ -10,14 +11,13 @@ using Phantasma.Domain;
 using Phantasma.Pay.Chains;
 using Phantasma.Storage;
 using Phantasma.Storage.Context;
-using Phantasma.Neo.Cryptography;
 using Phantasma.Neo.Utils;
 using Phantasma.Spook.Interop;
 
-using NeoBlock = Phantasma.Neo.Core.Block;
-using NeoTx = Phantasma.Neo.Core.Transaction;
+using NeoBlock = Neo.Network.P2P.Payloads.Block;
+using NeoTx = Neo.Network.P2P.Payloads.Transaction;
 using Logger = Phantasma.Core.Log.Logger;
-using NativeBigInt = System.Numerics.BigInteger;
+using Neo;
 
 namespace Phantasma.Spook.Oracles
 {
@@ -161,7 +161,7 @@ namespace Phantasma.Spook.Oracles
             return false;
         }
 
-        protected override Phantasma.Numerics.BigInteger PullFee(Timestamp time, string platform)
+        protected override BigInteger PullFee(Timestamp time, string platform)
         {
             platform = platform.ToLower();
 
@@ -216,7 +216,7 @@ namespace Phantasma.Spook.Oracles
             throw new OracleException("No support for oracle prices in this node");
         }
 
-        protected override InteropBlock PullPlatformBlock(string platformName, string chainName, Hash hash, NativeBigInt height = new NativeBigInt())
+        protected override InteropBlock PullPlatformBlock(string platformName, string chainName, Hash hash, BigInteger height = new BigInteger())
         {
             if (hash == null && height == null)
             {

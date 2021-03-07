@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Numerics;
 
 using Phantasma.Cryptography;
 using Phantasma.Blockchain;

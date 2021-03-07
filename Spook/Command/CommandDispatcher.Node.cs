@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Numerics;
 using System.IO;
 using System.Text;
 using Nethereum.Hex.HexConvertors.Extensions;
@@ -110,10 +111,10 @@ namespace Phantasma.Spook.Command
                 return;
             }
 
-            Phantasma.Numerics.BigInteger value;
+            BigInteger value;
             try
             {
-                value = Phantasma.Numerics.BigInteger.Parse(args[1]);
+                value = BigInteger.Parse(args[1]);
             }
             catch
             {
@@ -377,7 +378,7 @@ namespace Phantasma.Spook.Command
                     {
                         count++;
                         // very ugly and might not always work, but should be ok for now
-                        byte[] bytes = value.Size.ToUnsignedByteArray();
+                        byte[] bytes = value.Size.ToByteArray();
                         if (BitConverter.IsLittleEndian)
                             Array.Reverse(bytes);
                         int size = BitConverter.ToInt32(bytes, 0);

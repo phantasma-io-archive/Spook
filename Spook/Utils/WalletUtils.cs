@@ -1,4 +1,5 @@
 using System;
+using System.Numerics;
 using System.Threading;
 using LunarLabs.Parser.JSON;
 using Phantasma.Blockchain;
@@ -15,7 +16,6 @@ namespace Phantasma.Spook.Utils
 
     public static class WalletUtils
     {
-
         public static BigInteger FetchBalance(JSONRPC_Client rpc, Logger logger, string host, Address address)
         {
             var response = rpc.SendRequest(logger, host, "getAccount", address.ToString());
