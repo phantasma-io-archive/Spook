@@ -264,7 +264,7 @@ namespace Phantasma.Spook.Modules
         }
 
 
-        private static void DoChecks(NexusAPI api)
+        internal static void DoChecks(NexusAPI api)
         {
             if (Keys == null)
             {
