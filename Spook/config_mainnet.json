@@ -8,7 +8,7 @@
       "api.proxy.url": "",
       "nexus.name": "mainnet",
       "node.mode": "validator",
-      "node.wif": "#######################################################TODO",
+      "node.wif": "#####################################################",
       "api.log": false,
       "node.port": 7777,
       "profiler.path": "",
@@ -76,11 +76,11 @@
 
       "eth.block.confirmations": 12,
       "eth.gas.limit": 50000,
-      "crypto.compare.key": "##########################################################TODO",
+      "crypto.compare.key": "########################################################",
       "swaps.platforms": "neo,ethereum",
       "phantasma.interop.height": "0",
       "neo.interop.height": "4394715",
-      "eth.interop.height": "##########################################################TODO",
+      "eth.interop.height": "########################################################",
       "neo.wif": "",
       "eth.wif": ""
     },

@@ -262,7 +262,11 @@ namespace Phantasma.Spook
             this._cryptoCompareAPIKey = Settings.Oracle.CryptoCompareAPIKey;
             if (!string.IsNullOrEmpty(this._cryptoCompareAPIKey))
             {
-                Logger.Message($"CryptoCompare API enabled...");
+                Logger.Message($"CryptoCompare API enabled.");
+            }
+            else
+            {
+                Logger.Warning($"CryptoCompare API key missing, oracles won't work properly...");
             }
         }
 
