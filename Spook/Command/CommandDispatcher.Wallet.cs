@@ -32,7 +32,7 @@ namespace Phantasma.Spook.Command
         protected void OnWalletAirdropCommand(string[] args)
         {
             BigInteger minFee = new BigInteger(_cli.Settings.Node.MinimumFee);
-            WalletModule.Airdrop(args, _cli.NexusAPI, minFee);
+            WalletModule.Airdrop(args, _cli.Nexus, _cli.NexusAPI, minFee);
         }
 
         [ConsoleCommand("wallet migrate", Category = "Wallet", Description = "Migrate a validator wallet")]

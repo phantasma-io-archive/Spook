@@ -21,6 +21,7 @@ using Phantasma.Domain;
 using Phantasma.VM;
 using Phantasma.Blockchain.Contracts;
 using Newtonsoft.Json;
+using System.Globalization;
 
 namespace Phantasma.Spook.Modules
 {
@@ -511,7 +512,7 @@ namespace Phantasma.Spook.Modules
             }
         }
 
-        public static void Airdrop(string[] args, NexusAPI api, BigInteger minFee)
+        public static void Airdrop(string[] args, Nexus nexus, NexusAPI api, BigInteger minFee)
         {
             if (args.Length != 1)
             {
@@ -550,7 +551,15 @@ namespace Phantasma.Spook.Modules
 
                 var target = Address.FromText(temp[0]);
                 var symbol = temp[1];
-                var amount = BigInteger.Parse(temp[2]);
+                decimal val;
+                
+                if (!Decimal.TryParse(temp[2], NumberStyles.Any, new CultureInfo("en-US"), out val) || val <= 0)
+                {
+                    throw new CommandException($"Invalid amount {val} for {target}");
+                }
+
+                var token = nexus.GetTokenInfo(nexus.RootStorage, symbol);
+                var amount = UnitConversion.ToBigInteger(val, token.Decimals);
 
                 sb.TransferTokens(symbol, Keys.Address, target, amount);
             }
