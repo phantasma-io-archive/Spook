@@ -435,8 +435,7 @@ namespace Phantasma.Spook.Interop
                     if (string.IsNullOrEmpty(tx))
                     {
                         // no tx was created, so no reason to keep the entry, we can't verify anything anyway.
-                        Logger.Debug("No tx hash set as in progress, removing source: " + sourceHash);
-                        inProgressMap.Remove<Hash>(sourceHash);
+                        Logger.Debug("No tx hash set, swap in progress: " + sourceHash);
                         return Hash.Null;
                     }
                     else
