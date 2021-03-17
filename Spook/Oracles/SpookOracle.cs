@@ -251,7 +251,9 @@ namespace Phantasma.Spook.Oracles
                         throw new OracleException($"Neo block is null");
                     }
 
-                    interopTuple = NeoInterop.MakeInteropBlock(logger, neoBlock, _cli.NeoAPI, _cli.TokenSwapper.SwapAddresses[platformName]);
+                    var coldStorage = _cli.Settings.Oracle.SwapColdStorageNeo;
+                    interopTuple = NeoInterop.MakeInteropBlock(logger, neoBlock, _cli.NeoAPI,
+                            _cli.TokenSwapper.SwapAddresses[platformName], coldStorage);
                     break;
                 case EthereumWallet.EthereumPlatform:
 
@@ -317,7 +319,8 @@ namespace Phantasma.Spook.Oracles
                     NeoTx neoTx;
                     UInt256 uHash = new UInt256(LuxUtils.ReverseHex(hash.ToString()).HexToBytes());
                     neoTx = _cli.NeoAPI.GetTransaction(uHash);
-                    tx = NeoInterop.MakeInteropTx(logger, neoTx, _cli.NeoAPI, _cli.TokenSwapper.SwapAddresses[platformName]);
+                    var coldStorage = _cli.Settings.Oracle.SwapColdStorageNeo;
+                    tx = NeoInterop.MakeInteropTx(logger, neoTx, _cli.NeoAPI, _cli.TokenSwapper.SwapAddresses[platformName], coldStorage);
                     break;
                 case EthereumWallet.EthereumPlatform:
                     var txRcpt = _cli.EthAPI.GetTransactionReceipt(hash.ToString());

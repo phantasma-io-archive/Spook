@@ -376,7 +376,7 @@ namespace Phantasma.Spook.Interop
         }
 
         public static Tuple<InteropBlock, InteropTransaction[]> MakeInteropBlock(Logger logger, NeoBlock block,
-                NeoAPI api, string[] swapAddresses)
+                NeoAPI api, string[] swapAddresses, string coldStorage)
         {
             List<Hash> hashes = new List<Hash>();
             //logger.Debug($"Read block {block.Height} with hash {block.Hash}");
@@ -389,7 +389,7 @@ namespace Phantasma.Spook.Interop
                 if (tx.type == TransactionType.InvocationTransaction
                     || tx.type == TransactionType.ContractTransaction)
                 {
-                    var interopTx = MakeInteropTx(logger, tx, api, swapAddresses);
+                    var interopTx = MakeInteropTx(logger, tx, api, swapAddresses, coldStorage);
                     if (interopTx.Hash != Hash.Null)
                     {
                         interopTransactions.Add(interopTx);
@@ -406,7 +406,8 @@ namespace Phantasma.Spook.Interop
             return Tuple.Create(iBlock, interopTransactions.ToArray());
         }
 
-        public static InteropTransaction MakeInteropTx(Logger logger, NeoTx tx, NeoAPI api, string[] origSwapAddresses)
+        public static InteropTransaction MakeInteropTx(Logger logger, NeoTx tx, NeoAPI api, string[] origSwapAddresses,
+                string coldStorage)
         {
             logger.Debug("checking tx: " + tx.Hash);
             var swapAddresses = new List<Address>();
@@ -438,11 +439,11 @@ namespace Phantasma.Spook.Interop
 
             var sourceScriptHash = witness.verificationScript.Sha256().RIPEMD160();
             var sourceAddress = NeoWallet.EncodeByteArray(sourceScriptHash);
-            //var interopSwapAddress = NeoWallet.EncodeAddress(swapAddress);
+            var sourceDecoded = NeoWallet.DecodeAddress(sourceAddress);
 
-            if (sourceAddress == interopAddress)
+            if (sourceAddress == interopAddress || sourceDecoded == coldStorage)
             {
-                logger.Warning("self send tx found, ignoring: " + tx.Hash);
+                logger.Warning("self send tx or cold storage transfer found, ignoring: " + tx.Hash);
                 // self send, probably consolidation tx, ignore
                 return emptyTx;
             }
