@@ -91,7 +91,14 @@ namespace Phantasma.Spook.Interop
 
                         foreach (var block in allInteropBlocks)
                         {
-                            ProcessBlock(block, result);
+                            try
+                            {
+                                ProcessBlock(block, result);
+                            }
+                            catch (Exception e)
+                            {
+                                Logger.Debug($"Block {block.Hash} was not processed correctly: " + e);
+                            }
                         }
 
                         initialStart = false;
