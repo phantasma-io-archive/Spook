@@ -158,9 +158,16 @@ namespace Phantasma.Spook.Interop
                                     continue;
                                 }
 
-                                Logger.Debug($"NeoInterop: Update() resync block {blockId} now.");
-                                var interopBlock = GetInteropBlock(blockId);
-                                ProcessBlock(interopBlock, result);
+                                try
+                                {
+                                    Logger.Debug($"NeoInterop: Update() resync block {blockId} now.");
+                                    var interopBlock = GetInteropBlock(blockId);
+                                    ProcessBlock(interopBlock, result);
+                                }
+                                catch (Exception e)
+                                {
+                                    Logger.Error($"NeoInterop: Update() resync block {blockId} failed: " + e);
+                                }
                                 _resyncBlockIds.RemoveAt(i);
                             }
                         }
