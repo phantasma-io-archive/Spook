@@ -74,72 +74,72 @@ namespace Phantasma.Spook.Interop
             lock (String.Intern("PendingSetCurrentHeight_" + "neo"))
             {
                 var result = new List<PendingSwap>();
-
-                var _interopBlockHeight = BigInteger.Parse(OracleReader.GetCurrentHeight("neo", "neo"));
-
-                // initial start, we have to verify all processed swaps
-                if (initialStart)
-                {
-                    Logger.Debug($"Read all neo blocks now.");
-                    // TODO check if quick sync nodes are configured, if so use quick sync
-                    // we need to find a better solution for that though
-                    var allInteropBlocks = OracleReader.ReadAllBlocks("neo", "neo");
-
-                    Logger.Debug($"Found {allInteropBlocks.Count} blocks");
-
-                    foreach (var block in allInteropBlocks)
-                    {
-                        ProcessBlock(block, result);
-                    }
-
-                    initialStart = false;
-
-                    Logger.Debug($"QuickSync: " + quickSync);
-                    // quick sync is only done once after startup
-                    if (quickSync)
-                    {
-                        // if quick sync is active, we can use a specific plugin installed on the nodes (EventTracker)
-                        try
-                        {
-                            var blockIds = neoAPI.GetSwapBlocks("ed07cffad18f1308db51920d99a2af60ac66a7b3", LocalAddress, _interopBlockHeight.ToString());
-                            Logger.Debug($"Found {blockIds.Count} blocks to process ");
-                            List<InteropBlock> blockList = new List<InteropBlock>();
-                            foreach (var entry in blockIds)
-                            {
-                                //logger.Debug($"read block {entry.Value}");
-                                var url = DomainExtensions.GetOracleBlockURL("neo", "neo", PBigInteger.Parse(entry.Value.ToString()));
-                                blockList.Add(OracleReader.Read<InteropBlock>(DateTime.Now, url));
-                            }
-
-                            // get blocks and order them for processing
-                            var blocksToProcess = blockList.Where(x => blockIds.ContainsKey(x.Hash.ToString()))
-                                    .Select(x => new { block = x, id = blockIds[x.Hash.ToString()] })
-                                    .OrderBy(x => x.id);
-
-                            Logger.Debug($"blocks to process: {blocksToProcess.Count()}");
-
-                            foreach (var entry in blocksToProcess.OrderBy(x => x.id))
-                            {
-                                Logger.Debug($"process block {entry.id}");
-                                ProcessBlock(entry.block, result);
-                                OracleReader.SetCurrentHeight("neo", "neo", _interopBlockHeight.ToString());
-                                _interopBlockHeight = BigInteger.Parse(entry.id.ToString());
-                            }
-
-                        }
-                        catch (Exception e)
-                        {
-                            Logger.Error("Inital start failed: " + e.ToString());
-                        }
-
-                    }
-
-                    // return after the initial start to be able to process all swaps that happend in the mean time.
-                    return result;
-                }
-
                 try
                 {
+
+                    var _interopBlockHeight = BigInteger.Parse(OracleReader.GetCurrentHeight("neo", "neo"));
+
+                    // initial start, we have to verify all processed swaps
+                    if (initialStart)
+                    {
+                        Logger.Debug($"Read all neo blocks now.");
+                        // TODO check if quick sync nodes are configured, if so use quick sync
+                        // we need to find a better solution for that though
+                        var allInteropBlocks = OracleReader.ReadAllBlocks("neo", "neo");
+
+                        Logger.Debug($"Found {allInteropBlocks.Count} blocks");
+
+                        foreach (var block in allInteropBlocks)
+                        {
+                            ProcessBlock(block, result);
+                        }
+
+                        initialStart = false;
+
+                        Logger.Debug($"QuickSync: " + quickSync);
+                        // quick sync is only done once after startup
+                        if (quickSync)
+                        {
+                            // if quick sync is active, we can use a specific plugin installed on the nodes (EventTracker)
+                            try
+                            {
+                                var blockIds = neoAPI.GetSwapBlocks("ed07cffad18f1308db51920d99a2af60ac66a7b3", LocalAddress, _interopBlockHeight.ToString());
+                                Logger.Debug($"Found {blockIds.Count} blocks to process ");
+                                List<InteropBlock> blockList = new List<InteropBlock>();
+                                foreach (var entry in blockIds)
+                                {
+                                    //logger.Debug($"read block {entry.Value}");
+                                    var url = DomainExtensions.GetOracleBlockURL("neo", "neo", PBigInteger.Parse(entry.Value.ToString()));
+                                    blockList.Add(OracleReader.Read<InteropBlock>(DateTime.Now, url));
+                                }
+
+                                // get blocks and order them for processing
+                                var blocksToProcess = blockList.Where(x => blockIds.ContainsKey(x.Hash.ToString()))
+                                        .Select(x => new { block = x, id = blockIds[x.Hash.ToString()] })
+                                        .OrderBy(x => x.id);
+
+                                Logger.Debug($"blocks to process: {blocksToProcess.Count()}");
+
+                                foreach (var entry in blocksToProcess.OrderBy(x => x.id))
+                                {
+                                    Logger.Debug($"process block {entry.id}");
+                                    ProcessBlock(entry.block, result);
+                                    OracleReader.SetCurrentHeight("neo", "neo", _interopBlockHeight.ToString());
+                                    _interopBlockHeight = BigInteger.Parse(entry.id.ToString());
+                                }
+
+                            }
+                            catch (Exception e)
+                            {
+                                Logger.Error("Inital start failed: " + e.ToString());
+                            }
+
+                        }
+
+                        // return after the initial start to be able to process all swaps that happend in the mean time.
+                        return result;
+                    }
+
                     var blockIterator = new BlockIterator(neoAPI);
                     var blockDifference = blockIterator.currentBlock - _interopBlockHeight;
                     var batchCount = (blockDifference > 8) ? 8 : blockDifference; //TODO make it a constant, should be no more than 8
