@@ -290,7 +290,7 @@ namespace Phantasma.Spook.Interop
                     Logger.Message("Available swap addresses:");
                     foreach (var x in SwapAddresses)
                     {
-                        Logger.Message("platform: " + x.Key + " address: " + x.Value);
+                        Logger.Message("platform: " + x.Key + " address: " + string.Join(", ", x.Value));
                     }
                 }
 
