@@ -337,6 +337,7 @@ namespace Phantasma.Spook
         public List<FeeUrl> EthFeeURLs { get; }
         public string CryptoCompareAPIKey { get; }
         public string Swaps { get; }
+        public string SwapColdStorageNeo { get; }
         public string PhantasmaInteropHeight { get; } = "0";
         public string NeoInteropHeight { get; } = "4261049";
         public string EthInteropHeight { get; }
@@ -369,6 +370,7 @@ namespace Phantasma.Spook
             this.EthGasLimit = settings.GetUInt("eth.gas.limit", section.GetUInt32("eth.gas.limit"));
             this.CryptoCompareAPIKey = settings.GetString("crypto.compare.key", section.GetString("crypto.compare.key"));
             this.Swaps = settings.GetString("swaps.platforms", section.GetString("swaps.platforms"));
+            this.SwapColdStorageNeo = settings.GetString("swaps.coldStorage.neo", section.GetString("swaps.coldStorage.neo"));
             this.PhantasmaInteropHeight = settings.GetString("phantasma.interop.height", section.GetString("phantasma.interop.height"));
             this.NeoInteropHeight = settings.GetString("neo.interop.height", section.GetString("neo.interop.height"));
             this.EthInteropHeight = settings.GetString("eth.interop.height", section.GetString("eth.interop.height"));

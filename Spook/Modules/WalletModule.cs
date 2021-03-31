@@ -21,6 +21,7 @@ using Phantasma.Domain;
 using Phantasma.VM;
 using Phantasma.Blockchain.Contracts;
 using Newtonsoft.Json;
+using System.Globalization;
 
 namespace Phantasma.Spook.Modules
 {
@@ -264,7 +265,7 @@ namespace Phantasma.Spook.Modules
         }
 
 
-        private static void DoChecks(NexusAPI api)
+        internal static void DoChecks(NexusAPI api)
         {
             if (Keys == null)
             {
@@ -289,16 +290,8 @@ namespace Phantasma.Spook.Modules
             var tempAmount = decimal.Parse(args[2]);
             var tokenSymbol = args[3];
 
-            TokenResult tokenInfo;
-            try
-            {
-                var result = api.GetToken(tokenSymbol);
-                tokenInfo = (TokenResult)result;
-            }
-            catch (Exception e)
-            {
-                throw new CommandException(e.Message);
-            }
+
+            var tokenInfo = FetchTokenInfo(api, tokenSymbol);
 
             if (!tokenInfo.flags.Contains("Fungible"))
             {
@@ -511,7 +504,7 @@ namespace Phantasma.Spook.Modules
             }
         }
 
-        public static void Airdrop(string[] args, NexusAPI api, BigInteger minFee)
+        public static void Airdrop(string[] args, Nexus nexus, NexusAPI api, BigInteger minFee)
         {
             if (args.Length != 1)
             {
@@ -536,6 +529,9 @@ namespace Phantasma.Spook.Modules
 
             sb.AllowGas(Keys.Address, Address.Null, minFee, expectedLimit);
 
+
+            Dictionary<string, TokenResult> tokens = new Dictionary<string, TokenResult>();
+
             int addressCount = 0;
             foreach (var line in lines)
             {
@@ -550,7 +546,17 @@ namespace Phantasma.Spook.Modules
 
                 var target = Address.FromText(temp[0]);
                 var symbol = temp[1];
-                var amount = BigInteger.Parse(temp[2]);
+                decimal val;
+
+                if (!Decimal.TryParse(temp[2], NumberStyles.Any, new CultureInfo("en-US"), out val) || val <= 0)
+                {
+                    throw new CommandException($"Invalid amount {val} for {target}");
+                }
+
+                var token = tokens.ContainsKey(symbol) ? tokens[symbol] : FetchTokenInfo(api, symbol);
+                tokens[symbol] = token;
+
+                var amount = UnitConversion.ToBigInteger(val, token.decimals);
 
                 sb.TransferTokens(symbol, Keys.Address, target, amount);
             }
@@ -819,6 +825,20 @@ namespace Phantasma.Spook.Modules
             var script = sb.EndScript();
 
             var hash = ExecuteTransaction(api, script, ProofOfWork.Minimal, Keys);
+        }
+
+        private static TokenResult FetchTokenInfo(NexusAPI api, string symbol)
+        {
+            try
+            {
+                var resultStr = api.Execute("getToken", new object[] { symbol, false});
+                var tokenInfo = JsonConvert.DeserializeObject<TokenResult>(resultStr);
+                return tokenInfo;
+            }
+            catch (Exception e)
+            {
+                throw new CommandException(e.Message);
+            }
         }
     }
 }

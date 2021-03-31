@@ -18,6 +18,7 @@ using Phantasma.Spook.Interop;
 using PBigInteger = Phantasma.Numerics.BigInteger;
 using InteropTransfers = System.Collections.Generic.Dictionary<string,
       System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<Phantasma.Domain.InteropTransfer>>>;
+using System.Linq;
 
 namespace Phantasma.Spook.Chains
 {
@@ -83,7 +84,7 @@ namespace Phantasma.Spook.Chains
                     );
         }
 
-        public InteropTransfers ExtractInteropTransfers(Blockchain.Nexus nexus, Logger logger, string swapAddress)
+        public InteropTransfers ExtractInteropTransfers(Blockchain.Nexus nexus, Logger logger, string[] swapAddresses)
         {
             var interopTransfers = new InteropTransfers();
             lock (transactions)
@@ -97,7 +98,8 @@ namespace Phantasma.Spook.Chains
                     var interopAddress = EthereumInterop.ExtractInteropAddress(tx);
                     var transferEvents = txr.DecodeAllEvents<TransferEventDTO>();
                     //var swapEvents = txr.DecodeAllEvents<SwapEventDTO>();
-                    var nodeSwapAddress = EthereumWallet.EncodeAddress(swapAddress);
+                    var nodeSwapAddresses = swapAddresses.Select(x => EthereumWallet.EncodeAddress(x)).ToList();
+                    //var nodeSwapAddresses = EthereumWallet.EncodeAddress(swapAddress);
 
                     if (transferEvents.Count > 0 || tx.Value != null && tx.Value.Value > 0)
                     {
@@ -117,7 +119,7 @@ namespace Phantasma.Spook.Chains
                             var targetAddress = EthereumWallet.EncodeAddress(evt.Event.To);
 
                             // If it's not our address, skip immediatly, don't log it
-                            if (targetAddress != nodeSwapAddress)
+                            if (!nodeSwapAddresses.Contains(targetAddress))
                             {
                                 continue;
                             }
@@ -135,7 +137,7 @@ namespace Phantasma.Spook.Chains
                             var sourceAddress = EthereumWallet.EncodeAddress(evt.Event.From);
                             var amount = PBigInteger.Parse(evt.Event.Value.ToString());
 
-                            logger.Message("nodeSwapAddress: " + nodeSwapAddress);
+                            //logger.Message("nodeSwapAddress: " + nodeSwapAddress);
                             logger.Message("sourceAddress: " + sourceAddress);
                             logger.Message("targetAddress: " + targetAddress);
                             logger.Message("amount: " + amount);
@@ -172,7 +174,7 @@ namespace Phantasma.Spook.Chains
 
                         var targetAddress = EthereumWallet.EncodeAddress(tx.To);
 
-                        if (targetAddress != nodeSwapAddress)
+                        if (!nodeSwapAddresses.Contains(targetAddress ))
                         {
                             continue;
                         }

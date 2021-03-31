@@ -137,7 +137,7 @@ namespace Phantasma.Spook.Interop
     public class TokenSwapper : ITokenSwapper
     {
         public Logger Logger => Spook.Logger;
-        public Dictionary<string, string> SwapAddresses = new Dictionary<string,string>();
+        public Dictionary<string, string[]> SwapAddresses = new Dictionary<string,string[]>();
 
         internal readonly PhantasmaKeys SwapKeys;
         internal readonly OracleReader OracleReader;
@@ -280,15 +280,17 @@ namespace Phantasma.Spook.Interop
                     }
 
                     _swappers["neo"] = new NeoInterop(this, neoAPI, interopBlocks["neo"], Settings.Oracle.NeoQuickSync);
-                    SwapAddresses["neo"] = _swappers["neo"].LocalAddress;
+                    var platformInfo = Nexus.GetPlatformInfo(Nexus.RootStorage, "neo");
+                    SwapAddresses["neo"] = platformInfo.InteropAddresses.Select(x => x.ExternalAddress).ToArray();
 
                     _swappers["ethereum"] = new EthereumInterop(this, ethAPI, interopBlocks["ethereum"], Nexus.GetPlatformTokenHashes("ethereum", Nexus.RootStorage).Select(x => x.ToString().Substring(0, 40)).ToArray(), Settings.Oracle.EthConfirmations);
-                    SwapAddresses["ethereum"] = _swappers["ethereum"].LocalAddress;
+                    platformInfo = Nexus.GetPlatformInfo(Nexus.RootStorage, "ethereum");
+                    SwapAddresses["ethereum"] = platformInfo.InteropAddresses.Select(x => x.ExternalAddress).ToArray();
 
                     Logger.Message("Available swap addresses:");
                     foreach (var x in SwapAddresses)
                     {
-                        Logger.Message("platform: " + x.Key + " address: " + x.Value);
+                        Logger.Message("platform: " + x.Key + " address: " + string.Join(", ", x.Value));
                     }
                 }
 
@@ -435,8 +437,7 @@ namespace Phantasma.Spook.Interop
                     if (string.IsNullOrEmpty(tx))
                     {
                         // no tx was created, so no reason to keep the entry, we can't verify anything anyway.
-                        Logger.Debug("No tx hash set as in progress, removing source: " + sourceHash);
-                        inProgressMap.Remove<Hash>(sourceHash);
+                        Logger.Debug("No tx hash set, swap in progress: " + sourceHash);
                         return Hash.Null;
                     }
                     else

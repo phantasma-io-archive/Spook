@@ -74,72 +74,79 @@ namespace Phantasma.Spook.Interop
             lock (String.Intern("PendingSetCurrentHeight_" + "neo"))
             {
                 var result = new List<PendingSwap>();
-
-                var _interopBlockHeight = BigInteger.Parse(OracleReader.GetCurrentHeight("neo", "neo"));
-
-                // initial start, we have to verify all processed swaps
-                if (initialStart)
-                {
-                    Logger.Debug($"Read all neo blocks now.");
-                    // TODO check if quick sync nodes are configured, if so use quick sync
-                    // we need to find a better solution for that though
-                    var allInteropBlocks = OracleReader.ReadAllBlocks("neo", "neo");
-
-                    Logger.Debug($"Found {allInteropBlocks.Count} blocks");
-
-                    foreach (var block in allInteropBlocks)
-                    {
-                        ProcessBlock(block, result);
-                    }
-
-                    initialStart = false;
-
-                    Logger.Debug($"QuickSync: " + quickSync);
-                    // quick sync is only done once after startup
-                    if (quickSync)
-                    {
-                        // if quick sync is active, we can use a specific plugin installed on the nodes (EventTracker)
-                        try
-                        {
-                            var blockIds = neoAPI.GetSwapBlocks("ed07cffad18f1308db51920d99a2af60ac66a7b3", LocalAddress, _interopBlockHeight.ToString());
-                            Logger.Debug($"Found {blockIds.Count} blocks to process ");
-                            List<InteropBlock> blockList = new List<InteropBlock>();
-                            foreach (var entry in blockIds)
-                            {
-                                //logger.Debug($"read block {entry.Value}");
-                                var url = DomainExtensions.GetOracleBlockURL("neo", "neo", PBigInteger.Parse(entry.Value.ToString()));
-                                blockList.Add(OracleReader.Read<InteropBlock>(DateTime.Now, url));
-                            }
-
-                            // get blocks and order them for processing
-                            var blocksToProcess = blockList.Where(x => blockIds.ContainsKey(x.Hash.ToString()))
-                                    .Select(x => new { block = x, id = blockIds[x.Hash.ToString()] })
-                                    .OrderBy(x => x.id);
-
-                            Logger.Debug($"blocks to process: {blocksToProcess.Count()}");
-
-                            foreach (var entry in blocksToProcess.OrderBy(x => x.id))
-                            {
-                                Logger.Debug($"process block {entry.id}");
-                                ProcessBlock(entry.block, result);
-                                OracleReader.SetCurrentHeight("neo", "neo", _interopBlockHeight.ToString());
-                                _interopBlockHeight = BigInteger.Parse(entry.id.ToString());
-                            }
-
-                        }
-                        catch (Exception e)
-                        {
-                            Logger.Error("Inital start failed: " + e.ToString());
-                        }
-
-                    }
-
-                    // return after the initial start to be able to process all swaps that happend in the mean time.
-                    return result;
-                }
-
                 try
                 {
+
+                    var _interopBlockHeight = BigInteger.Parse(OracleReader.GetCurrentHeight("neo", "neo"));
+
+                    // initial start, we have to verify all processed swaps
+                    if (initialStart)
+                    {
+                        Logger.Debug($"Read all neo blocks now.");
+                        // TODO check if quick sync nodes are configured, if so use quick sync
+                        // we need to find a better solution for that though
+                        var allInteropBlocks = OracleReader.ReadAllBlocks("neo", "neo");
+
+                        Logger.Debug($"Found {allInteropBlocks.Count} blocks");
+
+                        foreach (var block in allInteropBlocks)
+                        {
+                            try
+                            {
+                                ProcessBlock(block, result);
+                            }
+                            catch (Exception e)
+                            {
+                                Logger.Debug($"Block {block.Hash} was not processed correctly: " + e);
+                            }
+                        }
+
+                        initialStart = false;
+
+                        Logger.Debug($"QuickSync: " + quickSync);
+                        // quick sync is only done once after startup
+                        if (quickSync)
+                        {
+                            // if quick sync is active, we can use a specific plugin installed on the nodes (EventTracker)
+                            try
+                            {
+                                var blockIds = neoAPI.GetSwapBlocks("ed07cffad18f1308db51920d99a2af60ac66a7b3", LocalAddress, _interopBlockHeight.ToString());
+                                Logger.Debug($"Found {blockIds.Count} blocks to process ");
+                                List<InteropBlock> blockList = new List<InteropBlock>();
+                                foreach (var entry in blockIds)
+                                {
+                                    //logger.Debug($"read block {entry.Value}");
+                                    var url = DomainExtensions.GetOracleBlockURL("neo", "neo", PBigInteger.Parse(entry.Value.ToString()));
+                                    blockList.Add(OracleReader.Read<InteropBlock>(DateTime.Now, url));
+                                }
+
+                                // get blocks and order them for processing
+                                var blocksToProcess = blockList.Where(x => blockIds.ContainsKey(x.Hash.ToString()))
+                                        .Select(x => new { block = x, id = blockIds[x.Hash.ToString()] })
+                                        .OrderBy(x => x.id);
+
+                                Logger.Debug($"blocks to process: {blocksToProcess.Count()}");
+
+                                foreach (var entry in blocksToProcess.OrderBy(x => x.id))
+                                {
+                                    Logger.Debug($"process block {entry.id}");
+                                    ProcessBlock(entry.block, result);
+                                    OracleReader.SetCurrentHeight("neo", "neo", _interopBlockHeight.ToString());
+                                    _interopBlockHeight = BigInteger.Parse(entry.id.ToString());
+                                }
+
+                            }
+                            catch (Exception e)
+                            {
+                                Logger.Error("Inital start failed: " + e.ToString());
+                            }
+
+                        }
+
+                        // return after the initial start to be able to process all swaps that happend in the mean time.
+                        return result;
+                    }
+
                     var blockIterator = new BlockIterator(neoAPI);
                     var blockDifference = blockIterator.currentBlock - _interopBlockHeight;
                     var batchCount = (blockDifference > 8) ? 8 : blockDifference; //TODO make it a constant, should be no more than 8
@@ -158,9 +165,16 @@ namespace Phantasma.Spook.Interop
                                     continue;
                                 }
 
-                                Logger.Debug($"NeoInterop: Update() resync block {blockId} now.");
-                                var interopBlock = GetInteropBlock(blockId);
-                                ProcessBlock(interopBlock, result);
+                                try
+                                {
+                                    Logger.Debug($"NeoInterop: Update() resync block {blockId} now.");
+                                    var interopBlock = GetInteropBlock(blockId);
+                                    ProcessBlock(interopBlock, result);
+                                }
+                                catch (Exception e)
+                                {
+                                    Logger.Error($"NeoInterop: Update() resync block {blockId} failed: " + e);
+                                }
                                 _resyncBlockIds.RemoveAt(i);
                             }
                         }
@@ -375,7 +389,8 @@ namespace Phantasma.Spook.Interop
             }
         }
 
-        public static Tuple<InteropBlock, InteropTransaction[]> MakeInteropBlock(Logger logger, NeoBlock block, NeoAPI api, string swapAddress)
+        public static Tuple<InteropBlock, InteropTransaction[]> MakeInteropBlock(Logger logger, NeoBlock block,
+                NeoAPI api, string[] swapAddresses, string coldStorage)
         {
             List<Hash> hashes = new List<Hash>();
             //logger.Debug($"Read block {block.Height} with hash {block.Hash}");
@@ -388,7 +403,7 @@ namespace Phantasma.Spook.Interop
                 if (tx.type == TransactionType.InvocationTransaction
                     || tx.type == TransactionType.ContractTransaction)
                 {
-                    var interopTx = MakeInteropTx(logger, tx, api, swapAddress);
+                    var interopTx = MakeInteropTx(logger, tx, api, swapAddresses, coldStorage);
                     if (interopTx.Hash != Hash.Null)
                     {
                         interopTransactions.Add(interopTx);
@@ -405,9 +420,15 @@ namespace Phantasma.Spook.Interop
             return Tuple.Create(iBlock, interopTransactions.ToArray());
         }
 
-        public static InteropTransaction MakeInteropTx(Logger logger, NeoTx tx, NeoAPI api, string swapAddress)
+        public static InteropTransaction MakeInteropTx(Logger logger, NeoTx tx, NeoAPI api, string[] origSwapAddresses,
+                string coldStorage)
         {
             logger.Debug("checking tx: " + tx.Hash);
+            var swapAddresses = new List<Address>();
+            foreach (var addr in origSwapAddresses)
+            {
+                swapAddresses.Add(NeoWallet.EncodeAddress(addr));
+            }
 
             List<InteropTransfer> interopTransfers = new List<InteropTransfer>();
 
@@ -432,11 +453,11 @@ namespace Phantasma.Spook.Interop
 
             var sourceScriptHash = witness.verificationScript.Sha256().RIPEMD160();
             var sourceAddress = NeoWallet.EncodeByteArray(sourceScriptHash);
-            var interopSwapAddress = NeoWallet.EncodeAddress(swapAddress);
+            var sourceDecoded = NeoWallet.DecodeAddress(sourceAddress);
 
-            if (sourceAddress == interopAddress)
+            if (sourceAddress == interopAddress || sourceDecoded == coldStorage)
             {
-                logger.Warning("self send tx found, ignoring: " + tx.Hash);
+                logger.Warning("self send tx or cold storage transfer found, ignoring: " + tx.Hash);
                 // self send, probably consolidation tx, ignore
                 return emptyTx;
             }
@@ -476,11 +497,11 @@ namespace Phantasma.Spook.Interop
                     //logger.Debug("interopSwapAddress: " + interopSwapAddress);
                     //logger.Debug("targetAddress: " + targetAddress);
 
-                    var swpAddress = NeoWallet.EncodeAddress(swapAddress);
+                    //var swpAddress = NeoWallet.EncodeAddress(swapAddress);
                     //logger.Debug("interop swpAddress: " + swpAddress);
                     //logger.Debug("neo swpAddress: " + NeoWallet.DecodeAddress(swpAddress));
                     //if (targetAddress.ToString() == swapAddress)
-                    if (interopSwapAddress == targetAddress)
+                    if (swapAddresses.Contains(targetAddress))
                     {
                         var token = FindSymbolFromAsset(new UInt256(output.assetID).ToString());
                         CryptoCurrencyInfo tokenInfo;
@@ -583,7 +604,7 @@ namespace Phantasma.Spook.Interop
                             //logger.Debug("targetAddress : " + targetAddress);
                             //logger.Debug("interopSwapAddress: " + interopSwapAddress);
                             //logger.Debug("SwapAddress: " + swapAddress);
-                            if (interopSwapAddress == targetAddress)
+                            if (swapAddresses.Contains(targetAddress))
                             {
                                 // found a swap, call getapplicationlog now to get transaction details and verify the tx was actually processed.
                                 ApplicationLog[] appLogs = null;
