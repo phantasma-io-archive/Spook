@@ -480,6 +480,8 @@ namespace Phantasma.Spook
             if (apiProxyURL != null)
             {
                 nexusApi.ProxyURL = apiProxyURL;
+                // TEMP Normal node needs a proxy url set to relay transactions to the BPs
+                nexusApi.Node = _node;
                 Logger.Message($"API will be acting as proxy for {apiProxyURL}");
             }
             else
@@ -526,10 +528,11 @@ namespace Phantasma.Spook
                     throw new Exception("A proxy node must have api cache enabled.");
                 }
 
-                if (Settings.Node.Mode != NodeMode.Proxy)
-                {
-                    throw new Exception($"A {Settings.Node.Mode.ToString().ToLower()} node cannot have a proxy url specified.");
-                }
+                // TEMP commented for now, "Normal" node needs a proxy url to relay transactions to the BPs
+                //if (Settings.Node.Mode != NodeMode.Proxy)
+                //{
+                //    throw new Exception($"A {Settings.Node.Mode.ToString().ToLower()} node cannot have a proxy url specified.");
+                //}
 
                 if (!Settings.Node.HasRpc && !Settings.Node.HasRest)
                 {
