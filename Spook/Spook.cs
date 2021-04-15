@@ -137,6 +137,11 @@ namespace Phantasma.Spook
 
             if (_node != null && Settings.App.NodeStart)
             {
+                if (_peerCaps.HasFlag(PeerCaps.Sync) && Settings.Node.NodeHost.Contains("localhost"))
+                {
+                    Logger.Warning($"This node host external endpoint is not properly configured and it won't appear on other nodes GetPeers API call.");
+                }
+
                 _node.StartInThread();
             }
 
