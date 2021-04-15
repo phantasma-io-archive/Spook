@@ -7,6 +7,8 @@ using Phantasma.VM.Utils;
 using Phantasma.Core.Types;
 using Phantasma.Blockchain;
 using Phantasma.Storage.Context;
+using System.Text;
+using System.IO;
 
 namespace Phantasma.Spook.Command
 {
@@ -79,6 +81,56 @@ namespace Phantasma.Spook.Command
                 }
 
                 _cli.TokenSwapper.ResyncBlockOnChain(platform, blockId);
+            }
+        }
+
+        [ConsoleCommand("export inprogress", Category = "Oracle", Description = "resync certain blocks on a psecific platform")]
+        protected void onExportInProgress(string[] args)
+        {
+            if (args.Length != 1)
+            {
+                Console.WriteLine("File path needs to be given!");
+            }
+
+            var filePath = args[0];
+
+            var InProgressTag = ".inprogress";
+            var storage = new KeyStoreStorage(_cli.Nexus.CreateKeyStoreAdapter("swaps"));
+            var inProgressMap = new StorageMap(InProgressTag, storage);
+            var csv = new StringBuilder();
+
+            inProgressMap.Visit<Hash, string>((key, value) => {
+                var line = $"{key.ToString()},{value}";
+                csv.AppendLine(line);
+            });
+
+            System.IO.File.WriteAllText(filePath, csv.ToString());
+        }
+
+        [ConsoleCommand("import inprogress", Category = "Oracle", Description = "resync certain blocks on a psecific platform")]
+        protected void onImportInProgress(string[] args)
+        {
+            if (args.Length != 1)
+            {
+                Console.WriteLine("File path needs to be given!");
+            }
+            var InProgressTag = ".inprogress";
+            var storage = new KeyStoreStorage(_cli.Nexus.CreateKeyStoreAdapter("swaps"));
+            var inProgressMap = new StorageMap(InProgressTag, storage);
+
+            var filePath = args[0];
+            using(var reader = new StreamReader(filePath))
+            {
+                while (!reader.EndOfStream)
+                {
+                    var line = reader.ReadLine();
+                    var values = line.Split(',');
+                    var hash = Hash.FromString(values[0]);
+                    if (!inProgressMap.ContainsKey<Hash>(hash))
+                    {
+                        inProgressMap.Set<Hash,string>(Hash.FromString(values[0]), values[1]);
+                    }
+                }
             }
         }
 
