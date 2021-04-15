@@ -175,6 +175,17 @@ namespace Phantasma.Spook.Interop
             interopBlocks["neo"] = BigInteger.Parse(Settings.Oracle.NeoInteropHeight);
             interopBlocks["ethereum"] = BigInteger.Parse(Settings.Oracle.EthInteropHeight);
 
+            var inProgressMap = new StorageMap(InProgressTag, this.Storage);
+
+            Console.WriteLine($"inProgress count: {inProgressMap.Count()}");
+            inProgressMap.Visit<Hash, string>((key, value) =>
+            {
+                if (!string.IsNullOrEmpty(value))
+                    Console.WriteLine($"inProgress: {key} - {value}");
+            });
+
+
+
             _supportedPlatforms.Add(DomainSettings.PlatformName);
             foreach (var entry in supportedPlatforms)
             {
