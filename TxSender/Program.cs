@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Phantasma.Cryptography;
 using Phantasma.Domain;
@@ -50,7 +50,8 @@ namespace TxSender
             string targetStr = Console.ReadLine();
             var targetAddress = Address.FromText(targetStr);
 
-            var symbol = "SOUL";
+            Console.Write("Token symbol? ");
+            string symbol = Console.ReadLine();
 
             Console.Write($"Amount of {symbol} to transfer from {orgAddress} to {targetStr}?: ");
 
@@ -61,7 +62,22 @@ namespace TxSender
                 return null;
             }
 
-            bool needUnstake = FetchAnswer("Is unstaking necessary for this operation");
+            bool needAction = false;
+            string action = null;
+            int decimals;
+
+            switch (symbol)
+            {
+                case "SOUL": action = "unstaking"; decimals = DomainSettings.StakingTokenDecimals; break;
+                case "KCAL": action = "claiming"; decimals = DomainSettings.FuelTokenDecimals; break;
+                default:
+                    throw new Exception("Unsupported token: " + symbol);
+            }
+
+            if (action != null)
+            {
+                needAction = FetchAnswer($"Is {action} necessary for this operation");
+            }
 
             //S3dGUjVwYa31AxdthdpsuyBKgX1N65FnoQhUkSgYbUEdRp4
             //S3dDUXfgGosu3urCrNSUAZKx7xsLTrxDzcn4CDYQEogUbao
@@ -75,7 +91,7 @@ namespace TxSender
             //transfers["P2K61GfcUbfWqCur644iLECZ62NAefuKgBkB6FrpMsqYHv6"] = UnitConversion.ToBigInteger(50000, DomainSettings.StakingTokenDecimals);
             //transfers["P2KFNXEbt65rQiWqogAzqkVGMqFirPmqPw8mQyxvRKsrXV8"] = UnitConversion.ToBigInteger(128866, DomainSettings.StakingTokenDecimals);
 
-            transfers[targetAddress.Text] = UnitConversion.ToBigInteger(amount, DomainSettings.StakingTokenDecimals);
+            transfers[targetAddress.Text] = UnitConversion.ToBigInteger(amount, decimals);
 
 
             var sb = new ScriptBuilder().AllowGas(signerKeys.Address, Address.Null, 100000, 99999);
@@ -83,14 +99,24 @@ namespace TxSender
             foreach (var entry in transfers)
             {
                 var target = Address.FromText(entry.Key);
-                if (needUnstake)
+
+                if (needAction)
                 {
-                    sb.CallContract(NativeContractKind.Stake, nameof(StakeContract.Unstake), orgAddress, entry.Value);
+                    switch (symbol)
+                    {
+                        case "SOUL":
+                            sb.CallContract(NativeContractKind.Stake, nameof(StakeContract.Unstake), orgAddress, entry.Value);
+                            break;
+
+                        case "KCAL":
+                            sb.CallContract(NativeContractKind.Stake, nameof(StakeContract.Claim), targetAddress, orgAddress);
+                            break;
+                    }
                 }
 
                 if (target != orgAddress)
                 {
-                    sb.TransferTokens(DomainSettings.StakingTokenSymbol, orgAddress, target, entry.Value);
+                    sb.TransferTokens(symbol, orgAddress, target, entry.Value);
                 }
             }
 
