@@ -745,7 +745,7 @@ namespace Phantasma.Spook.Modules
                 }
                 else
                 {
-                    sb.CallInterop("Nexus.CreateToken", Keys.Address, contractScript, abiBytes);
+                    sb.CallInterop("Nexus.CreateToken", contractScript, abiBytes);
                 }
 
                 contractName = symbol;
