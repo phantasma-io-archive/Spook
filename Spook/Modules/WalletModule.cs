@@ -654,6 +654,9 @@ namespace Phantasma.Spook.Modules
 
             var sb = new ScriptBuilder();
 
+            var nexusVersion = ((NexusResult)api.GetNexus()).protocol;
+
+
             bool isToken = ValidationUtils.IsValidTicker(contractName);
             var availableFlags = Enum.GetValues(typeof(TokenFlags)).Cast<TokenFlags>().ToArray();
 
@@ -736,7 +739,14 @@ namespace Phantasma.Spook.Modules
                     }
                 }
 
-                sb.CallInterop("Nexus.CreateToken", Keys.Address, symbol, name, maxSupply, decimals, flags, contractScript, abiBytes);
+                if (nexusVersion < 6)
+                {
+                    sb.CallInterop("Nexus.CreateToken", Keys.Address, symbol, name, maxSupply, decimals, flags, contractScript, abiBytes);
+                }
+                else
+                {
+                    sb.CallInterop("Nexus.CreateToken", contractScript, abiBytes);
+                }
 
                 contractName = symbol;
             }

@@ -46,7 +46,7 @@ namespace Phantasma.Spook
 
     public class Spook : Runnable
     {
-        public static readonly int Protocol = 5;
+        public static readonly int Protocol = 6;
 
         public readonly string LogPath;
         public readonly SpookSettings Settings;
