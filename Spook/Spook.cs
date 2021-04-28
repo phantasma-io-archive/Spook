@@ -46,8 +46,6 @@ namespace Phantasma.Spook
 
     public class Spook : Runnable
     {
-        public static readonly int Protocol = 6;
-
         public readonly string LogPath;
         public readonly SpookSettings Settings;
 
@@ -324,7 +322,7 @@ namespace Phantasma.Spook
 
                         var genesisTimestamp = Settings.Node.GenesisTimestamp;
 
-                        if (!_nexus.CreateGenesisBlock(_nodeKeys, genesisTimestamp, Phantasma.Spook.Spook.Protocol))
+                        if (!_nexus.CreateGenesisBlock(_nodeKeys, genesisTimestamp, DomainSettings.LatestKnownProtocol))
                         {
                             throw new ChainException("Genesis block failure");
                         }
