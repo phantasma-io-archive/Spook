@@ -6,6 +6,7 @@ using Phantasma.Blockchain;
 using Phantasma.Core.Log;
 using Phantasma.Numerics;
 using Phantasma.Spook.Command;
+using Phantasma.Domain;
 
 namespace Phantasma.Spook.Modules
 {
@@ -30,7 +31,7 @@ namespace Phantasma.Spook.Modules
             var oldGenesisBlock = oldNexus.GetGenesisBlock();
 
             var newNexus = new Nexus(oldNexus.Name);
-            newNexus.CreateGenesisBlock(owner, oldGenesisBlock.Timestamp, Phantasma.Spook.Spook.Protocol);
+            newNexus.CreateGenesisBlock(owner, oldGenesisBlock.Timestamp, DomainSettings.LatestKnownProtocol);
 
             var oldRootChain = oldNexus.RootChain;
             var newRootChain = newNexus.RootChain;
