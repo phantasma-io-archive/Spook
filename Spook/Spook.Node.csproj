@@ -32,6 +32,7 @@
 
     <PackageReference Include="Nethereum.Accounts" Version="3.8.0" />
     <PackageReference Include="Nethereum.Contracts" Version="3.8.0" />
+    <PackageReference Include="Nethereum.StandardNonFungibleTokenERC721" Version="3.8.0" />
     <PackageReference Include="Nethereum.StandardTokenEIP20" Version="3.8.0" />
     <PackageReference Include="Nethereum.Util" Version="3.8.0" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
