@@ -603,7 +603,7 @@ namespace Phantasma.Spook.Modules
 
             if (method == null)
             {
-                throw new Exception("ABI is missing: " + method.name);
+                throw new Exception("ABI is missing: " + methodName);
             }
 
             var vm = new GasMachine(script, (uint)method.offset);
@@ -613,7 +613,7 @@ namespace Phantasma.Spook.Modules
                 return vm.Stack.Pop();
             }
 
-            throw new Exception("Script execution failed for: " + method.name);
+            throw new Exception("Script execution failed for: " + methodName);
         }
 
         private static void DeployOrUpgrade(string[] args, NexusAPI api, BigInteger minFee, bool isUpgrade)
@@ -717,12 +717,31 @@ namespace Phantasma.Spook.Modules
                     throw new CommandException("token contract is missing required 'name' property");
                 }
 
-                var symbol = contractName;
+                string symbol = null; 
+                
+                
+                if (nexusVersion < 6)
+                {
+                    symbol = contractName;
+                }
+                else
+                {
+                    if (abi.HasMethod("getSymbol"))
+                    {
+                        symbol = ExecuteScript(contractScript, abi, "getSymbol").AsString();
+                    }
+
+                    if (string.IsNullOrEmpty(symbol))
+                    {
+                        throw new CommandException("token contract 'symbol' property is either missing or returning an empty value");
+                    }
+                }
+
                 var name = ExecuteScript(contractScript, abi, "getName").AsString();
 
                 if (string.IsNullOrEmpty(name))
                 {
-                    throw new CommandException("token contract 'name' property is returning an empty value");
+                    throw new CommandException("token contract 'name' property is either missing or returning an empty value");
                 }
 
                 BigInteger maxSupply = abi.HasMethod("getMaxSupply") ? ExecuteScript(contractScript, abi, "getMaxSupply").AsNumber() : 0;
@@ -745,7 +764,7 @@ namespace Phantasma.Spook.Modules
                 }
                 else
                 {
-                    sb.CallInterop("Nexus.CreateToken", contractScript, abiBytes);
+                    sb.CallInterop("Nexus.CreateToken", Keys.Address, contractScript, abiBytes);
                 }
 
                 contractName = symbol;
