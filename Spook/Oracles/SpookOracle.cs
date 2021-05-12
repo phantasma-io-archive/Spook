@@ -202,6 +202,9 @@ namespace Phantasma.Spook.Oracles
         protected override decimal PullPrice(Timestamp time, string symbol)
         {
             var apiKey = _cli.CryptoCompareAPIKey;
+            var pricerCGEnabled = _cli.Settings.Oracle.PricerCoinGeckoEnabled;
+            var pricerSupportedTokens = _cli.Settings.Oracle.PricerSupportedTokens.ToArray();
+
             if (!string.IsNullOrEmpty(apiKey))
             {
                 if (symbol == DomainSettings.FuelTokenSymbol)
@@ -210,7 +213,8 @@ namespace Phantasma.Spook.Oracles
                     return result / 5;
                 }
 
-                var price = CryptoCompareUtils.GetCoinRate(symbol, DomainSettings.FiatTokenSymbol, apiKey);
+                //var price = CryptoCompareUtils.GetCoinRate(symbol, DomainSettings.FiatTokenSymbol, apiKey);
+                var price = Pricer.GetCoinRate(symbol, DomainSettings.FiatTokenSymbol, apiKey, pricerCGEnabled, pricerSupportedTokens);
                 return price;
             }
 

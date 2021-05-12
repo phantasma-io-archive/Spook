@@ -1,12 +1,28 @@
-﻿using LunarLabs.Parser.JSON;
+﻿using System;
+using LunarLabs.Parser.JSON;
 
 namespace Phantasma.Spook.Oracles
 {
     public static class CryptoCompareUtils
     {
-        public static decimal GetCoinRate(string baseSymbol, string quoteSymbol, string APIKey)
+        public static decimal GetCoinRate(string baseSymbol, string quoteSymbol, string APIKey, PricerSupportedToken[] supportedTokens)
         {
-            var url = $"https://min-api.cryptocompare.com/data/price?fsym={baseSymbol}&tsyms={quoteSymbol}&api_key={APIKey}";
+
+            string baseticker = "";
+
+            foreach (var token in supportedTokens)
+            {
+                if (token.ticker == baseSymbol)
+                {
+                    baseticker = token.cryptocompareId;
+                    break;
+                }
+            }
+
+            if (String.IsNullOrEmpty(baseticker))
+                return 0;
+
+            var url = $"https://min-api.cryptocompare.com/data/price?fsym={baseticker}&tsyms={quoteSymbol}&api_key={APIKey}";
 
             string json;
 

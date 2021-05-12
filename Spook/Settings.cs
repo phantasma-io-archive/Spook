@@ -329,12 +329,36 @@ namespace Phantasma.Spook
         }
     }
 
+    public class PricerSupportedToken
+    {
+        public PricerSupportedToken(string ticker, string coingeckoId, string cryptocompareId)
+        {
+            this.ticker = ticker;
+            this.coingeckoId = coingeckoId;
+            this.cryptocompareId = cryptocompareId;
+        }
+
+        public string ticker { get; set; }
+        public string coingeckoId { get; set; }
+        public string cryptocompareId { get; set; }
+
+        public static PricerSupportedToken FromNode(DataNode node)
+        {
+            var ticker = node.GetString("ticker");
+            var coingeckoId = node.GetString("coingeckoid");
+            var cryptocompareId = node.GetString("cryptocompareid");
+            return new PricerSupportedToken(ticker, coingeckoId, cryptocompareId);
+        }
+    }
+
     public class OracleSettings
     {
         public string NeoscanUrl { get; }
         public List<string> NeoRpcNodes { get; }
         public List<string> EthRpcNodes { get; }
         public List<FeeUrl> EthFeeURLs { get; }
+        public bool PricerCoinGeckoEnabled { get; } = true;
+        public List<PricerSupportedToken> PricerSupportedTokens { get; }
         public string CryptoCompareAPIKey { get; }
         public string Swaps { get; }
         public string SwapColdStorageNeo { get; }
@@ -346,7 +370,7 @@ namespace Phantasma.Spook
         public uint EthConfirmations { get; }
         public uint EthGasLimit { get; }
         public bool NeoQuickSync { get; } = true;
-
+        
         public OracleSettings(Arguments settings, DataNode section)
         {
             this.NeoscanUrl = settings.GetString("neoscan.api", section.GetString("neoscan.api"));
@@ -365,7 +389,10 @@ namespace Phantasma.Spook
                         .ToList();
 
             this.EthFeeURLs = section.GetNode("eth.fee.urls").Children.Select(x => FeeUrl.FromNode(x)).ToList();
-            
+
+            this.PricerCoinGeckoEnabled = settings.GetBool("pricer.coingecko.enabled", section.GetBool("pricer.coingecko.enabled"));
+            this.PricerSupportedTokens = section.GetNode("pricer.supportedtokens").Children.Select(x => PricerSupportedToken.FromNode(x)).ToList();
+
             this.EthConfirmations = settings.GetUInt("eth.block.confirmations", section.GetUInt32("eth.block.confirmations"));
             this.EthGasLimit = settings.GetUInt("eth.gas.limit", section.GetUInt32("eth.gas.limit"));
             this.CryptoCompareAPIKey = settings.GetString("crypto.compare.key", section.GetString("crypto.compare.key"));
