@@ -34,13 +34,13 @@ namespace Phantasma.Spook.Command
             Console.WriteLine($"---------------------------");
 
             if(pricerCGEnabled) { 
-                var cgprice = CoinGeckoUtils.GetCoinRate(args[0], DomainSettings.FiatTokenSymbol, pricerSupportedTokens);
+                var cgprice = CoinGeckoUtils.GetCoinRate(args[0], DomainSettings.FiatTokenSymbol, pricerSupportedTokens, Spook.Logger);
                 Console.WriteLine($"Oracle Coingecko Price for token {args[0]} is: {cgprice}");
             }
-            var price = CryptoCompareUtils.GetCoinRate(args[0], DomainSettings.FiatTokenSymbol, apiKey, pricerSupportedTokens);
+            var price = CryptoCompareUtils.GetCoinRate(args[0], DomainSettings.FiatTokenSymbol, apiKey, pricerSupportedTokens, Spook.Logger);
             Console.WriteLine($"Oracle CryptoCompare Price for token {args[0]} is: {price}");
 
-            var gprice = Pricer.GetCoinRate(args[0], DomainSettings.FiatTokenSymbol, apiKey, pricerCGEnabled, pricerSupportedTokens);
+            var gprice = Pricer.GetCoinRate(args[0], DomainSettings.FiatTokenSymbol, apiKey, pricerCGEnabled, pricerSupportedTokens, Spook.Logger);
             Console.WriteLine($"Oracle Global Price for token {args[0]} is: {gprice}");
         }
 

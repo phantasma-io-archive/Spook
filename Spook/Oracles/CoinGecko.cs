@@ -2,11 +2,13 @@
 using LunarLabs.Parser.JSON;
 using System.Net.Http;
 
+using Logger = Phantasma.Core.Log.Logger;
+
 namespace Phantasma.Spook.Oracles
 {
     public static class CoinGeckoUtils
     {
-        public static decimal GetCoinRate(string baseSymbol, string quoteSymbol, PricerSupportedToken[] supportedTokens)
+        public static decimal GetCoinRate(string baseSymbol, string quoteSymbol, PricerSupportedToken[] supportedTokens, Logger logger)
         {
 
             string json;
@@ -26,13 +28,16 @@ namespace Phantasma.Spook.Oracles
 
             var url = $"https://api.coingecko.com/api/v3/simple/price?ids={baseticker}&vs_currencies={quoteSymbol}";
 
+
             try
             {
-
-                using (var httpClient = new HttpClient())
+                using (var wc = new System.Net.WebClient())
                 {
-                    json = httpClient.GetStringAsync(new Uri(url)).Result;
+                    json = wc.DownloadString(url);
                 }
+
+                if (String.IsNullOrEmpty(json))
+                    return 0;
 
                 var root = JSONReader.ReadFromString(json);
 
@@ -48,10 +53,11 @@ namespace Phantasma.Spook.Oracles
                     var price = root.GetDecimal(quoteSymbol.ToLower());
                     return price;
                 }
-
             }
             catch (Exception ex)
             {
+                var errorMsg = ex.Message;
+                logger.Error($"Error while trying to query {baseticker} price from CoinGecko API: {errorMsg}");
                 return 0;
             }
         }

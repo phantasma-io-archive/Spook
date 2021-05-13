@@ -214,7 +214,7 @@ namespace Phantasma.Spook.Oracles
                 }
 
                 //var price = CryptoCompareUtils.GetCoinRate(symbol, DomainSettings.FiatTokenSymbol, apiKey);
-                var price = Pricer.GetCoinRate(symbol, DomainSettings.FiatTokenSymbol, apiKey, pricerCGEnabled, pricerSupportedTokens);
+                var price = Pricer.GetCoinRate(symbol, DomainSettings.FiatTokenSymbol, apiKey, pricerCGEnabled, pricerSupportedTokens, logger);
                 return price;
             }
 

@@ -1,11 +1,14 @@
 ﻿using System;
 using LunarLabs.Parser.JSON;
 
+using Logger = Phantasma.Core.Log.Logger;
+
 namespace Phantasma.Spook.Oracles
 {
     public static class CryptoCompareUtils
     {
-        public static decimal GetCoinRate(string baseSymbol, string quoteSymbol, string APIKey, PricerSupportedToken[] supportedTokens)
+        
+        public static decimal GetCoinRate(string baseSymbol, string quoteSymbol, string APIKey, PricerSupportedToken[] supportedTokens, Logger logger)
         {
 
             string baseticker = "";
@@ -33,14 +36,18 @@ namespace Phantasma.Spook.Oracles
                     json = wc.DownloadString(url);
                 }
 
-                var root = JSONReader.ReadFromString(json);
+                if (String.IsNullOrEmpty(json))
+                    return 0;
 
+                var root = JSONReader.ReadFromString(json);
                 var price = root.GetDecimal(quoteSymbol);
 
                 return price;
             }
-            catch
+            catch (Exception ex)
             {
+                var errorMsg = ex.Message;
+                logger.Error($"Error while trying to query {baseticker} price from CryptoCompare API: {errorMsg}");
                 return 0;
             }
         }
