@@ -7,6 +7,8 @@ using Phantasma.VM.Utils;
 using Phantasma.Core.Types;
 using Phantasma.Blockchain;
 using Phantasma.Storage.Context;
+using Phantasma.Spook.Oracles;
+using Phantasma.Domain;
 using System.Text;
 using System.IO;
 
@@ -14,6 +16,34 @@ namespace Phantasma.Spook.Command
 {
     partial class CommandDispatcher
     {
+
+        [ConsoleCommand("oracle get price", Category = "Oracle", Description = "Get current token price from an oracle")]
+        protected void OnOracleGetPriceCommand(string[] args)
+        {
+            var apiKey = _cli.CryptoCompareAPIKey;
+            var pricerCGEnabled = _cli.Settings.Oracle.PricerCoinGeckoEnabled;
+            var pricerSupportedTokens = _cli.Settings.Oracle.PricerSupportedTokens.ToArray();
+
+
+            Console.WriteLine($"Supported tokens:");
+            Console.WriteLine($"---------------------------");
+
+            foreach (var token in pricerSupportedTokens) {
+                Console.WriteLine($"{token.ticker}: {token.cryptocompareId}: {token.coingeckoId}");
+            }
+            Console.WriteLine($"---------------------------");
+
+            if(pricerCGEnabled) { 
+                var cgprice = CoinGeckoUtils.GetCoinRate(args[0], DomainSettings.FiatTokenSymbol, pricerSupportedTokens, Spook.Logger);
+                Console.WriteLine($"Oracle Coingecko Price for token {args[0]} is: {cgprice}");
+            }
+            var price = CryptoCompareUtils.GetCoinRate(args[0], DomainSettings.FiatTokenSymbol, apiKey, pricerSupportedTokens, Spook.Logger);
+            Console.WriteLine($"Oracle CryptoCompare Price for token {args[0]} is: {price}");
+
+            var gprice = Pricer.GetCoinRate(args[0], DomainSettings.FiatTokenSymbol, apiKey, pricerCGEnabled, pricerSupportedTokens, Spook.Logger);
+            Console.WriteLine($"Oracle Global Price for token {args[0]} is: {gprice}");
+        }
+
         [ConsoleCommand("oracle read", Category = "Oracle", Description="Read a transaction from an oracle")]
         protected void OnOracleReadCommand(string[] args)
         {
