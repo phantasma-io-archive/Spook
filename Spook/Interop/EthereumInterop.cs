@@ -409,6 +409,19 @@ namespace Phantasma.Spook.Interop
             return Tuple.Create(interopBlock, interopTransactions.ToArray());
         }
 
+        private static string FetchTokenURI(string contractAddress, BigInteger tokenID)
+        {
+            throw new NotImplementedException();
+            /*
+            Nethereum.Web3.Web3 web3 = null; ????
+            abi = ??
+            var contract = web3.Eth.GetContract(abi, contractAddress);
+            var function = contract.GetFunction("tokenURI");
+            object[] args = new object[] { tokenID };
+            var result = function.CallAsync<string>(args);
+            return result;*/
+        }
+
         private static Dictionary<string, List<InteropTransfer>> GetInteropTransfers(Nexus nexus, Logger logger,
                 TransactionReceipt txr, EthAPI api, string[] swapAddresses)
         {
@@ -435,11 +448,53 @@ namespace Phantasma.Spook.Interop
             }
 
             var nodeSwapAddresses = swapAddresses.Select(x => EthereumWallet.EncodeAddress(x));
-            var events = txr.DecodeAllEvents<TransferEventDTO>();
             var interopAddress = ExtractInteropAddress(tx);
 
+            // ERC721 (NFT)
+            // TODO currently this code block is mostly copypaste from ERC20 block, later make a single method for both...
+            var erc721_events = txr.DecodeAllEvents<Nethereum.StandardNonFungibleTokenERC721.ContractDefinition.TransferEventDTOBase>();
+            foreach (var evt in erc721_events)
+            {
+                var asset = EthUtils.FindSymbolFromAsset(nexus, evt.Log.Address);
+                if (asset == null)
+                {
+                    logger.Warning($"Asset [{evt.Log.Address}] not supported");
+                    continue;
+                }
+
+                var targetAddress = EthereumWallet.EncodeAddress(evt.Event.To);
+                var sourceAddress = EthereumWallet.EncodeAddress(evt.Event.From);
+                var tokenID = PBigInteger.Parse(evt.Event.TokenId.ToString());
+
+                if (nodeSwapAddresses.Contains(targetAddress))
+                {
+                    if (!interopTransfers.ContainsKey(evt.Log.TransactionHash))
+                    {
+                        interopTransfers.Add(evt.Log.TransactionHash, new List<InteropTransfer>());
+                    }
+
+                    string tokenURI = FetchTokenURI(evt.Log.Address, evt.Event.TokenId);
+
+                    interopTransfers[evt.Log.TransactionHash].Add
+                    (
+                        new InteropTransfer
+                        (
+                            EthereumWallet.EthereumPlatform,
+                            sourceAddress,
+                            DomainSettings.PlatformName,
+                            targetAddress,
+                            interopAddress,
+                            asset,
+                            tokenID,
+                            System.Text.Encoding.UTF8.GetBytes(tokenURI)
+                        )
+                    );
+                }
+            }
+
             // ERC20
-            foreach(var evt in events)
+            var erc20_events = txr.DecodeAllEvents<TransferEventDTO>();
+            foreach (var evt in erc20_events)
             {
                 var asset = EthUtils.FindSymbolFromAsset(nexus, evt.Log.Address);
                 if (asset == null)
