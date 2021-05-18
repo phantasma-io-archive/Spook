@@ -369,16 +369,22 @@ namespace Phantasma.Spook
             else
             {
                 var genesisAddress = _nexus.GetGenesisAddress(_nexus.RootStorage);
-                if (Settings.Node.IsValidator && _nodeKeys.Address != genesisAddress && !Settings.Node.Readonly)
+                if (Settings.Node.IsValidator && !Settings.Node.Readonly)
                 {
-                    throw new Exception("Specified node key does not match genesis address " + genesisAddress.Text);
+                    if (!_nexus.IsKnownValidator(_nodeKeys.Address))
+                    {
+                        throw new Exception("Specified node key does not match a known validator address");
+                    }
+                    else
+                    if (_nodeKeys.Address != genesisAddress)
+                    {
+                        Logger.Warning("Specified node key does not match genesis address " + genesisAddress.Text);
+                    }
                 }
-                else
-                {
-                    var chainHeight = _nexus.RootChain.Height;
-                    var genesisHash = _nexus.GetGenesisHash(_nexus.RootStorage);
-                    Logger.Success($"Loaded {Nexus.Name} Nexus with genesis {genesisHash } with {chainHeight} blocks");
-                }
+
+                var chainHeight = _nexus.RootChain.Height;
+                var genesisHash = _nexus.GetGenesisHash(_nexus.RootStorage);
+                Logger.Success($"Loaded {Nexus.Name} Nexus with genesis {genesisHash } with {chainHeight} blocks");
             }
 
             return node;
