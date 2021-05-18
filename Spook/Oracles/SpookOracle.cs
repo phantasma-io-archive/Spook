@@ -254,27 +254,41 @@ namespace Phantasma.Spook.Oracles
 
                     var coldStorage = _cli.Settings.Oracle.SwapColdStorageNeo;
                     interopTuple = NeoInterop.MakeInteropBlock(logger, neoBlock, _cli.NeoAPI,
-                            _cli.TokenSwapper.SwapAddresses[platformName], coldStorage);
+                            _cli.TokenSwapper.SwapAddresses[SwapPlatformChain.Neo], coldStorage);
                     break;
+
                 case EthereumWallet.EthereumPlatform:
 
-                    //BlockWithTransactions ethBlock;
-                    //if (height == 0)
-                    //{
-                    //    //TODO MakeInteropBlock for a full block not done yet
-                    //    //ethBlock = _cli.EthAPI.GetBlock(hash.ToString());
-                    //    //interopTuple = EthereumInterop.MakeInteropBlock(logger, ethBlock, _cli.EthAPI, _cli.TokenSwapper.swapAddress);
-                    //}
-                    //else
-                    //{
-                    //}
-                    
-                    var hashes = _cli.Nexus.GetPlatformTokenHashes(EthereumWallet.EthereumPlatform, _cli.Nexus.RootStorage)
-                        .Select(x => x.ToString().Substring(0, 40)).ToArray();
-                
-                    interopTuple = EthereumInterop.MakeInteropBlock(_cli.Nexus, logger, _cli.EthAPI, height,
-                            hashes, _cli.Settings.Oracle.EthConfirmations, _cli.TokenSwapper.SwapAddresses[platformName]);
-                    break;
+                    {
+                        //BlockWithTransactions ethBlock;
+                        //if (height == 0)
+                        //{
+                        //    //TODO MakeInteropBlock for a full block not done yet
+                        //    //ethBlock = _cli.EthAPI.GetBlock(hash.ToString());
+                        //    //interopTuple = EthereumInterop.MakeInteropBlock(logger, ethBlock, _cli.EthAPI, _cli.TokenSwapper.swapAddress);
+                        //}
+                        //else
+                        //{
+                        //}
+
+                        var hashes = _cli.Nexus.GetPlatformTokenHashes(EthereumWallet.EthereumPlatform, _cli.Nexus.RootStorage)
+                            .Select(x => x.ToString().Substring(0, 40)).ToArray();
+
+                        interopTuple = EthereumInterop.MakeInteropBlock(_cli.Nexus, logger, _cli.EthAPI, height,
+                                hashes, _cli.Settings.Oracle.EthConfirmations, _cli.TokenSwapper.SwapAddresses[SwapPlatformChain.Ethereum]);
+                        break;
+                    }
+
+                case BSCWallet.BSCPlatform:
+                    {
+                        var hashes = _cli.Nexus.GetPlatformTokenHashes(EthereumWallet.EthereumPlatform, _cli.Nexus.RootStorage)
+                            .Select(x => x.ToString().Substring(0, 40)).ToArray();
+
+                        interopTuple = EthereumInterop.MakeInteropBlock(_cli.Nexus, logger, _cli.EthAPI, height,
+                                hashes, _cli.Settings.Oracle.EthConfirmations, _cli.TokenSwapper.SwapAddresses[SwapPlatformChain.BSC]);
+                        break;
+                    }
+
 
                 default:
                     throw new OracleException("Uknown oracle platform: " + platformName);
@@ -323,12 +337,22 @@ namespace Phantasma.Spook.Oracles
                     UInt256 uHash = new UInt256(LuxUtils.ReverseHex(hash.ToString()).HexToBytes());
                     neoTx = _cli.NeoAPI.GetTransaction(uHash);
                     var coldStorage = _cli.Settings.Oracle.SwapColdStorageNeo;
-                    tx = NeoInterop.MakeInteropTx(logger, neoTx, _cli.NeoAPI, _cli.TokenSwapper.SwapAddresses[platformName], coldStorage);
+                    tx = NeoInterop.MakeInteropTx(logger, neoTx, _cli.NeoAPI, _cli.TokenSwapper.SwapAddresses[SwapPlatformChain.Neo], coldStorage);
                     break;
+
                 case EthereumWallet.EthereumPlatform:
-                    var txRcpt = _cli.EthAPI.GetTransactionReceipt(hash.ToString());
-                    tx = EthereumInterop.MakeInteropTx(_cli.Nexus, logger, txRcpt, _cli.EthAPI, _cli.TokenSwapper.SwapAddresses[platformName]);
-                    break;
+                    {
+                        var txRcpt = _cli.EthAPI.GetTransactionReceipt(hash.ToString());
+                        tx = EthereumInterop.MakeInteropTx(_cli.Nexus, logger, txRcpt, _cli.EthAPI, _cli.TokenSwapper.SwapAddresses[SwapPlatformChain.Ethereum]);
+                        break;
+                    }
+
+                case BSCWallet.BSCPlatform:
+                    {
+                        var txRcpt = _cli.BSCAPI.GetTransactionReceipt(hash.ToString());
+                        tx = EthereumInterop.MakeInteropTx(_cli.Nexus, logger, txRcpt, _cli.BSCAPI, _cli.TokenSwapper.SwapAddresses[SwapPlatformChain.BSC]);
+                        break;
+                    }
 
                 default:
                     throw new OracleException("Uknown oracle platform: " + platformName);

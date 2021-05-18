@@ -137,7 +137,7 @@ namespace Phantasma.Spook.Interop
     public class TokenSwapper : ITokenSwapper
     {
         public Logger Logger => Spook.Logger;
-        public Dictionary<string, string[]> SwapAddresses = new Dictionary<string,string[]>();
+        public Dictionary<SwapPlatformChain, string[]> SwapAddresses = new Dictionary<SwapPlatformChain, string[]>();
 
         internal readonly PhantasmaKeys SwapKeys;
         internal readonly OracleReader OracleReader;
@@ -149,16 +149,16 @@ namespace Phantasma.Spook.Interop
 
         internal readonly StorageContext Storage;
         private readonly BigInteger MinimumFee;
+
         private readonly NeoAPI neoAPI;
         private readonly EthAPI ethAPI;
+        private readonly EthAPI bscAPI;
 
-        private readonly Dictionary<string, BigInteger> interopBlocks;
+        private readonly Dictionary<SwapPlatformChain, BigInteger> _interopBlocks;
         private PlatformInfo[] platforms;
-        private Dictionary<string, ChainSwapper> _swappers = new Dictionary<string, ChainSwapper>();
+        private Dictionary<SwapPlatformChain, ChainSwapper> _swappers = new Dictionary<SwapPlatformChain, ChainSwapper>();
 
-        private HashSet<string> _supportedPlatforms = new HashSet<string>();
-
-        public TokenSwapper(Spook node, PhantasmaKeys swapKey, NeoAPI neoAPI, EthAPI ethAPI, BigInteger minFee, string[] supportedPlatforms)
+        public TokenSwapper(Spook node, PhantasmaKeys swapKey, NeoAPI neoAPI, EthAPI ethAPI, EthAPI bscAPI, BigInteger minFee)
         {
             this.Node = node;
             this.SwapKeys = swapKey;
@@ -166,14 +166,16 @@ namespace Phantasma.Spook.Interop
             this.MinimumFee = minFee;
             this.neoAPI = neoAPI;
             this.ethAPI = ethAPI;
+            this.bscAPI = bscAPI;
 
             this.Storage = new KeyStoreStorage(Nexus.CreateKeyStoreAdapter("swaps"));
 
-            this.interopBlocks = new Dictionary<string, BigInteger>();
+            this._interopBlocks = new Dictionary<SwapPlatformChain, BigInteger>();
 
-            interopBlocks[DomainSettings.PlatformName] = BigInteger.Parse(Settings.Oracle.PhantasmaInteropHeight);
-            interopBlocks["neo"] = BigInteger.Parse(Settings.Oracle.NeoInteropHeight);
-            interopBlocks["ethereum"] = BigInteger.Parse(Settings.Oracle.EthInteropHeight);
+            foreach (var platform in Settings.Oracle.SwapPlatforms)
+            {
+                _interopBlocks[platform.Chain] = platform.InteropHeight;
+            }
 
             var inProgressMap = new StorageMap(InProgressTag, this.Storage);
 
@@ -183,24 +185,6 @@ namespace Phantasma.Spook.Interop
                 if (!string.IsNullOrEmpty(value))
                     Console.WriteLine($"inProgress: {key} - {value}");
             });
-
-
-
-            _supportedPlatforms.Add(DomainSettings.PlatformName);
-            foreach (var entry in supportedPlatforms)
-            {
-                if (_supportedPlatforms.Contains(entry))
-                {
-                    throw new SwapException($"Duplicated swap platform {entry}, check config");
-                }
-
-                if (!interopBlocks.ContainsKey(entry))
-                {
-                    throw new SwapException($"Unknown swap platform {entry}, check config");
-                }
-
-                _supportedPlatforms.Add(entry);
-            }
         }
 
         internal IToken FindTokenByHash(string asset, string platform)
@@ -237,7 +221,7 @@ namespace Phantasma.Spook.Interop
 
         private Dictionary<Hash, PendingSwap> _pendingSwaps = new Dictionary<Hash, PendingSwap>();
         private Dictionary<Address, List<Hash>> _swapAddressMap = new Dictionary<Address, List<Hash>>();
-        private Dictionary<string, Task<IEnumerable<PendingSwap>>> taskDict = new Dictionary<string, Task<IEnumerable<PendingSwap>>>();
+        private Dictionary<SwapPlatformChain, Task<IEnumerable<PendingSwap>>> _taskMap = new Dictionary<SwapPlatformChain, Task<IEnumerable<PendingSwap>>>();
 
         private void MapSwap(Address address, Hash hash)
         {
@@ -256,7 +240,7 @@ namespace Phantasma.Spook.Interop
             list.Add(hash);
         }
 
-        public void ResyncBlockOnChain(string platform, string blockId)
+        public void ResyncBlockOnChain(SwapPlatformChain platform, string blockId)
         {
             if (_swappers.TryGetValue(platform, out ChainSwapper finder) 
                     && System.Numerics.BigInteger.TryParse(blockId, out var bigIntBlock))
@@ -268,6 +252,21 @@ namespace Phantasma.Spook.Interop
             {
                 Logger.Error($"TokenSwapper: Resync block {blockId} on platform {platform} failed.");
             }
+        }
+
+        private void InitSwapper(SwapPlatformChain platform, ChainSwapper swapper)
+        {
+            _swappers[platform] = swapper;
+            
+            var platformName = platform.ToString().ToLower();
+            var platformInfo = Nexus.GetPlatformInfo(Nexus.RootStorage, platformName);
+
+            SwapAddresses[platform] = platformInfo.InteropAddresses.Select(x => x.ExternalAddress).ToArray();
+        }
+
+        public bool IsPlatformSupported(SwapPlatformChain chain)
+        {
+            return Settings.Oracle.SwapPlatforms.Any(x => x.Chain == chain && x.Enabled);
         }
 
         public void Update()
@@ -290,13 +289,20 @@ namespace Phantasma.Spook.Interop
                         return;
                     }
 
-                    _swappers["neo"] = new NeoInterop(this, neoAPI, interopBlocks["neo"], Settings.Oracle.NeoQuickSync);
-                    var platformInfo = Nexus.GetPlatformInfo(Nexus.RootStorage, "neo");
-                    SwapAddresses["neo"] = platformInfo.InteropAddresses.Select(x => x.ExternalAddress).ToArray();
+                    if (IsPlatformSupported(SwapPlatformChain.Neo))
+                    {
+                        InitSwapper(SwapPlatformChain.Neo, new NeoInterop(this, neoAPI, _interopBlocks[SwapPlatformChain.Neo], Settings.Oracle.NeoQuickSync));
+                    }
 
-                    _swappers["ethereum"] = new EthereumInterop(this, ethAPI, interopBlocks["ethereum"], Nexus.GetPlatformTokenHashes("ethereum", Nexus.RootStorage).Select(x => x.ToString().Substring(0, 40)).ToArray(), Settings.Oracle.EthConfirmations);
-                    platformInfo = Nexus.GetPlatformInfo(Nexus.RootStorage, "ethereum");
-                    SwapAddresses["ethereum"] = platformInfo.InteropAddresses.Select(x => x.ExternalAddress).ToArray();
+                    if (IsPlatformSupported(SwapPlatformChain.Ethereum))
+                    {
+                        InitSwapper(SwapPlatformChain.Ethereum, new EthereumInterop(this, ethAPI, _interopBlocks[SwapPlatformChain.Ethereum], Nexus.GetPlatformTokenHashes("ethereum", Nexus.RootStorage).Select(x => x.ToString().Substring(0, 40)).ToArray(), Settings.Oracle.EthConfirmations));
+                    }
+
+                    if (IsPlatformSupported(SwapPlatformChain.BSC))
+                    {
+                        InitSwapper(SwapPlatformChain.BSC, new EthereumInterop(this, bscAPI, _interopBlocks[SwapPlatformChain.BSC], Nexus.GetPlatformTokenHashes("bsc", Nexus.RootStorage).Select(x => x.ToString().Substring(0, 40)).ToArray(), Settings.Oracle.EthConfirmations));
+                    }
 
                     Logger.Message("Available swap addresses:");
                     foreach (var x in SwapAddresses)
@@ -311,11 +317,14 @@ namespace Phantasma.Spook.Interop
                 }
                 else
                 {
-                    if (taskDict.Count == 0)
+                    if (_taskMap.Count == 0)
                     {
-                        foreach (var platform in this.platforms)
+                        foreach (var platform in Settings.Oracle.SwapPlatforms)
                         {
-                            taskDict.Add(platform.Name, null);
+                            if (platform.Chain != SwapPlatformChain.Phantasma) // TODO is this IF necessary?
+                            {
+                                _taskMap.Add(platform.Chain, null);
+                            }
                         }
                     }
                 }
@@ -344,15 +353,16 @@ namespace Phantasma.Spook.Interop
 
                 ProcessCompletedTasks();
 
-                for (var j = 0; j < taskDict.Count; j++)
+                for (var j = 0; j < _taskMap.Count; j++)
                 {
-                    var platform = taskDict.Keys.ElementAt(j);
-                    var task = taskDict[platform];
+                    var platform = _taskMap.Keys.ElementAt(j);
+
+                    var task = _taskMap[platform];
                     if (task == null)
                     {
                         if (_swappers.TryGetValue(platform, out ChainSwapper finder))
                         {
-                            taskDict[platform] = new Task<IEnumerable<PendingSwap>>(() =>
+                            _taskMap[platform] = new Task<IEnumerable<PendingSwap>>(() =>
                                                     {
                                                         return finder.Update();
                                                     });
@@ -361,7 +371,7 @@ namespace Phantasma.Spook.Interop
                 }
 
                 // start new tasks
-                foreach (var entry in taskDict)
+                foreach (var entry in _taskMap)
                 {
                     var task = entry.Value;
                     if (task != null && task.Status.Equals(TaskStatus.Created))
@@ -388,17 +398,17 @@ namespace Phantasma.Spook.Interop
 
         private void ProcessCompletedTasks()
         {
-            for (var i = 0; i < taskDict.Count; i++)
+            for (var i = 0; i < _taskMap.Count; i++)
             {
-                var platform = taskDict.Keys.ElementAt(i);
-                var task = taskDict[platform];
+                var platform = _taskMap.Keys.ElementAt(i);
+                var task = _taskMap[platform];
                 if (task != null)
                 {
                     if (task.IsCompleted)
                     {
                         if (task.IsFaulted)
                         {
-                            taskDict[platform] = null;
+                            _taskMap[platform] = null;
                             continue;
                         }
                         else
@@ -418,18 +428,24 @@ namespace Phantasma.Spook.Interop
                                 MapSwap(swap.source, swap.hash);
                                 MapSwap(swap.destination, swap.hash);
                             }
-                            taskDict[platform] = null;
+                            _taskMap[platform] = null;
                         }
                     }
                 }
             }
         }
 
-        public Hash SettleSwap(string sourcePlatform, string destPlatform, Hash sourceHash)
+        public Hash SettleSwap(string sourcePlatform, string destPlatformName, Hash sourceHash)
         {
             Logger.Debug("settleSwap called " + sourceHash);
-            Logger.Debug("dest platform " + destPlatform);
+            Logger.Debug("dest platform " + destPlatformName);
             Logger.Debug("src platform " + sourcePlatform);
+
+            SwapPlatformChain destPlatform;
+            if (!Enum.TryParse<SwapPlatformChain>(destPlatformName, true, out destPlatform))
+            {
+                throw new SwapException("Invalid destination platform: " + destPlatformName);
+            }
 
             // This code is preventing us from doing double swaps.
             // We must ensure that states (settled, pending, inprogress) are locked
@@ -478,14 +494,14 @@ namespace Phantasma.Spook.Interop
                 }
             }
 
-            if (destPlatform == PhantasmaWallet.PhantasmaPlatform)
+            if (destPlatformName == PhantasmaWallet.PhantasmaPlatform)
             {
                 return SettleTransaction(sourcePlatform, sourcePlatform, sourceHash);
             }
 
             if (sourcePlatform != PhantasmaWallet.PhantasmaPlatform)
             {
-                throw new SwapException("Invalid source platform");
+                throw new SwapException("Invalid source platform: " + sourcePlatform);
             }
 
             return SettleSwapToExternal(sourceHash, destPlatform);
@@ -621,7 +637,7 @@ namespace Phantasma.Spook.Interop
         }
 
 
-        private Hash SettleSwapToExternal(Hash sourceHash, string destPlatform)
+        private Hash SettleSwapToExternal(Hash sourceHash, SwapPlatformChain destPlatform)
         {
             var swap = OracleReader.ReadTransaction(DomainSettings.PlatformName, DomainSettings.RootChainName, sourceHash);
             var transfers = swap.Transfers.Where(x => x.destinationAddress.IsInterop).ToArray();
@@ -735,7 +751,20 @@ namespace Phantasma.Spook.Interop
 
         public bool SupportsSwap(string sourcePlatform, string destPlatform)
         {
-            return (sourcePlatform != destPlatform) && _supportedPlatforms.Contains(sourcePlatform) && _supportedPlatforms.Contains(destPlatform) && (sourcePlatform == DomainSettings.PlatformName || destPlatform == DomainSettings.PlatformName);
+            SwapPlatformChain source;
+            SwapPlatformChain dest;
+
+            if (!Enum.TryParse<SwapPlatformChain>(sourcePlatform, true, out source))
+            {
+                return false;
+            }
+
+            if (!Enum.TryParse<SwapPlatformChain>(destPlatform, true, out dest))
+            {
+                return false;
+            }
+
+            return (sourcePlatform != destPlatform) && IsPlatformSupported(source) && IsPlatformSupported(dest) && (sourcePlatform == DomainSettings.PlatformName || destPlatform == DomainSettings.PlatformName);
         }
     }
 }

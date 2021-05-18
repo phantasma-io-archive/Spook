@@ -10,6 +10,7 @@ using Nethereum.RPC.Eth.DTOs;
 using Nethereum.StandardTokenEIP20.ContractDefinition;
 using Phantasma.Core.Log;
 using Phantasma.Domain;
+using System.Linq;
 
 namespace Phantasma.Spook.Chains
 {
@@ -52,7 +53,8 @@ namespace Phantasma.Spook.Chains
     public class EthAPI
     {
         public string LastError { get; protected set; }
-        private List<string> urls = new List<string>();
+        private string[] RPC_URLs;
+
         private List<Web3> web3Clients = new List<Web3>();
         private Blockchain.Nexus Nexus;
         private SpookSettings _settings;
@@ -62,20 +64,30 @@ namespace Phantasma.Spook.Chains
 
         private readonly Logger Logger;
 
-        public EthAPI(Blockchain.Nexus nexus, SpookSettings settings, Account account, Logger logger)
+        public readonly SwapPlatformChain Chain;
+
+        public EthAPI(SwapPlatformChain chain, Blockchain.Nexus nexus, SpookSettings settings, Account account, Logger logger)
         {
+            this.Chain = chain;
             this.Nexus = nexus;
             this._settings = settings;
             this._account = account;
             this.Logger = logger;
 
-            this.urls = this._settings.Oracle.EthRpcNodes;
-            if (this.urls.Count == 0)
+            var ethereumPlatform = this._settings.Oracle.SwapPlatforms.FirstOrDefault(x => x.Chain == chain);
+
+            if (ethereumPlatform == null)
             {
-                throw new ArgumentNullException("Need at least one RPC node");
+                throw new SwapException($"Config file is missing swap settings for {chain} platform");
             }
 
-            foreach (var url in this.urls)
+            this.RPC_URLs = ethereumPlatform.RpcNodes;
+            if (this.RPC_URLs.Length == 0)
+            {
+                throw new ArgumentNullException($"Need at least one RPC node in config for '{chain}' swap platform");
+            }
+
+            foreach (var url in this.RPC_URLs)
             {
                 web3Clients.Add(new Web3(_account, url));
             }
@@ -225,8 +237,8 @@ namespace Phantasma.Spook.Chains
 
         public string GetURL()
         {
-            int idx = rnd.Next(urls.Count);
-            return "http://" + urls[idx];
+            int idx = rnd.Next(RPC_URLs.Length);
+            return "http://" + RPC_URLs[idx];
         }
     }
 }

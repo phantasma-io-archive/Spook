@@ -40,12 +40,7 @@
 
     "Oracle": {
       "neoscan.api": "mankinighost.phantasma.io:4000",
-      "neo.rpc.nodes": [ "http://mankinighost.phantasma.io:30333" ],
       "neo.rpc.specific.nodes": [],
-      "eth.rpc.nodes": [
-        "https://ropsten.infura.io/v3/34a7c02e7f2f458181180c72c4de58a6",
-        "https://ropsten.infura.io/v3/780d5a9837de47649be4c10836b5dbcf"
-      ],
 
       "eth.fee.urls": [
         {
@@ -65,15 +60,34 @@
         }
       ],
 
+	  "swap.platforms": [
+			{
+				"name": "phantasma",
+				"enabled": true,
+				"height": "0",
+			},
+			{
+				"name": "neo",
+				"enabled": true,
+				"height": "4261049",
+				"wif":"",
+				"rpc.nodes": [ "http://mankinighost.phantasma.io:30333" ],
+			},
+			{
+				"name": "ethereum",
+				"enabled": true,
+				"height": "327",
+				"wif":"",
+				"rpc.nodes": [
+					"https://ropsten.infura.io/v3/34a7c02e7f2f458181180c72c4de58a6",
+					"https://ropsten.infura.io/v3/780d5a9837de47649be4c10836b5dbcf"
+				  ],
+			}
+		],		  
+
       "eth.block.confirmations": 12,
       "eth.gas.limit": 100000,
       "crypto.compare.key": "",
-      "swaps.platforms": "neo,ethereum",
-      "phantasma.interop.height": "0",
-      "neo.interop.height": "4261049",
-      "eth.interop.height": "327",
-      "neo.wif": "",
-      "eth.wif": ""
     },
 
     "Simulator": {
