@@ -162,6 +162,10 @@ namespace Phantasma.Spook
             {
                 _tokenSwapper = StartTokenSwapper();
             }
+            else
+            {
+                Logger.Warning("No swap platforms found in config, token swapper won't be available");
+            }
         }
 
         public TokenSwapper StartTokenSwapper()
