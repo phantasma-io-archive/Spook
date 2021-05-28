@@ -401,7 +401,7 @@ namespace Phantasma.Spook
             
             this.SwapColdStorageNeo = settings.GetString("swaps.coldStorage.neo", section.GetString("swaps.coldStorage.neo"));
 
-            var swapNode = section.GetNode("swaps.platforms");
+            var swapNode = section.GetNode("swap.platforms");
             if (swapNode == null)
             {
                 this.SwapPlatforms = new PlatformSettings[0];
