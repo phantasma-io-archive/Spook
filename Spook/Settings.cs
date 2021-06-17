@@ -396,8 +396,8 @@ namespace Phantasma.Spook
             this.EthConfirmations = settings.GetUInt("eth.block.confirmations", section.GetUInt32("eth.block.confirmations"));
             this.EthGasLimit = settings.GetUInt("eth.gas.limit", section.GetUInt32("eth.gas.limit"));
             this.CryptoCompareAPIKey = settings.GetString("crypto.compare.key", section.GetString("crypto.compare.key"));
-            this.Swaps = settings.GetString("swaps.platforms", section.GetString("swaps.platforms"));
-            this.SwapColdStorageNeo = settings.GetString("swaps.coldStorage.neo", section.GetString("swaps.coldStorage.neo"));
+            this.Swaps = settings.GetString("swap.platforms", section.GetString("swap.platforms"));
+            this.SwapColdStorageNeo = settings.GetString("swap.coldStorage.neo", section.GetString("swap.coldStorage.neo"));
             this.PhantasmaInteropHeight = settings.GetString("phantasma.interop.height", section.GetString("phantasma.interop.height"));
             this.NeoInteropHeight = settings.GetString("neo.interop.height", section.GetString("neo.interop.height"));
             this.EthInteropHeight = settings.GetString("eth.interop.height", section.GetString("eth.interop.height"));

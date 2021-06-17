@@ -22,6 +22,7 @@ using Phantasma.Domain;
 using Phantasma.VM;
 using Phantasma.Blockchain.Contracts;
 using System.Globalization;
+using Newtonsoft.Json;
 
 namespace Phantasma.Spook.Modules
 {
@@ -654,8 +655,8 @@ namespace Phantasma.Spook.Modules
 
             var sb = new ScriptBuilder();
 
-            var nexusDetails = JsonSerializer.Deserialize<NexusResult>(api.Execute("getNexus", new object[]{false}));
-            var nexusVersion = nexusDetails.governance.Where(x => x.value == "nexus.protocol.version").FirstOrDefault().value;
+            var nexusDetails = System.Text.Json.JsonSerializer.Deserialize<NexusResult>(api.Execute("getNexus", new object[]{false}));
+            var nexusVersion = Int32.Parse(nexusDetails.governance.Where(x => x.value == "nexus.protocol.version").FirstOrDefault().value);
 
             bool isToken = ValidationUtils.IsValidTicker(contractName);
             var availableFlags = Enum.GetValues(typeof(TokenFlags)).Cast<TokenFlags>().ToArray();
@@ -669,7 +670,7 @@ namespace Phantasma.Spook.Modules
                 {
                     var symbol = contractName;
                     var resultStr = api.Execute("getToken", new[] { symbol, "false" });
-                    dynamic apiResult = JsonSerializer.Deserialize<TokenResult>(resultStr);
+                    dynamic apiResult = System.Text.Json.JsonSerializer.Deserialize<TokenResult>(resultStr);
 
                     if (apiResult is TokenResult)
                     {
