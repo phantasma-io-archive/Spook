@@ -655,8 +655,30 @@ namespace Phantasma.Spook.Modules
 
             var sb = new ScriptBuilder();
 
-            var nexusDetails = System.Text.Json.JsonSerializer.Deserialize<NexusResult>(api.Execute("getNexus", new object[]{false}));
-            var nexusVersion = Int32.Parse(nexusDetails.governance.Where(x => x.value == "nexus.protocol.version").FirstOrDefault().value);
+            int nexusVersion = 0;
+
+            try
+            {
+                var nexusDetails = api.Execute("getNexus", new object[] { false });
+                var root = LunarLabs.Parser.JSON.JSONReader.ReadFromString(nexusDetails);
+
+                var governance = root["governance"];
+
+                var entry = governance.Children.Where(x => x.GetNode("name").Value == "nexus.protocol.version").FirstOrDefault();
+                entry = entry.GetNodeByIndex(1);
+
+                nexusVersion = Int32.Parse(entry.Value);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                nexusVersion = -1;
+            }
+
+            if (nexusVersion <= 1)
+            {
+                throw new CommandException("Failed to obtain nexus version via API");
+            }
 
             bool isToken = ValidationUtils.IsValidTicker(contractName);
             var availableFlags = Enum.GetValues(typeof(TokenFlags)).Cast<TokenFlags>().ToArray();
