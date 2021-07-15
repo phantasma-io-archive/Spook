@@ -100,8 +100,10 @@ namespace StorageDump
         public string symbol;
         public string amount;
         public string balance;
+        public string chainBalance;
 
-        public TransferEntry(BigInteger height, string hash, uint timestamp, EventKind kind, string address, string symbol, string amount, string balance)
+        public TransferEntry(BigInteger height, string hash, uint timestamp, EventKind kind, string address,
+                string symbol, string amount, string balance, string chainBalance)
         {
             this.height = height;
             this.hash = hash;
@@ -111,6 +113,7 @@ namespace StorageDump
             this.symbol = symbol;
             this.amount = amount;
             this.balance = balance;
+            this.chainBalance = chainBalance;
         }
     }
 
@@ -452,8 +455,10 @@ namespace StorageDump
                             var key = addr + data.Symbol;
 
                             BigInteger balance = balances.ContainsKey(key) ? balances[key] : 0;
+                            var chainBalance = chain.GetTokenBalance(chain.Storage, data.Symbol, Address.FromText(addr));
+                            Console.WriteLine(chainBalance);
 
-                            transferList.Add(new TransferEntry(block.Height, tx.Hash.ToString(), block.Timestamp.Value, evt.Kind, addr, data.Symbol, amount.ToString(), balance.ToString()));
+                            transferList.Add(new TransferEntry(block.Height, tx.Hash.ToString(), block.Timestamp.Value, evt.Kind, addr, data.Symbol, amount.ToString(), balance.ToString(), chainBalance.ToString()));
 
                             balance += amount;
                             balances[key] = balance;
@@ -475,7 +480,7 @@ namespace StorageDump
             File.WriteAllLines($"{outputFolder}/{chain.Name}_events.csv", lines);
 
             lines.Clear();
-            transferList.ForEach(x => lines.Add($"{x.height},{x.hash},{x.timestamp},{x.kind},{x.address},{x.symbol},{x.amount},{x.balance}"));
+            transferList.ForEach(x => lines.Add($"{x.height},{x.hash},{x.timestamp},{x.kind},{x.address},{x.symbol},{x.amount},{x.balance},{x.chainBalance}"));
             File.WriteAllLines($"{outputFolder}/{chain.Name}_transfers.csv", lines);
 
             var addressList = addresses.Values.ToList();
@@ -500,7 +505,7 @@ namespace StorageDump
         {
             var logger = new ConsoleLogger(LogLevel.Maximum);
 
-            var path = @"C:\Code\Spook\Spook\bin\Debug\netcoreapp3.1\Storage\";
+            var path = @"Storage/";
 
             this.nexus = new Nexus("mainnet", logger,
                 (name) => new DBPartition(logger, path + name));

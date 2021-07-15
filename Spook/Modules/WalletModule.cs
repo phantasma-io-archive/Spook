@@ -4,6 +4,7 @@ using System.IO;
 using System.Reflection;
 using System.Linq;
 using System.Collections.Generic;
+using System.Text.Json;
 
 using Phantasma.VM.Utils;
 using Phantasma.Cryptography;
@@ -20,8 +21,8 @@ using Phantasma.Blockchain;
 using Phantasma.Domain;
 using Phantasma.VM;
 using Phantasma.Blockchain.Contracts;
-using Newtonsoft.Json;
 using System.Globalization;
+using Newtonsoft.Json;
 
 namespace Phantasma.Spook.Modules
 {
@@ -654,8 +655,30 @@ namespace Phantasma.Spook.Modules
 
             var sb = new ScriptBuilder();
 
-            var nexusVersion = ((NexusResult)api.GetNexus()).protocol;
+            int nexusVersion = 0;
 
+            try
+            {
+                var nexusDetails = api.Execute("getNexus", new object[] { false });
+                var root = LunarLabs.Parser.JSON.JSONReader.ReadFromString(nexusDetails);
+
+                var governance = root["governance"];
+
+                var entry = governance.Children.Where(x => x.GetNode("name").Value == "nexus.protocol.version").FirstOrDefault();
+                entry = entry.GetNodeByIndex(1);
+
+                nexusVersion = Int32.Parse(entry.Value);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                nexusVersion = -1;
+            }
+
+            if (nexusVersion <= 1)
+            {
+                throw new CommandException("Failed to obtain nexus version via API");
+            }
 
             bool isToken = ValidationUtils.IsValidTicker(contractName);
             var availableFlags = Enum.GetValues(typeof(TokenFlags)).Cast<TokenFlags>().ToArray();
@@ -669,7 +692,7 @@ namespace Phantasma.Spook.Modules
                 {
                     var symbol = contractName;
                     var resultStr = api.Execute("getToken", new[] { symbol, "false" });
-                    dynamic apiResult = JsonConvert.DeserializeObject<TokenResult>(resultStr);
+                    dynamic apiResult = System.Text.Json.JsonSerializer.Deserialize<TokenResult>(resultStr);
 
                     if (apiResult is TokenResult)
                     {
