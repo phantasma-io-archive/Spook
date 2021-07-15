@@ -290,7 +290,7 @@ namespace Phantasma.Spook
             }
             else
             {
-                Logger.Warning($"CryptoCompare API key missing, oracles won't work properly...");
+                throw new Exception($"CryptoCompare API key missing, oracles won't work properly and oracles are no longer optional...");
             }
         }
 
