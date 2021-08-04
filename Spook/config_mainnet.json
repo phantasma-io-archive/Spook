@@ -40,21 +40,9 @@
 
     "Oracle": {
       "neoscan.api": "https://api.neoscan.io/",
-      "neo.rpc.nodes": [
-        "http://seed1.ngd.network:10332",
-        "http://seed2.ngd.network:10332",
-        "http://seed3.ngd.network:10332",
-        "http://seed4.ngd.network:10332",
-        "http://seed5.ngd.network:10332"
-      ],
 
       "neo.rpc.specific.nodes": [ "http://135.181.45.206:10332" ],
-
-      "eth.rpc.nodes": [
-        "https://mainnet.infura.io/v3/34a7c02e7f2f458181180c72c4de58a6",
-        "https://mainnet.infura.io/v3/780d5a9837de47649be4c10836b5dbcf"
-      ],
-
+	  
       "eth.fee.urls": [
         {
           "url": "https://gasprice.poa.network/",
@@ -72,6 +60,7 @@
           "feeIncrease": 40
         }
       ],
+	  
       "pricer.coingecko.enabled": true,
       "pricer.supportedtokens": [
         {
@@ -143,12 +132,36 @@
       "eth.block.confirmations": 12,
       "eth.gas.limit": 50000,
       "crypto.compare.key": "########################################################",
-      "swap.platforms": "neo,ethereum",
-      "phantasma.interop.height": "0",
-      "neo.interop.height": "4394715",
-      "eth.interop.height": "########################################################",
-      "neo.wif": "",
-      "eth.wif": ""
+	  "swap.platforms": [
+			{
+				"name": "phantasma",
+				"enabled": true,
+				"height": "0",
+			},
+			{
+				"name": "neo",
+				"enabled": true,
+				"height": "4394715",
+				"wif":"",
+				"rpc.nodes": [
+					"http://seed1.ngd.network:10332",
+					"http://seed2.ngd.network:10332",
+					"http://seed3.ngd.network:10332",
+					"http://seed4.ngd.network:10332",
+					"http://seed5.ngd.network:10332"
+				  ],
+			},
+			{
+				"name": "ethereum",
+				"enabled": true,
+				"height": "########################################################",
+				"wif":"",
+				"rpc.nodes": [
+					"https://mainnet.infura.io/v3/34a7c02e7f2f458181180c72c4de58a6",
+					"https://mainnet.infura.io/v3/780d5a9837de47649be4c10836b5dbcf"
+				  ],
+			}
+		],		  
     },
 
     "Simulator": {

@@ -10,6 +10,7 @@ using Nethereum.RPC.Eth.DTOs;
 using Nethereum.StandardTokenEIP20.ContractDefinition;
 using Phantasma.Core.Log;
 using Phantasma.Domain;
+using System.Linq;
 
 namespace Phantasma.Spook.Chains
 {
@@ -52,33 +53,48 @@ namespace Phantasma.Spook.Chains
     public class EthAPI
     {
         public string LastError { get; protected set; }
-        private List<string> urls = new List<string>();
+        private string[] RPC_URLs;
+
         private List<Web3> web3Clients = new List<Web3>();
         private Blockchain.Nexus Nexus;
         private SpookSettings _settings;
         private Account _account;
+        public  HexBigInteger ChainId;
 
         private static Random rnd = new Random();
 
         private readonly Logger Logger;
 
-        public EthAPI(Blockchain.Nexus nexus, SpookSettings settings, Account account, Logger logger)
+        public readonly SwapPlatformChain Chain;
+
+        public EthAPI(SwapPlatformChain chain, Blockchain.Nexus nexus, SpookSettings settings, Account account, Logger logger)
         {
+            this.Chain = chain;
             this.Nexus = nexus;
             this._settings = settings;
             this._account = account;
             this.Logger = logger;
 
-            this.urls = this._settings.Oracle.EthRpcNodes;
-            if (this.urls.Count == 0)
+            var ethereumPlatform = this._settings.Oracle.SwapPlatforms.FirstOrDefault(x => x.Chain == chain);
+
+            if (ethereumPlatform == null)
             {
-                throw new ArgumentNullException("Need at least one RPC node");
+                throw new SwapException($"Config file is missing swap settings for {chain} platform");
             }
 
-            foreach (var url in this.urls)
+            this.RPC_URLs = ethereumPlatform.RpcNodes;
+            if (this.RPC_URLs.Length == 0)
             {
+                throw new ArgumentNullException($"Need at least one RPC node in config for '{chain}' swap platform");
+            }
+
+            foreach (var url in this.RPC_URLs)
+            {
+                Console.WriteLine("add url: " + url);
                 web3Clients.Add(new Web3(_account, url));
             }
+
+            this.ChainId = GetWeb3Client().Eth.ChainId.SendRequestAsync().Result;
         }
 
         public BigInteger GetBlockHeight()
@@ -143,11 +159,12 @@ namespace Phantasma.Spook.Chains
 
         }
 
-        public EthTransferResult TryTransferAsset(string symbol, string toAddress, decimal amount, int decimals, out string result)
+        public EthTransferResult TryTransferAsset(string platform, string symbol, string toAddress, decimal amount,
+                int decimals, out string result)
         {
-            if (symbol.Equals("ETH", StringComparison.InvariantCultureIgnoreCase))
+            if (symbol.Equals("ETH", StringComparison.InvariantCultureIgnoreCase) || symbol.Equals("BNB", StringComparison.InvariantCultureIgnoreCase))
             {
-                var bytes = Nexus.GetOracleReader().Read<byte[]>(DateTime.Now, Domain.DomainExtensions.GetOracleFeeURL("ethereum"));
+                var bytes = Nexus.GetOracleReader().Read<byte[]>(DateTime.Now, Domain.DomainExtensions.GetOracleFeeURL(platform));
                 var fees = Phantasma.Numerics.BigInteger.FromUnsignedArray(bytes, true);
                 var gasPrice = Numerics.UnitConversion.ToDecimal(fees / _settings.Oracle.EthGasLimit, 9);
 
@@ -164,7 +181,7 @@ namespace Phantasma.Spook.Chains
                     nativeAsset = true;
                 }
 
-                var hash = Nexus.GetTokenPlatformHash(symbol, "ethereum", Nexus.RootStorage);
+                var hash = Nexus.GetTokenPlatformHash(symbol, platform, Nexus.RootStorage);
 
                 if (hash.IsNull)
                 {
@@ -192,7 +209,8 @@ namespace Phantasma.Spook.Chains
                     var swapInHandler = GetWeb3Client().Eth.GetContractTransactionHandler<SwapInFunction>();
 
                     swapIn.Gas = _settings.Oracle.EthGasLimit;
-                    var bytes = Nexus.GetOracleReader().Read<byte[]>(DateTime.Now, Domain.DomainExtensions.GetOracleFeeURL("ethereum"));
+                    var bytes = Nexus.GetOracleReader().Read<byte[]>(DateTime.Now, Domain.DomainExtensions.
+                            GetOracleFeeURL(platform));
                     var fees = Phantasma.Numerics.BigInteger.FromUnsignedArray(bytes, true);
                     swapIn.GasPrice = System.Numerics.BigInteger.Parse(fees.ToString()) / swapIn.Gas;
 
@@ -225,8 +243,8 @@ namespace Phantasma.Spook.Chains
 
         public string GetURL()
         {
-            int idx = rnd.Next(urls.Count);
-            return "http://" + urls[idx];
+            int idx = rnd.Next(RPC_URLs.Length);
+            return "http://" + RPC_URLs[idx];
         }
     }
 }

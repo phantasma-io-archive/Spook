@@ -106,16 +106,15 @@ namespace Phantasma.Spook
 
             string customWIF = null;
 
-            switch (platformName)
+            SwapPlatformChain targetChain;
+            if (Enum.TryParse(platformName, true, out targetChain))
             {
-                case "neo":
-                    customWIF = this.Oracle.NeoWif;
-                    break;
+                var platform = this.Oracle.SwapPlatforms.FirstOrDefault(x => x.Chain == targetChain);
 
-
-                case "ethereum":
-                    customWIF = this.Oracle.EthWif;
-                    break;
+                if (platform != null)
+                {
+                    customWIF = platform.WIF;
+                }
             }
 
             var result = !string.IsNullOrEmpty(customWIF) ? customWIF: defaultWif;
@@ -129,7 +128,6 @@ namespace Phantasma.Spook
             return result;
         }
     }
-
 
     public enum StorageBackendType
     {
@@ -351,65 +349,131 @@ namespace Phantasma.Spook
         }
     }
 
+    public enum SwapPlatformChain
+    {
+        Phantasma,
+        Neo,
+        Ethereum,
+        BSC,
+    }
+
+    public class PlatformSettings
+    {
+        public SwapPlatformChain Chain;
+        public bool Enabled;
+        public string WIF;
+        public BigInteger InteropHeight;
+        public string[] RpcNodes;
+    }
+
     public class OracleSettings
     {
         public string NeoscanUrl { get; }
-        public List<string> NeoRpcNodes { get; }
-        public List<string> EthRpcNodes { get; }
         public List<FeeUrl> EthFeeURLs { get; }
+        public List<FeeUrl> BscFeeURLs { get; }
         public bool PricerCoinGeckoEnabled { get; } = true;
         public List<PricerSupportedToken> PricerSupportedTokens { get; }
         public string CryptoCompareAPIKey { get; }
-        public string Swaps { get; }
+        public PlatformSettings[] SwapPlatforms { get; }
         public string SwapColdStorageNeo { get; }
-        public string PhantasmaInteropHeight { get; } = "0";
-        public string NeoInteropHeight { get; } = "4261049";
-        public string EthInteropHeight { get; }
-        public string NeoWif { get; }
-        public string EthWif { get; }
         public uint EthConfirmations { get; }
         public uint EthGasLimit { get; }
-        public bool NeoQuickSync { get; } = true;
-        
+        public bool NeoQuickSync { get; } = false;
+
         public OracleSettings(Arguments settings, DataNode section)
         {
             this.NeoscanUrl = settings.GetString("neoscan.api", section.GetString("neoscan.api"));
-            this.NeoRpcNodes = section.GetNode("neo.rpc.specific.nodes").Children.Select(p => p.Value).ToList();
-
-            if (this.NeoRpcNodes.Count() == 0)
-            {
-                this.NeoRpcNodes = section.GetNode("neo.rpc.nodes").Children
-                            .Select(p => p.Value)
-                            .ToList();
-                this.NeoQuickSync = false;
-            }
-
-            this.EthRpcNodes = section.GetNode("eth.rpc.nodes").Children
-                        .Select(p => p.Value)
-                        .ToList();
 
             this.EthFeeURLs = section.GetNode("eth.fee.urls").Children.Select(x => FeeUrl.FromNode(x)).ToList();
+            this.BscFeeURLs = section.GetNode("bsc.fee.urls").Children.Select(x => FeeUrl.FromNode(x)).ToList();
 
             this.PricerCoinGeckoEnabled = settings.GetBool("pricer.coingecko.enabled", section.GetBool("pricer.coingecko.enabled"));
-            this.PricerSupportedTokens = section.GetNode("pricer.supportedtokens").Children.Select(x => PricerSupportedToken.FromNode(x)).ToList();
+
+            var supportedTokens = section.GetNode("pricer.supportedtokens");
+            if (supportedTokens == null || supportedTokens.Kind != NodeKind.Array)
+            {
+                throw new Exception("Config is missing pricer.supportedtokens entry or is not a valid array");
+            }
+
+            this.PricerSupportedTokens = supportedTokens.Children.Select(x => PricerSupportedToken.FromNode(x)).ToList();
 
             this.EthConfirmations = settings.GetUInt("eth.block.confirmations", section.GetUInt32("eth.block.confirmations"));
             this.EthGasLimit = settings.GetUInt("eth.gas.limit", section.GetUInt32("eth.gas.limit"));
             this.CryptoCompareAPIKey = settings.GetString("crypto.compare.key", section.GetString("crypto.compare.key"));
-            this.Swaps = settings.GetString("swap.platforms", section.GetString("swap.platforms"));
-            this.SwapColdStorageNeo = settings.GetString("swap.coldStorage.neo", section.GetString("swap.coldStorage.neo"));
-            this.PhantasmaInteropHeight = settings.GetString("phantasma.interop.height", section.GetString("phantasma.interop.height"));
-            this.NeoInteropHeight = settings.GetString("neo.interop.height", section.GetString("neo.interop.height"));
-            this.EthInteropHeight = settings.GetString("eth.interop.height", section.GetString("eth.interop.height"));
-            this.NeoWif = settings.GetString("neo.wif", section.GetString("neo.wif"));
-            if (string.IsNullOrEmpty(this.NeoWif))
+            
+            this.SwapColdStorageNeo = settings.GetString("swaps.coldStorage.neo", section.GetString("swaps.coldStorage.neo"));
+
+            var swapNode = section.GetNode("swap.platforms");
+            if (swapNode == null)
             {
-                this.NeoWif = null;
+                this.SwapPlatforms = new PlatformSettings[0];
             }
-            this.EthWif = settings.GetString("eth.wif", section.GetString("eth.wif"));
-            if (string.IsNullOrEmpty(this.EthWif))
+            else
+            if (swapNode.Kind != NodeKind.Array)
             {
-                this.EthWif = null;
+                throw new Exception("Config has invalid swaps.platform entry, must be a valid array, if you have an old config file please upgrade manually");
+            }
+            else
+            {
+                this.SwapPlatforms = new PlatformSettings[swapNode.ChildCount];
+
+                for (int i = 0; i < SwapPlatforms.Length; i++)
+                {
+                    var node = swapNode.GetNodeByIndex(i);
+
+                    var platformName = node.GetString("name");
+                    Console.WriteLine("name: " + platformName);
+
+                    var platform = new PlatformSettings();
+                    SwapPlatforms[i] = platform;
+
+                    if (!Enum.TryParse<SwapPlatformChain>(platformName, true, out platform.Chain))
+                    {
+                        throw new Exception($"Unknown swap platform entry in config: '{platformName}'");
+                    }
+
+                    platform.Enabled = node.GetBool("enabled", true);
+
+                    var temp = node.GetString("height", "0");
+                    if (!BigInteger.TryParse(temp, out platform.InteropHeight))
+                    {
+                        throw new Exception($"Invalid interop swap height '{temp}' for platform '{platformName}'");
+                    }
+
+                    platform.WIF = node.GetString("wif");
+                    if (string.IsNullOrEmpty(platform.WIF))
+                    {
+                        platform.WIF = null;
+                    }
+
+
+                    if (platform.Chain == SwapPlatformChain.Phantasma)
+                    {
+                        platform.RpcNodes = new string[0];
+                    }
+                    else
+                    {
+                        var rpcNodes = node.GetNode("rpc.nodes");
+                        if (rpcNodes == null)
+                        {
+                            throw new Exception($"Config is missing rpc.nodes for platform '{platformName}'");
+                        }
+
+                        platform.RpcNodes = rpcNodes.Children.Select(x => x.Value).ToArray();
+                    }
+                }
+
+                var specificNeoRpcNodes = section.GetNode("neo.rpc.specific.nodes");
+
+                if (specificNeoRpcNodes != null && specificNeoRpcNodes.ChildCount > 0)
+                {
+                    var neoPlatform = SwapPlatforms.FirstOrDefault(x => x.Chain == SwapPlatformChain.Neo);
+                    if (neoPlatform != null)
+                    {
+                        neoPlatform.RpcNodes = specificNeoRpcNodes.Children.Select(x => x.Value).ToArray();
+                        this.NeoQuickSync = true;
+                    }
+                }
             }
         }
     }

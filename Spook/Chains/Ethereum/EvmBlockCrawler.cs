@@ -1,3 +1,5 @@
+using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Threading;
@@ -18,7 +20,6 @@ using Phantasma.Spook.Interop;
 using PBigInteger = Phantasma.Numerics.BigInteger;
 using InteropTransfers = System.Collections.Generic.Dictionary<string,
       System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<Phantasma.Domain.InteropTransfer>>>;
-using System.Linq;
 
 namespace Phantasma.Spook.Chains
 {
@@ -34,7 +35,7 @@ namespace Phantasma.Spook.Chains
         }
     }
 
-    public class EthBlockCrawler
+    public class EvmBlockCrawler
     {
         private string[] addressesToWatch;
         private BlockchainProcessor processor;
@@ -42,14 +43,21 @@ namespace Phantasma.Spook.Chains
         private List<TransactionReceiptVO> transactions = new List<TransactionReceiptVO>();
         private Web3 web3;
         private Logger logger;
+        private string platform;
+        private Func<string, Address> encodeHandler;
+        private Func<Nethereum.RPC.Eth.DTOs.Transaction, Address> addressExtractor;
 
         public List<TransactionReceiptVO> Result => transactions;
 
-        public EthBlockCrawler(Logger logger, string[] addresses, uint blockConfirmations, EthAPI api)
+        public EvmBlockCrawler(Logger logger, string[] addresses, uint blockConfirmations, EthAPI api,
+                Func<string, Address> encodeHandler, Func<Nethereum.RPC.Eth.DTOs.Transaction, Address> extractor, string platform)
         {
             this.addressesToWatch = addresses;
             this.web3 = api.GetWeb3Client();
             this.logger = logger;
+            this.encodeHandler = encodeHandler;
+            this.platform = platform;
+            this.addressExtractor = extractor;
 
             processor = web3.Processing.Blocks.CreateBlockProcessor(steps =>
                 {
@@ -95,11 +103,11 @@ namespace Phantasma.Spook.Chains
                     var txr = txVo.TransactionReceipt;
                     var tx = txVo.Transaction;
 
-                    var interopAddress = EthereumInterop.ExtractInteropAddress(tx);
+                    var interopAddress = addressExtractor(tx);
                     var transferEvents = txr.DecodeAllEvents<TransferEventDTO>();
                     //var swapEvents = txr.DecodeAllEvents<SwapEventDTO>();
-                    var nodeSwapAddresses = swapAddresses.Select(x => EthereumWallet.EncodeAddress(x)).ToList();
-                    //var nodeSwapAddresses = EthereumWallet.EncodeAddress(swapAddress);
+                    var nodeSwapAddresses = swapAddresses.Select(x => encodeHandler(x)).ToList();
+                    //var nodeSwapAddresses = encodeHandler(swapAddress);
 
                     if (transferEvents.Count > 0 || tx.Value != null && tx.Value.Value > 0)
                     {
@@ -116,7 +124,7 @@ namespace Phantasma.Spook.Chains
 
                         foreach(var evt in transferEvents)
                         {
-                            var targetAddress = EthereumWallet.EncodeAddress(evt.Event.To);
+                            var targetAddress = encodeHandler(evt.Event.To);
 
                             // If it's not our address, skip immediatly, don't log it
                             if (!nodeSwapAddresses.Contains(targetAddress))
@@ -125,7 +133,7 @@ namespace Phantasma.Spook.Chains
                             }
 
                             logger.Message($"Found ERC20 swap: {blockId} hash: {hash} to: {evt.Event.To} from: {evt.Event.From} value: {evt.Event.Value}");
-                            var asset = EthUtils.FindSymbolFromAsset(nexus, evt.Log.Address);
+                            var asset = EthUtils.FindSymbolFromAsset(this.platform, nexus, evt.Log.Address);
                             logger.Message("asset: " + asset);
                             if (asset == null)
                             {
@@ -134,7 +142,7 @@ namespace Phantasma.Spook.Chains
                             }
 
                             
-                            var sourceAddress = EthereumWallet.EncodeAddress(evt.Event.From);
+                            var sourceAddress = encodeHandler(evt.Event.From);
                             var amount = PBigInteger.Parse(evt.Event.Value.ToString());
 
                             //logger.Message("nodeSwapAddress: " + nodeSwapAddress);
@@ -151,7 +159,7 @@ namespace Phantasma.Spook.Chains
                                 (
                                  new InteropTransfer
                                  (
-                                  EthereumWallet.EthereumPlatform,
+                                  this.platform,
                                   sourceAddress,
                                   DomainSettings.PlatformName,
                                   targetAddress,
@@ -172,7 +180,8 @@ namespace Phantasma.Spook.Chains
                         logger.Message(tx.From);
                         logger.Message(tx.Value.ToString());
 
-                        var targetAddress = EthereumWallet.EncodeAddress(tx.To);
+                        var targetAddress = encodeHandler(tx.To);
+                        Console.WriteLine("target eth: " + targetAddress);
 
                         if (!nodeSwapAddresses.Contains(targetAddress ))
                         {
@@ -184,19 +193,19 @@ namespace Phantasma.Spook.Chains
                             interopTransfers[block.BlockHash].Add(tx.TransactionHash, new List<InteropTransfer>());
                         }
 
-                        var sourceAddress = EthereumWallet.EncodeAddress(tx.From);
+                        var sourceAddress = encodeHandler(tx.From);
                         var amount = PBigInteger.Parse(tx.Value.ToString());
 
                         interopTransfers[block.BlockHash][tx.TransactionHash].Add
                             (
                              new InteropTransfer
                              (
-                              EthereumWallet.EthereumPlatform,
+                              this.platform,
                               sourceAddress,
                               DomainSettings.PlatformName,
                               targetAddress,
                               interopAddress, // interop address
-                              "ETH", // TODO use const
+                              "BNB", // TODO use const
                               amount
                              )
                             );

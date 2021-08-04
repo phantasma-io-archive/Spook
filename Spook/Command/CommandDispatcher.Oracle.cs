@@ -98,7 +98,14 @@ namespace Phantasma.Spook.Command
                 Console.WriteLine("Platform and one or more block heights needed!");
             }
 
-            var platform = args.ElementAtOrDefault(0);
+            var platformName = args.ElementAtOrDefault(0);
+
+            SwapPlatformChain platform;
+            if (!Enum.TryParse<SwapPlatformChain>(platformName, true, out platform))
+            {
+                throw new CommandException("Unknown swap platform: " + platformName);
+            }
+
 
             // start at index 1, 0 is platform
             for (var i = 1; i < args.Count(); i++)
