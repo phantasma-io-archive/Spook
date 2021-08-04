@@ -17,14 +17,14 @@ namespace Phantasma.Spook.Chains
             return task.GetAwaiter().GetResult();
         }
 
-        public static string FindSymbolFromAsset(Blockchain.Nexus nexus, string assetID)
+        public static string FindSymbolFromAsset(string platform, Blockchain.Nexus nexus, string assetID)
         {
             if (assetID.StartsWith("0x"))
             {
                 assetID = assetID.Substring(2);
             }
 
-            var symbol = nexus.GetPlatformTokenByHash(Cryptography.Hash.FromUnpaddedHex(assetID), "ethereum", nexus.RootStorage);
+            var symbol = nexus.GetPlatformTokenByHash(Cryptography.Hash.FromUnpaddedHex(assetID), platform, nexus.RootStorage);
 
             if (String.IsNullOrEmpty(symbol))
             {

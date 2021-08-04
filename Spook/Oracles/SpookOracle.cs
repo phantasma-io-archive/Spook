@@ -165,6 +165,8 @@ namespace Phantasma.Spook.Oracles
         protected override Phantasma.Numerics.BigInteger PullFee(Timestamp time, string platform)
         {
             platform = platform.ToLower();
+            CachedFee fee;
+            string logMessage = "";
 
             switch (platform)
             {
@@ -173,12 +175,12 @@ namespace Phantasma.Spook.Oracles
 
                 case EthereumWallet.EthereumPlatform:
 
-                    CachedFee fee;
                     if (_feeCache.TryGetValue(platform, out fee))
                     {
                         if ((Timestamp.Now - fee.Time) < 60)
                         {
-                            var logMessage = $"PullFee({platform}): Cached fee pulled: {fee.Value}, GAS limit: {_cli.Settings.Oracle.EthGasLimit}, calculated fee: {fee.Value * _cli.Settings.Oracle.EthGasLimit}";
+                            logMessage = $@"PullFee({platform}): Cached fee pulled: {fee.Value}, GAS limit:
+                                {_cli.Settings.Oracle.EthGasLimit}, calculated fee: {fee.Value * _cli.Settings.Oracle.EthGasLimit}";
                             logger.Debug(logMessage);
 
                             return fee.Value * _cli.Settings.Oracle.EthGasLimit;
@@ -189,8 +191,34 @@ namespace Phantasma.Spook.Oracles
                     fee = new CachedFee(Timestamp.Now, UnitConversion.ToBigInteger(newFee, 9)); // 9 for GWEI
                     _feeCache[platform] = fee;
 
-                    var logMessage2 = $"PullFee({platform}): New fee pulled: {fee.Value}, GAS limit: {_cli.Settings.Oracle.EthGasLimit}, calculated fee: {fee.Value * _cli.Settings.Oracle.EthGasLimit}";
+                    var logMessage2 = $@"PullFee({platform}): New fee pulled: {fee.Value}, GAS limit:
+                        {_cli.Settings.Oracle.EthGasLimit}, calculated fee: {fee.Value * _cli.Settings.Oracle.EthGasLimit}";
                     logger.Debug(logMessage2);
+
+                    return fee.Value * _cli.Settings.Oracle.EthGasLimit;
+
+                case BSCWallet.BSCPlatform:
+
+                    //CachedFee fee;
+                    if (_feeCache.TryGetValue(platform, out fee))
+                    {
+                        if ((Timestamp.Now - fee.Time) < 60)
+                        {
+                            logMessage = $@"PullFee({platform}): Cached fee pulled: {fee.Value}, GAS limit: 
+                                {_cli.Settings.Oracle.EthGasLimit}, calculated fee: {fee.Value * _cli.Settings.Oracle.EthGasLimit}";
+                            logger.Debug(logMessage);
+
+                            return fee.Value * _cli.Settings.Oracle.EthGasLimit;
+                        }
+                    }
+
+                    var newBSCFee = BSCInterop.GetNormalizedFee(_cli.Settings.Oracle.BscFeeURLs.ToArray());
+                    fee = new CachedFee(Timestamp.Now, UnitConversion.ToBigInteger(newBSCFee, 9)); // 9 for GWEI
+                    _feeCache[platform] = fee;
+
+                    logMessage = $@"PullFee({platform}): New fee pulled: {fee.Value}, GAS limit:
+                        {_cli.Settings.Oracle.EthGasLimit}, calculated fee: {fee.Value * _cli.Settings.Oracle.EthGasLimit}";
+                    logger.Debug(logMessage);
 
                     return fee.Value * _cli.Settings.Oracle.EthGasLimit;
 
@@ -264,17 +292,6 @@ namespace Phantasma.Spook.Oracles
                 case EthereumWallet.EthereumPlatform:
 
                     {
-                        //BlockWithTransactions ethBlock;
-                        //if (height == 0)
-                        //{
-                        //    //TODO MakeInteropBlock for a full block not done yet
-                        //    //ethBlock = _cli.EthAPI.GetBlock(hash.ToString());
-                        //    //interopTuple = EthereumInterop.MakeInteropBlock(logger, ethBlock, _cli.EthAPI, _cli.TokenSwapper.swapAddress);
-                        //}
-                        //else
-                        //{
-                        //}
-
                         var hashes = _cli.Nexus.GetPlatformTokenHashes(EthereumWallet.EthereumPlatform, _cli.Nexus.RootStorage)
                             .Select(x => x.ToString().Substring(0, 40)).ToArray();
 
@@ -285,10 +302,10 @@ namespace Phantasma.Spook.Oracles
 
                 case BSCWallet.BSCPlatform:
                     {
-                        var hashes = _cli.Nexus.GetPlatformTokenHashes(EthereumWallet.EthereumPlatform, _cli.Nexus.RootStorage)
+                        var hashes = _cli.Nexus.GetPlatformTokenHashes(BSCWallet.BSCPlatform, _cli.Nexus.RootStorage)
                             .Select(x => x.ToString().Substring(0, 40)).ToArray();
 
-                        interopTuple = EthereumInterop.MakeInteropBlock(_cli.Nexus, logger, _cli.EthAPI, height,
+                        interopTuple = BSCInterop.MakeInteropBlock(_cli.Nexus, logger, _cli.BscAPI, height,
                                 hashes, _cli.Settings.Oracle.EthConfirmations, _cli.TokenSwapper.SwapAddresses[SwapPlatformChain.BSC]);
                         break;
                     }
@@ -341,20 +358,23 @@ namespace Phantasma.Spook.Oracles
                     UInt256 uHash = new UInt256(LuxUtils.ReverseHex(hash.ToString()).HexToBytes());
                     neoTx = _cli.NeoAPI.GetTransaction(uHash);
                     var coldStorage = _cli.Settings.Oracle.SwapColdStorageNeo;
-                    tx = NeoInterop.MakeInteropTx(logger, neoTx, _cli.NeoAPI, _cli.TokenSwapper.SwapAddresses[SwapPlatformChain.Neo], coldStorage);
+                    tx = NeoInterop.MakeInteropTx(logger, neoTx, _cli.NeoAPI, 
+                            _cli.TokenSwapper.SwapAddresses[SwapPlatformChain.Neo], coldStorage);
                     break;
 
                 case EthereumWallet.EthereumPlatform:
                     {
                         var txRcpt = _cli.EthAPI.GetTransactionReceipt(hash.ToString());
-                        tx = EthereumInterop.MakeInteropTx(_cli.Nexus, logger, txRcpt, _cli.EthAPI, _cli.TokenSwapper.SwapAddresses[SwapPlatformChain.Ethereum]);
+                        tx = EthereumInterop.MakeInteropTx(_cli.Nexus, logger, txRcpt, _cli.EthAPI,
+                                _cli.TokenSwapper.SwapAddresses[SwapPlatformChain.Ethereum]);
                         break;
                     }
 
                 case BSCWallet.BSCPlatform:
                     {
-                        var txRcpt = _cli.BSCAPI.GetTransactionReceipt(hash.ToString());
-                        tx = EthereumInterop.MakeInteropTx(_cli.Nexus, logger, txRcpt, _cli.BSCAPI, _cli.TokenSwapper.SwapAddresses[SwapPlatformChain.BSC]);
+                        var txRcpt = _cli.BscAPI.GetTransactionReceipt(hash.ToString());
+                        tx = BSCInterop.MakeInteropTx(_cli.Nexus, logger, txRcpt, _cli.BscAPI,
+                                _cli.TokenSwapper.SwapAddresses[SwapPlatformChain.BSC]);
                         break;
                     }
 

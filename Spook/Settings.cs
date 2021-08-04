@@ -370,6 +370,7 @@ namespace Phantasma.Spook
     {
         public string NeoscanUrl { get; }
         public List<FeeUrl> EthFeeURLs { get; }
+        public List<FeeUrl> BscFeeURLs { get; }
         public bool PricerCoinGeckoEnabled { get; } = true;
         public List<PricerSupportedToken> PricerSupportedTokens { get; }
         public string CryptoCompareAPIKey { get; }
@@ -384,6 +385,7 @@ namespace Phantasma.Spook
             this.NeoscanUrl = settings.GetString("neoscan.api", section.GetString("neoscan.api"));
 
             this.EthFeeURLs = section.GetNode("eth.fee.urls").Children.Select(x => FeeUrl.FromNode(x)).ToList();
+            this.BscFeeURLs = section.GetNode("bsc.fee.urls").Children.Select(x => FeeUrl.FromNode(x)).ToList();
 
             this.PricerCoinGeckoEnabled = settings.GetBool("pricer.coingecko.enabled", section.GetBool("pricer.coingecko.enabled"));
 
@@ -420,6 +422,7 @@ namespace Phantasma.Spook
                     var node = swapNode.GetNodeByIndex(i);
 
                     var platformName = node.GetString("name");
+                    Console.WriteLine("name: " + platformName);
 
                     var platform = new PlatformSettings();
                     SwapPlatforms[i] = platform;

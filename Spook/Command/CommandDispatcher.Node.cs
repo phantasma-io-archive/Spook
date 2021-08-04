@@ -1,19 +1,26 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using Nethereum.Hex.HexConvertors.Extensions;
 using Phantasma.Blockchain;
+using Phantasma.Blockchain.Contracts;
 using Phantasma.Blockchain.Storage;
+using Phantasma.CodeGen.Assembler;
+using Phantasma.Core;
 using Phantasma.Core.Types;
 using Phantasma.Cryptography;
 using Phantasma.Domain;
 using Phantasma.Ethereum;
+using Phantasma.Numerics;
 using Phantasma.Pay.Chains;
 using Phantasma.RocksDB;
 using Phantasma.Spook.Interop;
 using Phantasma.Storage;
 using Phantasma.Storage.Context;
+using Phantasma.VM;
 using Phantasma.VM.Utils;
 
 namespace Phantasma.Spook.Command
@@ -122,7 +129,7 @@ namespace Phantasma.Spook.Command
             }
 
             var script = ScriptUtils.BeginScript()
-                .AllowGas(_cli.NodeKeys.Address, Address.Null, 100000, 1500)
+                .AllowGas(_cli.NodeKeys.Address, Address.Null, 100000, 15000)
                 .CallContract("governance", "SetValue", key, value)
                 .SpendGas(_cli.NodeKeys.Address).EndScript();
 
@@ -166,6 +173,54 @@ namespace Phantasma.Spook.Command
 
             Console.WriteLine($"Removed hash {sourceHash} from in progress map!");
         }
+        [ConsoleCommand("create platform", Category = "Node", Description = "Create a token, foreign or native")]
+        protected void OnCreatePlatform(string[] args)
+        {
+            var platform = args[0];
+
+            if (string.IsNullOrEmpty(platform)) 
+            {
+                Console.WriteLine("platform has to be set!");
+                return;
+            }
+
+            var nativeCurrency = args[1];
+            if (string.IsNullOrEmpty(nativeCurrency)) 
+            {
+                Console.WriteLine("Native currency has to be set!");
+                return;
+            }
+
+            var platformKeys = InteropUtils.GenerateInteropKeys(_cli.NodeKeys, _cli.Nexus.GetGenesisHash(_cli.Nexus.RootStorage), platform);
+            var platformText = Phantasma.Ethereum.EthereumKey.FromWIF(platformKeys.ToWIF()).Address;
+            var platformAddress = Phantasma.Pay.Chains.BSCWallet.EncodeAddress(platformText);
+
+            var script = ScriptUtils.BeginScript()
+                .AllowGas(_cli.NodeKeys.Address, Address.Null, 100000, 9999)
+                .CallInterop("Nexus.CreatePlatform", _cli.NodeKeys.Address, platform, platformText, platformAddress, nativeCurrency.ToUpper())
+                .SpendGas(_cli.NodeKeys.Address).EndScript();
+
+            var expire = Timestamp.Now + TimeSpan.FromMinutes(2);
+            var tx = new Phantasma.Blockchain.Transaction(_cli.Nexus.Name, _cli.Nexus.RootChain.Name, script, expire, Spook.TxIdentifier);
+
+            if (tx != null)
+            {
+                tx.Mine((int)ProofOfWork.Minimal);
+                tx.Sign(_cli.NodeKeys);
+
+                if (_cli.Mempool != null)
+                {
+                    _cli.Mempool.Submit(tx);
+                }
+                else
+                {
+                    Console.WriteLine("No mempool available");
+                    return;
+                }
+
+                Console.WriteLine($"Platform \"{platform}\" created.");
+            }
+        }
 
         [ConsoleCommand("create token", Category = "Node", Description = "Create a token, foreign or native")]
         protected void OnCreatePlatformToken(string[] args)
@@ -199,7 +254,32 @@ namespace Phantasma.Spook.Command
             Transaction tx = null;
             if (platform == DomainSettings.PlatformName)
             {
-                //TODO phantasma token creation
+                var name = args[2];
+                if (string.IsNullOrEmpty(name)) 
+                {
+                    Console.WriteLine("Native token needs a name");
+                    return;
+                }
+
+                int decimals = 0;
+                var success = Int32.TryParse(args[3], out decimals);
+                if (!success) 
+                {
+                    Console.WriteLine("Native token needs decimals");
+                    return;
+                }
+
+                int maxSupply = 0;
+                success = Int32.TryParse(args[4], out maxSupply);
+                if (!success) 
+                {
+                    Console.WriteLine("Native token needs decimals");
+                    return;
+                }
+
+                tx = GenerateToken(_cli.NodeKeys, symbol, name, maxSupply, decimals,
+                        TokenFlags.Fungible | TokenFlags.Transferable | TokenFlags.Divisible
+                        | TokenFlags.Burnable);
             }
             else
             {
@@ -215,16 +295,24 @@ namespace Phantasma.Spook.Command
                     hashStr = hashStr.Substring(2);
                 }
 
+                var val = args.ElementAtOrDefault(3);
+                var nativeToken = string.IsNullOrEmpty(val) ? false : Boolean.Parse(val);
                 Hash hash;
-
                 try
                 {
                     hash = Hash.FromUnpaddedHex(hashStr);
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("Parsing hash failed: " + e.Message);
-                    return;
+                    if (nativeToken)
+                    {
+                        hash = Hash.FromString(hashStr.ToUpper());
+                    }
+                    else
+                    {
+                        Console.WriteLine("Parsing hash failed: " + e.Message);
+                        return;
+                    }
                 }
 
                 var script = ScriptUtils.BeginScript()
@@ -423,5 +511,180 @@ namespace Phantasma.Spook.Command
             return StructuralComparisons.StructuralEqualityComparer.Equals(ba1, ba2);
         }
 
+        public Transaction GenerateToken(PhantasmaKeys owner, string symbol, string name, BigInteger totalSupply,
+                int decimals, TokenFlags flags, byte[] tokenScript = null, Dictionary<string, int> labels = null, 
+                IEnumerable<ContractMethod> customMethods = null, uint seriesID = 0)
+        {
+            var version = _cli.Nexus.GetGovernanceValue(_cli.Nexus.RootStorage, Nexus.NexusProtocolVersionTag);
+            if (labels == null)
+            {
+                labels = new Dictionary<string, int>();
+            }
+
+            if (tokenScript == null)
+            {
+                // small script that restricts minting of tokens to transactions where the owner is a witness
+                var addressStr = Base16.Encode(owner.Address.ToByteArray());
+                string[] scriptString;
+
+                if (version >= 4)
+                {
+                    scriptString = new string[] {
+                    $"alias r3, $result",
+                    $"alias r4, $owner",
+                    $"@{AccountTrigger.OnMint}: nop",
+                    $"load $owner 0x{addressStr}",
+                    "push $owner",
+                    "extcall \"Address()\"",
+                    "extcall \"Runtime.IsWitness\"",
+                    "pop $result",
+                    $"jmpif $result, @end",
+                    $"load r0 \"invalid witness\"",
+                    $"throw r0",
+
+                    $"@getOwner: nop",
+                    $"load $owner 0x{addressStr}",
+                    "push $owner",
+                    $"jmp @end",
+
+                    $"@getSymbol: nop",
+                    $"load r0 \""+symbol+"\"",
+                    "push r0",
+                    $"jmp @end",
+
+                    $"@getName: nop",
+                    $"load r0 \""+name+"\"",
+                    "push r0",
+                    $"jmp @end",
+
+                    $"@getMaxSupply: nop",
+                    $"load r0 "+totalSupply+"",
+                    "push r0",
+                    $"jmp @end",
+
+                    $"@getDecimals: nop",
+                    $"load r0 "+decimals+"",
+                    "push r0",
+                    $"jmp @end",
+
+                    $"@getTokenFlags: nop",
+                    $"load r0 "+(int)flags+"",
+                    "push r0",
+                    $"jmp @end",
+
+                    $"@end: ret"
+                    };
+                }
+                else {
+                    scriptString = new string[] {
+                    $"alias r1, $triggerMint",
+                    $"alias r2, $currentTrigger",
+                    $"alias r3, $result",
+                    $"alias r4, $owner",
+
+                    $@"load $triggerMint, ""{AccountTrigger.OnMint}""",
+                    $"pop $currentTrigger",
+
+                    $"equal $triggerMint, $currentTrigger, $result",
+                    $"jmpif $result, @mintHandler",
+                    $"jmp @end",
+
+                    $"@mintHandler: nop",
+                    $"load $owner 0x{addressStr}",
+                    "push $owner",
+                    "extcall \"Address()\"",
+                    "extcall \"Runtime.IsWitness\"",
+                    "pop $result",
+                    $"jmpif $result, @end",
+                    $"load r0 \"invalid witness\"",
+                    $"throw r0",
+
+                    $"@end: ret"
+                    };
+                }
+                DebugInfo debugInfo;
+                tokenScript = AssemblerUtils.BuildScript(scriptString, "GenerateToken",  out debugInfo, out labels);
+            }
+
+            var sb = ScriptUtils.
+                BeginScript().
+                AllowGas(owner.Address, Address.Null, 100000, 9999);
+
+            if (version >= 4)
+            {
+                var triggerMap = new Dictionary<AccountTrigger, int>();
+
+                var onMintLabel = AccountTrigger.OnMint.ToString();
+                if (labels.ContainsKey(onMintLabel))
+                {
+                    triggerMap[AccountTrigger.OnMint] = labels[onMintLabel];
+                }
+
+                var methods = AccountContract.GetTriggersForABI(triggerMap);
+
+                if (version >= 6)
+                {
+                    methods = methods.Concat(new ContractMethod[] {
+                        new ContractMethod("getOwner", VMType.Object, labels, new ContractParameter[0]),
+                        new ContractMethod("getSymbol", VMType.String, labels, new ContractParameter[0]),
+                        new ContractMethod("getName", VMType.String, labels, new ContractParameter[0]),
+                        new ContractMethod("getDecimals", VMType.Number, labels, new ContractParameter[0]),
+                        new ContractMethod("getMaxSupply", VMType.Number, labels, new ContractParameter[0]),
+                        new ContractMethod("getTokenFlags", VMType.Enum, labels, new ContractParameter[0]),
+                    }) ;
+                }
+
+                if (customMethods != null)
+                {
+                    methods = methods.Concat(customMethods);
+                }
+
+                var abi = new ContractInterface(methods, Enumerable.Empty<ContractEvent>());
+                var abiBytes = abi.ToByteArray();
+
+                object[] args;
+
+                if (version >= 6)
+                {
+                    args = new object[] { owner.Address, tokenScript, abiBytes };
+                }
+                else
+                {
+                    args = new object[] { owner.Address, symbol, name, totalSupply, decimals, flags, tokenScript, abiBytes };
+                }
+
+                sb.CallInterop("Nexus.CreateToken", args);
+            }
+            else
+            {
+                sb.CallInterop("Nexus.CreateToken", owner.Address, symbol, name, totalSupply, decimals, flags, tokenScript);
+            }
+
+            if (!flags.HasFlag(TokenFlags.Fungible))
+            {
+                ContractInterface nftABI;
+                byte[] nftScript;
+                Blockchain.Tokens.TokenUtils.GenerateNFTDummyScript(symbol, name, name, "http://simulator/nft/*", "http://simulator/img/*", out nftScript, out nftABI);
+                sb.CallInterop("Nexus.CreateTokenSeries", owner.Address, symbol, new BigInteger(seriesID), totalSupply, TokenSeriesMode.Unique, nftScript, nftABI.ToByteArray());
+            }
+
+            sb.SpendGas(owner.Address);
+            
+            var script = sb.EndScript();
+
+            var tx = MakeTransaction(new IKeyPair[]{_cli.NodeKeys}, ProofOfWork.Minimal, _cli.Nexus.RootChain, script);
+
+            return tx;
+        }
+
+        private Transaction MakeTransaction(IEnumerable<IKeyPair> signees, ProofOfWork pow, Chain chain, byte[] script)
+        {
+
+            Throw.If(!signees.Any(), "at least one signer required");
+
+            var tx = new Transaction(_cli.Nexus.Name, chain.Name, script, Timestamp.Now + TimeSpan.FromSeconds(Mempool.MaxExpirationTimeDifferenceInSeconds / 2));
+
+            return tx;
+        }
     }
 }

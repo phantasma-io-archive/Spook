@@ -74,7 +74,7 @@ namespace Phantasma.Spook
         public Nexus Nexus { get { return _nexus; } }
         public NeoAPI NeoAPI { get { return _neoAPI; } }
         public EthAPI EthAPI { get { return _ethAPI; } }
-        public EthAPI BSCAPI { get { return _bscAPI; } }
+        public EthAPI BscAPI { get { return _bscAPI; } }
         public NeoScanAPI NeoScanAPI { get { return _neoScanAPI; } }
         public string CryptoCompareAPIKey  { get { return _cryptoCompareAPIKey; } }
         public TokenSwapper TokenSwapper { get { return _tokenSwapper; } }
@@ -180,7 +180,7 @@ namespace Phantasma.Spook
                 Logger.Message("Running token swapping service...");
                 while (Running)
                 {
-                    Logger.Debug("Update TokenSwapper now");
+                    Logger.Message("Update TokenSwapper now");
                     Task.Delay(5000).Wait();
                     if (_nodeReady)
                     {
