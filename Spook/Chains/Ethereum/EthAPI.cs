@@ -59,6 +59,7 @@ namespace Phantasma.Spook.Chains
         private Blockchain.Nexus Nexus;
         private SpookSettings _settings;
         private Account _account;
+        public  HexBigInteger ChainId;
 
         private static Random rnd = new Random();
 
@@ -89,8 +90,11 @@ namespace Phantasma.Spook.Chains
 
             foreach (var url in this.RPC_URLs)
             {
+                Console.WriteLine("add url: " + url);
                 web3Clients.Add(new Web3(_account, url));
             }
+
+            this.ChainId = GetWeb3Client().Eth.ChainId.SendRequestAsync().Result;
         }
 
         public BigInteger GetBlockHeight()
@@ -155,11 +159,12 @@ namespace Phantasma.Spook.Chains
 
         }
 
-        public EthTransferResult TryTransferAsset(string symbol, string toAddress, decimal amount, int decimals, out string result)
+        public EthTransferResult TryTransferAsset(string platform, string symbol, string toAddress, decimal amount,
+                int decimals, out string result)
         {
-            if (symbol.Equals("ETH", StringComparison.InvariantCultureIgnoreCase))
+            if (symbol.Equals("ETH", StringComparison.InvariantCultureIgnoreCase) || symbol.Equals("BNB", StringComparison.InvariantCultureIgnoreCase))
             {
-                var bytes = Nexus.GetOracleReader().Read<byte[]>(DateTime.Now, Domain.DomainExtensions.GetOracleFeeURL("ethereum"));
+                var bytes = Nexus.GetOracleReader().Read<byte[]>(DateTime.Now, Domain.DomainExtensions.GetOracleFeeURL(platform));
                 var fees = Phantasma.Numerics.BigInteger.FromUnsignedArray(bytes, true);
                 var gasPrice = Numerics.UnitConversion.ToDecimal(fees / _settings.Oracle.EthGasLimit, 9);
 
@@ -176,7 +181,7 @@ namespace Phantasma.Spook.Chains
                     nativeAsset = true;
                 }
 
-                var hash = Nexus.GetTokenPlatformHash(symbol, "ethereum", Nexus.RootStorage);
+                var hash = Nexus.GetTokenPlatformHash(symbol, platform, Nexus.RootStorage);
 
                 if (hash.IsNull)
                 {
@@ -204,7 +209,8 @@ namespace Phantasma.Spook.Chains
                     var swapInHandler = GetWeb3Client().Eth.GetContractTransactionHandler<SwapInFunction>();
 
                     swapIn.Gas = _settings.Oracle.EthGasLimit;
-                    var bytes = Nexus.GetOracleReader().Read<byte[]>(DateTime.Now, Domain.DomainExtensions.GetOracleFeeURL("ethereum"));
+                    var bytes = Nexus.GetOracleReader().Read<byte[]>(DateTime.Now, Domain.DomainExtensions.
+                            GetOracleFeeURL(platform));
                     var fees = Phantasma.Numerics.BigInteger.FromUnsignedArray(bytes, true);
                     swapIn.GasPrice = System.Numerics.BigInteger.Parse(fees.ToString()) / swapIn.Gas;
 

@@ -20,7 +20,7 @@
       "has.archive": false,
       "has.rpc": true,
       "has.rest": true,
-      "rpc.port": 7081,
+      "rpc.port": 7077,
       "rest.port": 7078,
       "nexus.bootstrap": true,
       "genesis.timestamp": 0,
@@ -57,6 +57,14 @@
           "url": "https://api.anyblock.tools/latest-minimum-gasprice",
           "feeHeight": "instant",
           "feeIncrease": 40
+        }
+      ],
+
+      "bsc.fee.urls": [
+        {
+          "url": "https://bscgas.info/gas",
+          "feeHeight": "instant",
+          "feeIncrease": 20 
         }
       ],
 
@@ -134,29 +142,23 @@
 				"name": "phantasma",
 				"enabled": true,
 				"height": "0",
-			},
-			{
-				"name": "neo",
-				"enabled": true,
-				"height": "4261049",
 				"wif":"",
-				"rpc.nodes": [ "http://mankinighost.phantasma.io:30333" ],
+				"rpc.nodes": []
 			},
 			{
-				"name": "ethereum",
+				"name": "bsc",
 				"enabled": true,
-				"height": "327",
+				"height": "0",
 				"wif":"",
 				"rpc.nodes": [
-					"https://ropsten.infura.io/v3/34a7c02e7f2f458181180c72c4de58a6",
-					"https://ropsten.infura.io/v3/780d5a9837de47649be4c10836b5dbcf"
-				  ],
+					"https://data-seed-prebsc-1-s1.binance.org:8545"
+				  ]
 			}
 		],		  
 
       "eth.block.confirmations": 12,
       "eth.gas.limit": 100000,
-      "crypto.compare.key": "",
+      "crypto.compare.key": "4e6ffe0dedfd49d2e182b706b72e736fa027844181d179dc5310f115deeb29be"
     },
 
     "Simulator": {
@@ -165,7 +167,7 @@
     },
 
     "App": {
-      "shell.enabled": false,
+      "shell.enabled": true,
       "node.start": true,
       "app.name": "SPK",
       "config": "",

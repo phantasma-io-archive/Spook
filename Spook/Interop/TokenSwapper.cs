@@ -291,17 +291,22 @@ namespace Phantasma.Spook.Interop
 
                     if (IsPlatformSupported(SwapPlatformChain.Neo))
                     {
-                        InitSwapper(SwapPlatformChain.Neo, new NeoInterop(this, neoAPI, _interopBlocks[SwapPlatformChain.Neo], Settings.Oracle.NeoQuickSync));
+                        InitSwapper(SwapPlatformChain.Neo, new NeoInterop(this, neoAPI, 
+                                    _interopBlocks[SwapPlatformChain.Neo], Settings.Oracle.NeoQuickSync));
                     }
 
                     if (IsPlatformSupported(SwapPlatformChain.Ethereum))
                     {
-                        InitSwapper(SwapPlatformChain.Ethereum, new EthereumInterop(this, ethAPI, _interopBlocks[SwapPlatformChain.Ethereum], Nexus.GetPlatformTokenHashes("ethereum", Nexus.RootStorage).Select(x => x.ToString().Substring(0, 40)).ToArray(), Settings.Oracle.EthConfirmations));
+                        InitSwapper(SwapPlatformChain.Ethereum, new EthereumInterop(this, ethAPI, 
+                                    _interopBlocks[SwapPlatformChain.Ethereum], Nexus.GetPlatformTokenHashes(EthereumWallet.EthereumPlatform,
+                                        Nexus.RootStorage).Select(x => x.ToString().Substring(0, 40)).ToArray(), Settings.Oracle.EthConfirmations));
                     }
 
-                    if (IsPlatformSupported(SwapPlatformChain.BSC))
+                    if (IsPlatformSupported(SwapPlatformChain.BSC) && Nexus.PlatformExists(Nexus.RootStorage, BSCWallet.BSCPlatform))
                     {
-                        InitSwapper(SwapPlatformChain.BSC, new EthereumInterop(this, bscAPI, _interopBlocks[SwapPlatformChain.BSC], Nexus.GetPlatformTokenHashes("bsc", Nexus.RootStorage).Select(x => x.ToString().Substring(0, 40)).ToArray(), Settings.Oracle.EthConfirmations));
+                        InitSwapper(SwapPlatformChain.BSC, new BSCInterop(this, bscAPI, _interopBlocks[SwapPlatformChain.BSC],
+                                    Nexus.GetPlatformTokenHashes(BSCWallet.BSCPlatform, Nexus.RootStorage).Select(x => 
+                                        x.ToString().Substring(0, 40)).ToArray(), Settings.Oracle.EthConfirmations));
                     }
 
                     Logger.Message("Available swap addresses:");
@@ -764,7 +769,8 @@ namespace Phantasma.Spook.Interop
                 return false;
             }
 
-            return (sourcePlatform != destPlatform) && IsPlatformSupported(source) && IsPlatformSupported(dest) && (sourcePlatform == DomainSettings.PlatformName || destPlatform == DomainSettings.PlatformName);
+            return (sourcePlatform != destPlatform) && IsPlatformSupported(source) && IsPlatformSupported(dest) 
+                && (sourcePlatform == DomainSettings.PlatformName || destPlatform == DomainSettings.PlatformName);
         }
     }
 }
