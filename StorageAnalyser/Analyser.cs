@@ -510,6 +510,11 @@ namespace StorageDump
             this.nexus = new Nexus("mainnet", logger,
                 (name) => new DBPartition(logger, path + name));
 
+            if (!nexus.HasGenesis)
+            {
+                throw new Exception("Genesis block not found, check storage path");
+            }
+
             var chains = nexus.GetChains(nexus.RootStorage).Select(x => nexus.GetChainByName(x)).ToArray();
             var tokens = nexus.GetTokens(nexus.RootStorage).Select(x => nexus.GetTokenInfo(nexus.RootStorage, x)).ToArray();
 
