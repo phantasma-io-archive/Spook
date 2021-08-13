@@ -327,14 +327,20 @@ namespace Phantasma.Spook.Interop
             return null;
         }
 
-        public static Address ExtractInteropAddress(Nethereum.RPC.Eth.DTOs.Transaction tx)
+        public static Address ExtractInteropAddress(Nethereum.RPC.Eth.DTOs.Transaction tx, Logger logger)
         {
             //Using the transanction from RPC to build a txn for signing / signed
             var transaction = Nethereum.Signer.TransactionFactory.CreateTransaction(tx.To, tx.Gas, tx.GasPrice, tx.Value, tx.Input, tx.Nonce,
                 tx.R, tx.S, tx.V);
-            
+
             //Get the account sender recovered
             Nethereum.Signer.EthECKey accountSenderRecovered = null;
+            // TODO To be used with Nethereum 4:
+            // 1) CreateLegacyTransaction()/LegacyTransactionChainId
+            // or
+            // 2) var signature = new Nethereum.Signer.EthECDSASignature(new Org.BouncyCastle.Math.BigInteger(tx.R.Replace("0x", ""), 16), new Org.BouncyCastle.Math.BigInteger(tx.S.Replace("0x", ""), 16), new Org.BouncyCastle.Math.BigInteger(tx.V.Replace("0x", ""), 16).ToByteArray());
+            // accountSenderRecovered = Nethereum.Signer.EthECKey.RecoverFromSignature(signature, System.Text.Encoding.UTF8.GetBytes(tx.TransactionHash.Replace("0x", "")));
+
             if (transaction is Nethereum.Signer.TransactionChainId)
             {
                 var txnChainId = transaction as Nethereum.Signer.TransactionChainId;
@@ -448,7 +454,27 @@ namespace Phantasma.Spook.Interop
             }
 
             var nodeSwapAddresses = swapAddresses.Select(x => EthereumWallet.EncodeAddress(x));
-            var interopAddress = ExtractInteropAddress(tx);
+            Address interopAddress;
+            try
+            {
+                interopAddress = ExtractInteropAddress(tx, logger);
+            }
+            catch(Exception e)
+            {
+                if(e.ToString().Contains("Header byte out of range"))
+                {
+                    // Ignoring this exception and skipping this tx.
+                    // RecoverFromSignature() crashed and we cannot avoid it atm.
+                    // Related to EIP-1559, example of probematic tx: https://etherscan.io/tx/0xb022c146d8d1e684de0c1faae43e7ce36afb6969719adfdcafcc5bb7d5913185
+                    // TODO Fix by updating to new Nethereum and dealing with EIP-1559 better.
+                    logger.Message("Warning: Skipping 'Header byte out of range' tx: " + tx.TransactionHash);
+                    return interopTransfers;
+                }
+                else
+                {
+                    throw;
+                }
+            }
 
             // ERC721 (NFT)
             // TODO currently this code block is mostly copypaste from ERC20 block, later make a single method for both...
