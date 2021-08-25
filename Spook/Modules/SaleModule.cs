@@ -64,7 +64,7 @@ namespace Phantasma.Spook.Modules
         }
 
         [ConsoleCommand("finish", "sale", "Finishes a sale")]
-        public static void Finish(string[] args, NexusAPI api, BigInteger minFee)
+        public static void Finish(string[] args, SpookSettings settings, NexusAPI api, BigInteger minFee)
         {
             string hashStr = null;
 
@@ -92,7 +92,7 @@ namespace Phantasma.Spook.Modules
                 SpendGas(WalletModule.Keys.Address).
                 EndScript();
 
-            WalletModule.ExecuteTransaction(api, script, ProofOfWork.None, WalletModule.Keys);
+            WalletModule.ExecuteTransaction(settings, api, script, ProofOfWork.None, WalletModule.Keys);
         }
 
     }

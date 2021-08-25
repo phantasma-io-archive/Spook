@@ -56,7 +56,7 @@ namespace Phantasma.Spook
 
                 this.Node = new NodeSettings(_settings, FindSection(root, "Node", true));
                 this.Simulator = new SimulatorSettings(_settings, FindSection(root, "Simulator", false));
-                this.Oracle = new OracleSettings(_settings, FindSection(root, "Oracle", true));
+                this.Oracle = new OracleSettings(this.Node.Mode, _settings, FindSection(root, "Oracle", true));
                 this.App = new AppSettings(_settings, FindSection(root, "App", true));
                 this.Log = new LogSettings(_settings, FindSection(root, "Log", false));
                 this.RPC = new RPCSettings(_settings, FindSection(root, "RPC", true));
@@ -209,7 +209,13 @@ namespace Phantasma.Spook
                 throw new Exception("Proof-Of-Work difficulty has to be between 1 and 5");
             }
 
-            this.ApiProxyUrl = settings.GetString("api.proxy.url", section.GetString("api.proxy.url"));
+            this.Mode = settings.GetEnum<NodeMode>("node.mode", section.GetEnum<NodeMode>("node.mode", NodeMode.Invalid));
+            if (this.Mode == NodeMode.Invalid)
+            {
+                throw new Exception("Unknown node mode specified");
+            }
+
+            this.ApiProxyUrl = settings.GetString("api.proxy.url", section.GetString("api.proxy.url"), this.Mode == NodeMode.Proxy);
 
             if (string.IsNullOrEmpty(this.ApiProxyUrl))
             {
@@ -218,13 +224,7 @@ namespace Phantasma.Spook
 
             this.Seeds = section.GetNode("seeds").Children.Select(p => p.Value).ToList();
 
-            this.Mode = settings.GetEnum<NodeMode>("node.mode", section.GetEnum<NodeMode>("node.mode", NodeMode.Invalid));
-            if (this.Mode == NodeMode.Invalid)
-            {
-                throw new Exception("Unknown node mode specified");
-            }
-
-            this.NexusName = settings.GetString("nexus.name", section.GetString("nexus.name"));
+            this.NexusName = settings.GetString("nexus.name", section.GetString("nexus.name"), true);
             this.NodeWif = settings.GetString("node.wif", section.GetString("node.wif"));
             this.StorageConversion = settings.GetBool("convert.storage", section.GetBool("convert.storage"));
             this.ApiLog = settings.GetBool("api.log", section.GetBool("api.log"));
@@ -380,7 +380,7 @@ namespace Phantasma.Spook
         public uint EthGasLimit { get; }
         public bool NeoQuickSync { get; } = false;
 
-        public OracleSettings(Arguments settings, DataNode section)
+        public OracleSettings(NodeMode nodeMode, Arguments settings, DataNode section)
         {
             this.NeoscanUrl = settings.GetString("neoscan.api", section.GetString("neoscan.api"));
 
@@ -404,7 +404,7 @@ namespace Phantasma.Spook
             this.SwapColdStorageNeo = settings.GetString("swaps.coldStorage.neo", section.GetString("swaps.coldStorage.neo"));
 
             var swapNode = section.GetNode("swap.platforms");
-            if (swapNode == null)
+            if (swapNode == null || nodeMode == NodeMode.Proxy)
             {
                 this.SwapPlatforms = new PlatformSettings[0];
             }

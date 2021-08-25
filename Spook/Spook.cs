@@ -47,7 +47,7 @@ namespace Phantasma.Spook
     public class Spook : Runnable
     {
         public readonly string LogPath;
-        public readonly SpookSettings Settings;
+        public SpookSettings Settings;
 
         public static string Version { get; private set; }
         public static string TxIdentifier => $"SPK{Version}";
@@ -115,7 +115,7 @@ namespace Phantasma.Spook
 
             _nodeKeys = SetupNodeKeys();
 
-            if (!SetupNexus())
+            if (Settings.Node.Mode != NodeMode.Proxy && !SetupNexus())
             {
                 this.OnStop();
                 return;
