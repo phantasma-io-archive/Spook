@@ -692,12 +692,16 @@ namespace Phantasma.Spook.Modules
                 {
                     var symbol = contractName;
                     var resultStr = api.Execute("getToken", new[] { symbol, "false" });
-                    dynamic apiResult = System.Text.Json.JsonSerializer.Deserialize<TokenResult>(resultStr);
+
+                    logger.Debug($"{resultStr}");
+
+                    //2021.08.27 sfichera: Fixed api obj deserialization.
+                    //dynamic apiResult = System.Text.Json.JsonSerializer.Deserialize<TokenResult>(resultStr);
+                    dynamic apiResult = JsonConvert.DeserializeObject<TokenResult>(resultStr);
 
                     if (apiResult is TokenResult)
                     {
                         var oldToken = (TokenResult)apiResult;
-
                         var oldFlags = TokenFlags.None;
                         var splitFlags = oldToken.flags.Split(',');
                         foreach (var entry in splitFlags)
