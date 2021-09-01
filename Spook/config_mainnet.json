@@ -47,17 +47,29 @@
         {
           "url": "https://gasprice.poa.network/",
           "feeHeight": "instant",
-          "feeIncrease": 40
+          "feeIncrease": 40,
+          "defaultFee": 0 
         },
         {
           "url": "https://www.etherchain.org/api/gasPriceOracle",
           "feeHeight": "fastest",
-          "feeIncrease": 40
+          "feeIncrease": 40,
+          "defaultFee": 0 
         },
         {
           "url": "https://api.anyblock.tools/latest-minimum-gasprice",
           "feeHeight": "instant",
-          "feeIncrease": 40
+          "feeIncrease": 40,
+          "defaultFee": 0 
+        }
+      ],
+
+      "bsc.fee.urls": [
+        {
+          "url": "",
+          "feeHeight": "instant",
+          "feeIncrease": 20,
+          "defaultFee": 15 
         }
       ],
 	  
@@ -136,7 +148,7 @@
 			{
 				"name": "phantasma",
 				"enabled": true,
-				"height": "0",
+				"height": "0"
 			},
 			{
 				"name": "neo",
@@ -149,7 +161,7 @@
 					"http://seed3.ngd.network:10332",
 					"http://seed4.ngd.network:10332",
 					"http://seed5.ngd.network:10332"
-				  ],
+				  ]
 			},
 			{
 				"name": "ethereum",
@@ -159,9 +171,9 @@
 				"rpc.nodes": [
 					"https://mainnet.infura.io/v3/34a7c02e7f2f458181180c72c4de58a6",
 					"https://mainnet.infura.io/v3/780d5a9837de47649be4c10836b5dbcf"
-				  ],
+				  ]
 			}
-		],		  
+		]
     },
 
     "Simulator": {

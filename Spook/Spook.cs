@@ -180,7 +180,7 @@ namespace Phantasma.Spook
                 Logger.Message("Running token swapping service...");
                 while (Running)
                 {
-                    Logger.Message("Update TokenSwapper now");
+                    Logger.Debug("Update TokenSwapper now");
                     Task.Delay(5000).Wait();
                     if (_nodeReady)
                     {

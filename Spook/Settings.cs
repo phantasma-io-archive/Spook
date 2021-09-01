@@ -74,7 +74,7 @@ namespace Phantasma.Spook
             }
             catch (Exception e)
             {
-                logger.Error(e.Message);
+                logger.Error(e.ToString());
                 logger.Warning($"There were issues loading settings from {this._configFile}, aborting...");
                 Environment.Exit(-1);
             }
@@ -307,23 +307,26 @@ namespace Phantasma.Spook
 
     public class FeeUrl
     {
-        public FeeUrl(string url, string feeHeight, uint feeIncrease)
+        public string url { get; set; }
+        public string feeHeight { get; set; }
+        public uint feeIncrease { get; set; }
+        public uint defaultFee { get; set; }
+
+        public FeeUrl(string url, string feeHeight, uint feeIncrease, uint defaultFee)
         {
             this.url = url;
             this.feeHeight = feeHeight;
             this.feeIncrease = feeIncrease;
+            this.defaultFee = defaultFee;
         }
-
-        public string url { get; set; }
-        public string feeHeight { get; set; }
-        public uint feeIncrease { get; set; }
 
         public static FeeUrl FromNode(DataNode node)
         {
             var url = node.GetString("url");
             var feeHeight = node.GetString("feeHeight");
             var feeIncrease = node.GetUInt32("feeIncrease");
-            return new FeeUrl(url, feeHeight, feeIncrease);
+            var defaultFee = node.GetUInt32("defaultFee");
+            return new FeeUrl(url, feeHeight, feeIncrease, defaultFee);
         }
     }
 

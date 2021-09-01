@@ -13,6 +13,7 @@ using Phantasma.Storage.Context;
 using Phantasma.Neo.Cryptography;
 using Phantasma.Neo.Utils;
 using Phantasma.Spook.Interop;
+using Phantasma.Spook.Utils;
 
 using NeoBlock = Phantasma.Neo.Core.Block;
 using NeoTx = Phantasma.Neo.Core.Transaction;
@@ -187,7 +188,7 @@ namespace Phantasma.Spook.Oracles
                         }
                     }
 
-                    var newFee = EthereumInterop.GetNormalizedFee(_cli.Settings.Oracle.EthFeeURLs.ToArray());
+                    var newFee = SpookUtils.GetNormalizedFee(_cli.Settings.Oracle.EthFeeURLs.ToArray());
                     fee = new CachedFee(Timestamp.Now, UnitConversion.ToBigInteger(newFee, 9)); // 9 for GWEI
                     _feeCache[platform] = fee;
 
@@ -212,7 +213,7 @@ namespace Phantasma.Spook.Oracles
                         }
                     }
 
-                    var newBSCFee = BSCInterop.GetNormalizedFee(_cli.Settings.Oracle.BscFeeURLs.ToArray());
+                    var newBSCFee = SpookUtils.GetNormalizedFee(_cli.Settings.Oracle.BscFeeURLs.ToArray());
                     fee = new CachedFee(Timestamp.Now, UnitConversion.ToBigInteger(newBSCFee, 9)); // 9 for GWEI
                     _feeCache[platform] = fee;
 
