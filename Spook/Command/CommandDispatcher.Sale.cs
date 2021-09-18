@@ -15,7 +15,7 @@ namespace Phantasma.Spook.Command
         protected void OnSaleFinishCommand(string[] args)
         {
             var minFee = new BigInteger(_cli.Settings.Node.MinimumFee);
-            SaleModule.Finish(args, _cli.NexusAPI, minFee);
+            SaleModule.Finish(args, _cli.Settings, _cli.NexusAPI, minFee);
         }
     }
 }

@@ -18,28 +18,28 @@ namespace Phantasma.Spook.Command
         protected void OnWalletTransferCommand(string[] args)
         {
             BigInteger minFee = new BigInteger(_cli.Settings.Node.MinimumFee);
-            WalletModule.Transfer(_cli.NexusAPI, minFee, _cli.NeoAPI, args);
+            WalletModule.Transfer(_cli.Settings, _cli.NexusAPI, minFee, _cli.NeoAPI, args);
         }
 
         [ConsoleCommand("wallet stake", Category = "Wallet")]
         protected void OnWalletStakeCommand(string[] args)
         {
             BigInteger minFee = new BigInteger(_cli.Settings.Node.MinimumFee);
-            WalletModule.Stake(_cli.NexusAPI, minFee, args);
+            WalletModule.Stake(_cli.Settings, _cli.NexusAPI, minFee, args);
         }
 
         [ConsoleCommand("wallet airdrop", Category = "Wallet")]
         protected void OnWalletAirdropCommand(string[] args)
         {
             BigInteger minFee = new BigInteger(_cli.Settings.Node.MinimumFee);
-            WalletModule.Airdrop(args, _cli.Nexus, _cli.NexusAPI, minFee);
+            WalletModule.Airdrop(args, _cli.Settings, _cli.NexusAPI, minFee);
         }
 
         [ConsoleCommand("wallet migrate", Category = "Wallet", Description = "Migrate a validator wallet")]
         protected void OnWalletMigrateCommand(string[] args)
         {
             BigInteger minFee = new BigInteger(_cli.Settings.Node.MinimumFee);
-            WalletModule.Migrate(args, _cli.NexusAPI, minFee);
+            WalletModule.Migrate(args, _cli.Settings, _cli.NexusAPI, minFee);
 
             if (_cli.Mempool != null)
             {
@@ -51,21 +51,21 @@ namespace Phantasma.Spook.Command
         protected void OnWalletDeployCommand(string[] args)
         {
             BigInteger minFee = new BigInteger(_cli.Settings.Node.MinimumFee);
-            WalletModule.Deploy(args, _cli.NexusAPI, minFee);
+            WalletModule.Deploy(args, _cli.Settings, _cli.NexusAPI, minFee);
         }
 
         [ConsoleCommand("wallet upgrade", Category = "Wallet", Description = "Upgrade a contract using a wallet")]
         protected void OnWalletUpgradeCommand(string[] args)
         {
             BigInteger minFee = new BigInteger(_cli.Settings.Node.MinimumFee);
-            WalletModule.Upgrade(args, _cli.NexusAPI, minFee);
+            WalletModule.Upgrade(args, _cli.Settings, _cli.NexusAPI, minFee);
         }
 
         [ConsoleCommand("wallet script", Category = "Wallet", Description = "Executes a transaction using a script loaded from a file")]
         protected void OnWalletScriptCommand(string[] args)
         {
             BigInteger minFee = new BigInteger(_cli.Settings.Node.MinimumFee);
-            WalletModule.ExecuteScript(args, _cli.NexusAPI, minFee);
+            WalletModule.ExecuteScript(args, _cli.Settings, _cli.NexusAPI, minFee);
         }
 
         [ConsoleCommand("wallet migrate", Category = "Wallet", Description = "Migrate a validator wallet")]

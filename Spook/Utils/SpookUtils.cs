@@ -5,6 +5,10 @@ using System.Reflection;
 
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Net;
+using System.Text.Json;
 
 namespace Phantasma.Spook.Utils
 {
@@ -138,6 +142,90 @@ namespace Phantasma.Spook.Utils
                         );
 
             return string.Concat(result);
+        }
+
+        public static decimal GetNormalizedFee(FeeUrl[] fees)
+        {
+            var taskList = new List<Task<decimal>>();
+
+            foreach (var fee in fees)
+            {
+                taskList.Add(
+                        new Task<decimal>(() => 
+                        {
+                            return GetFee(fee);
+                        })
+                );
+            }
+
+            Parallel.ForEach(taskList, (task) =>
+            {
+                task.Start();
+            });
+
+            Task.WaitAll(taskList.ToArray());
+
+            var results = new List<decimal>();
+            foreach (var task in taskList)
+            {
+                results.Add(task.Result);
+            }
+
+            var median = GetMedian<decimal>(results.ToArray());
+
+            return median;
+        }
+
+        public static decimal GetFee(FeeUrl feeObj)
+        {
+            decimal fee = 0;
+
+            if (string.IsNullOrEmpty(feeObj.url))
+            {
+                return feeObj.defaultFee;
+            }
+
+            try
+            {
+                using (WebClient wc = new WebClient())
+                {
+                    var json = wc.DownloadString(feeObj.url);
+                    var doc = JsonDocument.Parse(json);
+                    if (doc.RootElement.TryGetProperty(feeObj.feeHeight, out var prop))
+                    {
+                        fee = decimal.Parse(prop.ToString().Replace(',', '.'), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture);
+                        fee += feeObj.feeIncrease;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Getting fee failed: " + e);
+            }
+
+            return fee;
+        }
+
+        public static T GetMedian<T>(T[] sourceArray) where T : IComparable<T>
+        {
+            if (sourceArray == null || sourceArray.Length == 0)
+                throw new ArgumentException("Median of empty array not defined.");
+
+            T[] sortedArray = sourceArray;
+            Array.Sort(sortedArray);
+
+            //get the median
+            int size = sortedArray.Length;
+            int mid = size / 2;
+            if (size % 2 != 0)
+            {
+                return sortedArray[mid];
+            }
+
+            dynamic value1 = sortedArray[mid];
+            dynamic value2 = sortedArray[mid - 1];
+
+            return (sortedArray[mid] + value2) * 0.5;
         }
     }
 }

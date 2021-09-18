@@ -166,16 +166,16 @@ namespace Phantasma.Spook.Modules
 
         }
 
-        public static Hash ExecuteTransaction(NexusAPI api, byte[] script, ProofOfWork proofOfWork, IKeyPair keys)
+        public static Hash ExecuteTransaction(SpookSettings settings, NexusAPI api, byte[] script, ProofOfWork proofOfWork, IKeyPair keys)
         {
-            return ExecuteTransaction(api, script, proofOfWork, new IKeyPair[] { keys });
+            return ExecuteTransaction(settings, api, script, proofOfWork, new IKeyPair[] { keys });
         }
 
         private static Dictionary<string, TransactionResult> _transactionResults = new Dictionary<string, TransactionResult>();
 
-        public static Hash ExecuteTransaction(NexusAPI api, byte[] script, ProofOfWork proofOfWork, params IKeyPair[] keys)
+        public static Hash ExecuteTransaction(SpookSettings settings, NexusAPI api, byte[] script, ProofOfWork proofOfWork, params IKeyPair[] keys)
         {
-            var tx = new Blockchain.Transaction(api.Nexus.Name, DomainSettings.RootChainName, script, Timestamp.Now + TimeSpan.FromMinutes(5), Spook.TxIdentifier);
+            var tx = new Blockchain.Transaction(settings.Node.NexusName, DomainSettings.RootChainName, script, Timestamp.Now + TimeSpan.FromMinutes(5), Spook.TxIdentifier);
 
             if (proofOfWork != ProofOfWork.None)
             {
@@ -249,7 +249,7 @@ namespace Phantasma.Spook.Modules
             return Enumerable.Empty<EventResult>();
         }
 
-        private static void SettleSwap(NexusAPI api, BigInteger minimumFee, string platform, string swapSymbol, Hash extHash, IKeyPair externalKeys, Address targetAddress)
+        private static void SettleSwap(SpookSettings settings, NexusAPI api, BigInteger minimumFee, string platform, string swapSymbol, Hash extHash, IKeyPair externalKeys, Address targetAddress)
         {
             var outputAddress = Address.FromKey(externalKeys);
 
@@ -261,7 +261,7 @@ namespace Phantasma.Spook.Modules
                 .SpendGas(outputAddress).EndScript();
 
             logger.Message("Settling swap on Phantasma");
-            ExecuteTransaction(api, script, ProofOfWork.None, externalKeys);
+            ExecuteTransaction(settings, api, script, ProofOfWork.None, externalKeys);
             logger.Success($"Swap of {swapSymbol} is complete!");
         }
 
@@ -279,7 +279,7 @@ namespace Phantasma.Spook.Modules
             }
         }
 
-        public static void Transfer(NexusAPI api, BigInteger minimumFee, NeoAPI neoAPI, string[] args)
+        public static void Transfer(SpookSettings settings, NexusAPI api, BigInteger minimumFee, NeoAPI neoAPI, string[] args)
         {
             if (args.Length != 4)
             {
@@ -416,7 +416,7 @@ namespace Phantasma.Spook.Modules
                     }
 
                     var destAddress = Address.FromText(destName);
-                    SettleSwap(api, minimumFee, sourcePlatform, tokenSymbol, extHash, extKeys, destAddress);
+                    SettleSwap(settings, api, minimumFee, sourcePlatform, tokenSymbol, extHash, extKeys, destAddress);
                 }
                 return;
             }
@@ -453,11 +453,11 @@ namespace Phantasma.Spook.Modules
                     EndScript();
 
                 logger.Message($"Sending {tempAmount} {tokenSymbol} to {destAddress.Text}...");
-                ExecuteTransaction(api, script, ProofOfWork.None, Keys);
+                ExecuteTransaction(settings, api, script, ProofOfWork.None, Keys);
             }
         }
 
-        public static void Stake(NexusAPI api, BigInteger minFee, string[] args)
+        public static void Stake(SpookSettings settings, NexusAPI api, BigInteger minFee, string[] args)
         {
             if (args.Length != 1)
             {
@@ -488,7 +488,7 @@ namespace Phantasma.Spook.Modules
                 SpendGas(Keys.Address).
                 EndScript();
 
-            var hash = ExecuteTransaction(api, script, ProofOfWork.None, Keys);
+            var hash = ExecuteTransaction(settings, api, script, ProofOfWork.None, Keys);
 
             if (hash != Hash.Null)
             {
@@ -505,7 +505,7 @@ namespace Phantasma.Spook.Modules
             }
         }
 
-        public static void Airdrop(string[] args, Nexus nexus, NexusAPI api, BigInteger minFee)
+        public static void Airdrop(string[] args, SpookSettings settings, NexusAPI api, BigInteger minFee)
         {
             if (args.Length != 1)
             {
@@ -566,10 +566,10 @@ namespace Phantasma.Spook.Modules
             var script = sb.EndScript();
 
             logger.Message($"Sending airdrop to {addressCount} addresses...");
-            ExecuteTransaction(api, script, ProofOfWork.None, Keys);
+            ExecuteTransaction(settings, api, script, ProofOfWork.None, Keys);
         }
 
-        public static void Migrate(string[] args, NexusAPI api, BigInteger minFee)
+        public static void Migrate(string[] args, SpookSettings settings, NexusAPI api, BigInteger minFee)
         {
             if (args.Length != 1)
             {
@@ -590,7 +590,7 @@ namespace Phantasma.Spook.Modules
             sb.SpendGas(Keys.Address);
             var script = sb.EndScript();
 
-            var hash = ExecuteTransaction(api, script, ProofOfWork.None, Keys/*, newKeys*/);
+            var hash = ExecuteTransaction(settings, api, script, ProofOfWork.None, Keys/*, newKeys*/);
             if (hash != Hash.Null)
             {
                 logger.Message($"Migrated to " + newKeys.Address);
@@ -617,7 +617,7 @@ namespace Phantasma.Spook.Modules
             throw new Exception("Script execution failed for: " + methodName);
         }
 
-        private static void DeployOrUpgrade(string[] args, NexusAPI api, BigInteger minFee, bool isUpgrade)
+        private static void DeployOrUpgrade(string[] args, SpookSettings settings, NexusAPI api, BigInteger minFee, bool isUpgrade)
         {
             if (args.Length != 1)
             {
@@ -655,8 +655,30 @@ namespace Phantasma.Spook.Modules
 
             var sb = new ScriptBuilder();
 
-            var nexusDetails = System.Text.Json.JsonSerializer.Deserialize<NexusResult>(api.Execute("getNexus", new object[]{false}));
-            var nexusVersion = Int32.Parse(nexusDetails.governance.Where(x => x.value == "nexus.protocol.version").FirstOrDefault().value);
+            int nexusVersion = 0;
+
+            try
+            {
+                var nexusDetails = api.Execute("getNexus", new object[] { false });
+                var root = LunarLabs.Parser.JSON.JSONReader.ReadFromString(nexusDetails);
+
+                var governance = root["governance"];
+
+                var entry = governance.Children.Where(x => x.GetNode("name").Value == "nexus.protocol.version").FirstOrDefault();
+                entry = entry.GetNodeByIndex(1);
+
+                nexusVersion = Int32.Parse(entry.Value);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                nexusVersion = -1;
+            }
+
+            if (nexusVersion <= 1)
+            {
+                throw new CommandException("Failed to obtain nexus version via API");
+            }
 
             bool isToken = ValidationUtils.IsValidTicker(contractName);
             var availableFlags = Enum.GetValues(typeof(TokenFlags)).Cast<TokenFlags>().ToArray();
@@ -670,12 +692,16 @@ namespace Phantasma.Spook.Modules
                 {
                     var symbol = contractName;
                     var resultStr = api.Execute("getToken", new[] { symbol, "false" });
-                    dynamic apiResult = System.Text.Json.JsonSerializer.Deserialize<TokenResult>(resultStr);
+
+                    logger.Debug($"{resultStr}");
+
+                    //2021.08.27 sfichera: Fixed api obj deserialization.
+                    //dynamic apiResult = System.Text.Json.JsonSerializer.Deserialize<TokenResult>(resultStr);
+                    dynamic apiResult = JsonConvert.DeserializeObject<TokenResult>(resultStr);
 
                     if (apiResult is TokenResult)
                     {
                         var oldToken = (TokenResult)apiResult;
-
                         var oldFlags = TokenFlags.None;
                         var splitFlags = oldToken.flags.Split(',');
                         foreach (var entry in splitFlags)
@@ -791,7 +817,7 @@ namespace Phantasma.Spook.Modules
                 }
             }
 
-            var hash = ExecuteTransaction(api, script, ProofOfWork.Minimal, Keys);
+            var hash = ExecuteTransaction(settings, api, script, ProofOfWork.Minimal, Keys);
             if (hash != Hash.Null)
             {
                 var expectedEvent = isUpgrade ? EventKind.ContractUpgrade : (isToken ? EventKind.TokenCreate : EventKind.ContractDeploy);
@@ -813,17 +839,17 @@ namespace Phantasma.Spook.Modules
             }
         }
 
-        public static void Deploy(string[] args, NexusAPI api, BigInteger minFee)
+        public static void Deploy(string[] args, SpookSettings settings, NexusAPI api, BigInteger minFee)
         {
-            DeployOrUpgrade(args, api, minFee, false);
+            DeployOrUpgrade(args, settings, api, minFee, false);
         }
 
-        public static void Upgrade(string[] args, NexusAPI api, BigInteger minFee)
+        public static void Upgrade(string[] args, SpookSettings settings, NexusAPI api, BigInteger minFee)
         {
-            DeployOrUpgrade(args, api, minFee, true);
+            DeployOrUpgrade(args, settings, api, minFee, true);
         }
 
-        public static void ExecuteScript(string[] args, NexusAPI api, BigInteger minFee)
+        public static void ExecuteScript(string[] args, SpookSettings settings, NexusAPI api, BigInteger minFee)
         {
             if (args.Length != 1)
             {
@@ -854,7 +880,7 @@ namespace Phantasma.Spook.Modules
 
             var script = sb.EndScript();
 
-            var hash = ExecuteTransaction(api, script, ProofOfWork.Minimal, Keys);
+            var hash = ExecuteTransaction(settings, api, script, ProofOfWork.Minimal, Keys);
         }
 
         private static TokenResult FetchTokenInfo(NexusAPI api, string symbol)

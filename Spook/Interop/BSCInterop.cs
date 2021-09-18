@@ -19,6 +19,7 @@ using Phantasma.Core.Utils;
 using Nethereum.RPC.Eth.DTOs;
 using Nethereum.Contracts;
 using Nethereum.StandardTokenEIP20.ContractDefinition;
+using Nethereum.Hex.HexTypes;
 
 using EthereumKey = Phantasma.Ethereum.EthereumKey;
 using PBigInteger = Phantasma.Numerics.BigInteger;
@@ -26,7 +27,7 @@ using Phantasma.Storage.Context;
 
 namespace Phantasma.Spook.Interop
 {
-    public class EthereumInterop: ChainSwapper
+    public class BSCInterop: ChainSwapper
     {
         private EthAPI ethAPI;
         private List<string> contracts;
@@ -34,14 +35,19 @@ namespace Phantasma.Spook.Interop
         private List<BigInteger> _resyncBlockIds = new List<BigInteger>();
         private static bool initialStart = true;
 
-        public EthereumInterop(TokenSwapper swapper, EthAPI ethAPI, PBigInteger interopBlockHeight, string[] contracts, uint confirmations)
-                : base(swapper, EthereumWallet.EthereumPlatform)
+        public BSCInterop(TokenSwapper swapper, EthAPI ethAPI, PBigInteger interopBlockHeight, string[] contracts, uint confirmations)
+                : base(swapper, BSCWallet.BSCPlatform)
         {
-            string lastBlockHeight = OracleReader.GetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform);
+            string lastBlockHeight = OracleReader.GetCurrentHeight(BSCWallet.BSCPlatform, BSCWallet.BSCPlatform);
             if(string.IsNullOrEmpty(lastBlockHeight))
-                OracleReader.SetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, new BigInteger(interopBlockHeight.ToSignedByteArray()).ToString());
+                OracleReader.SetCurrentHeight(BSCWallet.BSCPlatform, BSCWallet.BSCPlatform, new BigInteger(interopBlockHeight.ToSignedByteArray()).ToString());
 
-            Logger.Message($"interopHeight: {OracleReader.GetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform)}");
+            Logger.Message($"interopHeight: {OracleReader.GetCurrentHeight(BSCWallet.BSCPlatform, BSCWallet.BSCPlatform)}");
+            Console.WriteLine("encoded bsc: " + BSCWallet.EncodeAddress("0x44E8743A6CAC3E59594C19DD462863A5AA5E06BB"));
+            Console.WriteLine("encoded eth: " + EthereumWallet.EncodeAddress("0x44E8743A6CAC3E59594C19DD462863A5AA5E06BB"));
+
+            Console.WriteLine("from encoded bsc: " + BSCWallet.EncodeAddress("0xA89a34c37Da826085E458c17067DA2F38b6e4763"));
+            Console.WriteLine("from encoded eth: " + EthereumWallet.EncodeAddress("0xA89a34c37Da826085E458c17067DA2F38b6e4763"));
 
             this.contracts = contracts.ToList();
 
@@ -64,15 +70,15 @@ namespace Phantasma.Spook.Interop
             //Task.Delay(10000).Wait();
             try
             {
-                lock (String.Intern("PendingSetCurrentHeight_" + EthereumWallet.EthereumPlatform))
+                lock (String.Intern("PendingSetCurrentHeight_" + BSCWallet.BSCPlatform))
                 {
                     var result = new List<PendingSwap>();
 
                     // initial start, we have to verify all processed swaps
                     if (initialStart)
                     {
-                        Logger.Debug($"Read all ethereum blocks now.");
-                        var allInteropBlocks = OracleReader.ReadAllBlocks(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform);
+                        Logger.Debug($"Read all bsc blocks now.");
+                        var allInteropBlocks = OracleReader.ReadAllBlocks(BSCWallet.BSCPlatform, BSCWallet.BSCPlatform);
 
                         Logger.Debug($"Found {allInteropBlocks.Count} blocks");
 
@@ -88,7 +94,7 @@ namespace Phantasma.Spook.Interop
                     }
 
                     var currentHeight = ethAPI.GetBlockHeight();
-                    var _interopBlockHeight = BigInteger.Parse(OracleReader.GetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform));
+                    var _interopBlockHeight = BigInteger.Parse(OracleReader.GetCurrentHeight(BSCWallet.BSCPlatform, BSCWallet.BSCPlatform));
                     Logger.Debug($"Swaps: Current Eth chain height: {currentHeight}, interop: {_interopBlockHeight}, delta: {currentHeight - _interopBlockHeight}");
 
                     var blocksProcessedInOneBatch = 0;
@@ -157,14 +163,14 @@ namespace Phantasma.Spook.Interop
                         //    }
 
                         //    _interopBlockHeight = nextHeight;
-                        //    oracleReader.SetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, _interopBlockHeight.ToString());
+                        //    oracleReader.SetCurrentHeight(BSCWallet.BSCPlatform, BSCWallet.BSCPlatform, _interopBlockHeight.ToString());
                         //}
                         //else
                         //{
 
                         /* Future improvement, implement oracle call to fetch multiple blocks */
                         var url = DomainExtensions.GetOracleBlockURL(
-                                EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, PBigInteger.FromUnsignedArray(_interopBlockHeight.ToByteArray(), true));
+                                BSCWallet.BSCPlatform, BSCWallet.BSCPlatform, PBigInteger.FromUnsignedArray(_interopBlockHeight.ToByteArray(), true));
 
                         var interopBlock = OracleReader.Read<InteropBlock>(DateTime.Now, url);
 
@@ -174,23 +180,23 @@ namespace Phantasma.Spook.Interop
                         //}
                     }
 
-                    OracleReader.SetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, _interopBlockHeight.ToString());
+                    OracleReader.SetCurrentHeight(BSCWallet.BSCPlatform, BSCWallet.BSCPlatform, _interopBlockHeight.ToString());
 
                     var total = result.Count();
                     if (total > 0)
                     {
-                        Logger.Message($"found {total} ethereum swaps");
+                        Logger.Message($"startup: found {total} bsc swaps");
                     }
                     else
                     {
-                        Logger.Debug($"did not find any ethereum swaps");
+                        Logger.Debug($"did not find any bsc swaps");
                     }
                     return result;
                 }
             }
             catch (Exception e)
             {
-                var logMessage = "EthereumInterop.Update() exception caught:\n" + e.Message;
+                var logMessage = "BSCInterop.Update() exception caught:\n" + e.Message;
                 var inner = e.InnerException;
                 while (inner != null)
                 {
@@ -227,7 +233,7 @@ namespace Phantasma.Spook.Interop
             List<Task<InteropBlock>> taskList = new List<Task<InteropBlock>>();
             if (blockIds == null)
             {
-                var _interopBlockHeight = BigInteger.Parse(OracleReader.GetCurrentHeight(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform));
+                var _interopBlockHeight = BigInteger.Parse(OracleReader.GetCurrentHeight(BSCWallet.BSCPlatform, BSCWallet.BSCPlatform));
                 var nextCurrentBlockHeight = _interopBlockHeight + batchCount;
 
                 if (nextCurrentBlockHeight > currentHeight)
@@ -238,7 +244,7 @@ namespace Phantasma.Spook.Interop
                 for (var i = _interopBlockHeight; i <= nextCurrentBlockHeight; i++)
                 {
                     var url = DomainExtensions.GetOracleBlockURL(
-                            EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, PBigInteger.FromUnsignedArray(i.ToByteArray(), true));
+                            BSCWallet.BSCPlatform, BSCWallet.BSCPlatform, PBigInteger.FromUnsignedArray(i.ToByteArray(), true));
                 
                     taskList.Add(CreateTask(url));
                 }
@@ -248,7 +254,7 @@ namespace Phantasma.Spook.Interop
                 foreach (var blockId in blockIds)
                 {
                     var url = DomainExtensions.GetOracleBlockURL(
-                            EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, PBigInteger.FromUnsignedArray(blockId.ToByteArray(), true));
+                            BSCWallet.BSCPlatform, BSCWallet.BSCPlatform, PBigInteger.FromUnsignedArray(blockId.ToByteArray(), true));
                     taskList.Add(CreateTask(url));
                 }
             }
@@ -279,7 +285,7 @@ namespace Phantasma.Spook.Interop
                                }
                                logMessage += "\n\n" + e.StackTrace;
 
-                               Logger.Error(logMessage.Contains("Ethereum block is null") ? "oracleReader.Read(): Ethereum block is null, possible connection failure" : logMessage);
+                               Logger.Error(logMessage.Contains("BSC block is null") ? "oracleReader.Read(): BSC block is null, possible connection failure" : logMessage);
                            }
 
                            Thread.Sleep(delay);
@@ -295,7 +301,7 @@ namespace Phantasma.Spook.Interop
         {
             foreach (var txHash in block.Transactions)
             {
-                var interopTx = OracleReader.ReadTransaction(EthereumWallet.EthereumPlatform, "ethethereum", txHash);
+                var interopTx = OracleReader.ReadTransaction(BSCWallet.BSCPlatform, "bsc", txHash);
 
                 foreach (var interopTransfer in interopTx.Transfers)
                 {
@@ -313,7 +319,7 @@ namespace Phantasma.Spook.Interop
         private InteropBlock GetInteropBlock(BigInteger blockId)
         {
             var url = DomainExtensions.GetOracleBlockURL(
-                EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform,
+                BSCWallet.BSCPlatform, BSCWallet.BSCPlatform,
                 PBigInteger.FromUnsignedArray(blockId.ToByteArray(), true));
 
             return OracleReader.Read<InteropBlock>(DateTime.Now, url);
@@ -338,24 +344,27 @@ namespace Phantasma.Spook.Interop
             if (transaction is Nethereum.Signer.TransactionChainId)
             {
                 var txnChainId = transaction as Nethereum.Signer.TransactionChainId;
+                Console.WriteLine("if " + txnChainId.GetChainIdAsBigInteger());
                 accountSenderRecovered = Nethereum.Signer.EthECKey.RecoverFromSignature(transaction.Signature, transaction.RawHash, txnChainId.GetChainIdAsBigInteger());
             }
             else
             {
+                Console.WriteLine("else ");
                 accountSenderRecovered = Nethereum.Signer.EthECKey.RecoverFromSignature(transaction.Signature, transaction.RawHash);
             }
+            Console.WriteLine("!!!!!!!!!!!!!!1 accountSenderREcovered: " + accountSenderRecovered);
             var pubKey = accountSenderRecovered.GetPubKey();
 
             var point = Cryptography.ECC.ECPoint.DecodePoint(pubKey, Cryptography.ECC.ECCurve.Secp256k1);
             pubKey = point.EncodePoint(true);
-            Console.WriteLine("account recovered: " + accountSenderRecovered.GetPublicAddress());
 
             var bytes = new byte[34];
             bytes[0] = (byte)AddressKind.User;
             ByteArrayUtils.CopyBytes(pubKey, 0, bytes, 1, 33);
 
             var address = Address.FromBytes(bytes);
-            Console.WriteLine("account recovered: " + accountSenderRecovered.GetPublicAddress());
+            Console.WriteLine("!!!!!!!!!!!!!!1 accountSenderREcovered: " + address);
+
             return address;
         }
 
@@ -372,11 +381,12 @@ namespace Phantasma.Spook.Interop
             Dictionary<string, Dictionary<string, List<InteropTransfer>>> transfers = new Dictionary<string, Dictionary<string, List<InteropTransfer>>>();
             try
             {
-                Func<string, Address> addressEncoder = (address) => { return EthereumWallet.EncodeAddress(address); };
-                Func<Nethereum.RPC.Eth.DTOs.Transaction, Address> addressExtractor = (tx) => { return EthereumInterop.ExtractInteropAddress(tx); };
+                // TODO pass from outside to not instantiate for each call to MakeInteropBlock
+                Func<string, Address> addressEncoder = (address) => { Console.WriteLine("BSC ENCODER!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1"); return BSCWallet.EncodeAddress(address); };
+                Func<Nethereum.RPC.Eth.DTOs.Transaction, Address> addressExtractor = (tx) => { return BSCInterop.ExtractInteropAddress(tx); };
 
                 var crawler = new EvmBlockCrawler(logger, combinedAddresses.ToArray(), confirmations, api,
-                        addressEncoder, addressExtractor, EthereumWallet.EthereumPlatform);
+                        addressEncoder, addressExtractor, BSCWallet.BSCPlatform);
                 // fetch blocks
                 crawler.Fetch(height);
                 transfers = crawler.ExtractInteropTransfers(nexus, logger, swapAddress);
@@ -388,7 +398,7 @@ namespace Phantasma.Spook.Interop
 
             if (transfers.Count == 0)
             {
-                var emptyBlock =  new InteropBlock(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, Hash.Null, new Hash[]{});
+                var emptyBlock =  new InteropBlock(BSCWallet.BSCPlatform, BSCWallet.BSCPlatform, Hash.Null, new Hash[]{});
                 return Tuple.Create(emptyBlock, interopTransactions.ToArray());
             }
 
@@ -410,8 +420,8 @@ namespace Phantasma.Spook.Interop
             var hashes = interopTransactions.Select(x => x.Hash).ToArray() ;
 
             InteropBlock interopBlock = (interopTransactions.Count() > 0)
-                ? new InteropBlock(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, blockHash, hashes)
-                : new InteropBlock(EthereumWallet.EthereumPlatform, EthereumWallet.EthereumPlatform, Hash.Null, hashes);
+                ? new InteropBlock(BSCWallet.BSCPlatform, BSCWallet.BSCPlatform, blockHash, hashes)
+                : new InteropBlock(BSCWallet.BSCPlatform, BSCWallet.BSCPlatform, Hash.Null, hashes);
 
             return Tuple.Create(interopBlock, interopTransactions.ToArray());
         }
@@ -446,6 +456,7 @@ namespace Phantasma.Spook.Interop
                 logger.Error("Getting eth tx failed: " + e.Message);
             }
 
+            Console.WriteLine("txr: " + txr.Status);
             logger.Debug("Transaction status: " + txr.Status.Value);
             // check if tx has failed
             if (txr.Status.Value == 0)
@@ -454,11 +465,17 @@ namespace Phantasma.Spook.Interop
                 return interopTransfers;
             }
 
-            var nodeSwapAddresses = swapAddresses.Select(x => EthereumWallet.EncodeAddress(x));
+            foreach (var a in swapAddresses)
+            {
+                Console.WriteLine("swap address: " + a);
+
+            }
+            var nodeSwapAddresses = swapAddresses.Select(x => BSCWallet.EncodeAddress(x));
             var interopAddress = ExtractInteropAddress(tx);
+            Console.WriteLine("interop address: " + interopAddress);
 
             // ERC721 (NFT)
-            // TODO currently this code block is mostly copypaste from ERC20 block, later make a single method for both...
+            // TODO currently this code block is mostly copypaste from BEP20 block, later make a single method for both...
             //var erc721_events = txr.DecodeAllEvents<Nethereum.StandardNonFungibleTokenERC721.ContractDefinition.TransferEventDTOBase>();
             //foreach (var evt in erc721_events)
             //{
@@ -469,8 +486,8 @@ namespace Phantasma.Spook.Interop
             //        continue;
             //    }
 
-            //    var targetAddress = EthereumWallet.EncodeAddress(evt.Event.To);
-            //    var sourceAddress = EthereumWallet.EncodeAddress(evt.Event.From);
+            //    var targetAddress = BSCWallet.EncodeAddress(evt.Event.To);
+            //    var sourceAddress = BSCWallet.EncodeAddress(evt.Event.From);
             //    var tokenID = PBigInteger.Parse(evt.Event.TokenId.ToString());
 
             //    if (nodeSwapAddresses.Contains(targetAddress))
@@ -486,7 +503,7 @@ namespace Phantasma.Spook.Interop
             //        (
             //            new InteropTransfer
             //            (
-            //                EthereumWallet.EthereumPlatform,
+            //                BSCWallet.BSCPlatform,
             //                sourceAddress,
             //                DomainSettings.PlatformName,
             //                targetAddress,
@@ -499,19 +516,19 @@ namespace Phantasma.Spook.Interop
             //    }
             //}
 
-            // ERC20
-            var erc20_events = txr.DecodeAllEvents<TransferEventDTO>();
-            foreach (var evt in erc20_events)
+            // BEP20
+            var bep20_events = txr.DecodeAllEvents<TransferEventDTO>();
+            foreach (var evt in bep20_events)
             {
-                var asset = EthUtils.FindSymbolFromAsset(EthereumWallet.EthereumPlatform, nexus, evt.Log.Address);
+                var asset = EthUtils.FindSymbolFromAsset(BSCWallet.BSCPlatform, nexus, evt.Log.Address);
                 if (asset == null)
                 {
                     logger.Warning($"Asset [{evt.Log.Address}] not supported");
                     continue;
                 }
 
-                var targetAddress = EthereumWallet.EncodeAddress(evt.Event.To);
-                var sourceAddress = EthereumWallet.EncodeAddress(evt.Event.From);
+                var targetAddress = BSCWallet.EncodeAddress(evt.Event.To);
+                var sourceAddress = BSCWallet.EncodeAddress(evt.Event.From);
                 var amount = PBigInteger.Parse(evt.Event.Value.ToString());
 
                 if (nodeSwapAddresses.Contains(targetAddress))
@@ -525,7 +542,7 @@ namespace Phantasma.Spook.Interop
                     (
                         new InteropTransfer
                         (
-                            EthereumWallet.EthereumPlatform,
+                            BSCWallet.BSCPlatform,
                             sourceAddress,
                             DomainSettings.PlatformName,
                             targetAddress,
@@ -537,10 +554,18 @@ namespace Phantasma.Spook.Interop
                 }
             }
 
+            Console.WriteLine("value: " + tx.Value);
+            Console.WriteLine("value: " + tx.Value.Value);
             if (tx.Value != null && tx.Value.Value > 0)
             {
-                var targetAddress = EthereumWallet.EncodeAddress(tx.To);
-                var sourceAddress = EthereumWallet.EncodeAddress(tx.From);
+                var targetAddress = BSCWallet.EncodeAddress(tx.To);
+                var sourceAddress = BSCWallet.EncodeAddress(tx.From);
+
+                foreach (var a in nodeSwapAddresses)
+                {
+                    Console.WriteLine("node swap address: " + a);
+                }
+                Console.WriteLine("target address: " + targetAddress);
 
                 if (nodeSwapAddresses.Contains(targetAddress))
                 {
@@ -555,12 +580,12 @@ namespace Phantasma.Spook.Interop
                     (
                         new InteropTransfer
                         (
-                            EthereumWallet.EthereumPlatform,
+                            BSCWallet.BSCPlatform,
                             sourceAddress,
                             DomainSettings.PlatformName,
                             targetAddress,
                             interopAddress,
-                            "ETH", // TODO use const
+                            "BSC", // TODO use const
                             amount
                         )
                     );
@@ -590,10 +615,9 @@ namespace Phantasma.Spook.Interop
             return ((interopTransfers.Count() > 0)
                 ? new InteropTransaction(Hash.Parse(txr.TransactionHash), interopTransfers.ToArray())
                 : new InteropTransaction(Hash.Null, interopTransfers.ToArray()));
-
         }
 
-        private Hash VerifyEthTx(Hash sourceHash, string txHash)
+        private Hash VerifyBscTx(Hash sourceHash, string txHash)
         {
             TransactionReceipt txr;
 
@@ -616,7 +640,7 @@ namespace Phantasma.Spook.Interop
 
                 if (txr == null)
                 {
-                    Logger.Error($"Ethereum transaction {txHash} not mined yet.");
+                    Logger.Error($"BSC transaction {txHash} not mined yet.");
                     return Hash.Null;
                 }
             }
@@ -628,7 +652,7 @@ namespace Phantasma.Spook.Interop
 
             if (txr.Status.Value == 0) // Status == 0 = error
             {
-                Logger.Error($"Possible failed eth swap sourceHash: {sourceHash} txHash: {txHash}");
+                Logger.Error($"Possible failed bsc swap sourceHash: {sourceHash} txHash: {txHash}");
 
                 Logger.Error($"EthAPI error, tx {txr.TransactionHash} ");
                 return Hash.Null;
@@ -639,7 +663,7 @@ namespace Phantasma.Spook.Interop
 
         internal override Hash VerifyExternalTx(Hash sourceHash, string txStr)
         {
-            return VerifyEthTx(sourceHash, txStr);
+            return VerifyBscTx(sourceHash, txStr);
         }
 
 
@@ -658,21 +682,20 @@ namespace Phantasma.Spook.Interop
 
                 if (!string.IsNullOrEmpty(tx))
                 {
-                    return VerifyEthTx(sourceHash, tx);
+                    return VerifyBscTx(sourceHash, tx);
                 }
             }
 
             var total = Numerics.UnitConversion.ToDecimal(amount, token.Decimals);
 
-            var ethKeys = EthereumKey.FromWIF(this.WIF);
+            var bscKeys = EthereumKey.FromWIF(this.WIF);
 
-            var destAddress = EthereumWallet.DecodeAddress(destination);
+            var destAddress = BSCWallet.DecodeAddress(destination);
 
             try
             {
-                Logger.Debug($"ETHSWAP: Trying transfer of {total} {token.Symbol} from {ethKeys.Address} to {destAddress}");
-                var transferResult = ethAPI.TryTransferAsset(EthereumWallet.EthereumPlatform, token.Symbol, destAddress,
-                        total, token.Decimals, out tx);
+                Logger.Debug($"BSCSWAP: Trying transfer of {total} {token.Symbol} from {bscKeys.Address} to {destAddress}");
+                var transferResult = ethAPI.TryTransferAsset(BSCWallet.BSCPlatform, token.Symbol, destAddress, total, token.Decimals, out tx);
 
                 if (transferResult == EthTransferResult.Success)
                 {
@@ -682,7 +705,7 @@ namespace Phantasma.Spook.Interop
                 }
                 else
                 {
-                    Logger.Error($"ETHSWAP: Transfer of {total} {token.Symbol} from {ethKeys.Address} to {destAddress} failed, no tx generated");
+                    Logger.Error($"BSCSWAP: Transfer of {total} {token.Symbol} from {bscKeys.Address} to {destAddress} failed, no tx generated");
                 }
             }
             catch (Exception e)
@@ -692,7 +715,7 @@ namespace Phantasma.Spook.Interop
                 return Hash.Null;
             }
 
-            return VerifyEthTx(sourceHash, tx);
+            return VerifyBscTx(sourceHash, tx);
         }
 
     }

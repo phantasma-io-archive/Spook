@@ -98,7 +98,14 @@ namespace Phantasma.Spook.Command
                 Console.WriteLine("Platform and one or more block heights needed!");
             }
 
-            var platform = args.ElementAtOrDefault(0);
+            var platformName = args.ElementAtOrDefault(0);
+
+            SwapPlatformChain platform;
+            if (!Enum.TryParse<SwapPlatformChain>(platformName, true, out platform))
+            {
+                throw new CommandException("Unknown swap platform: " + platformName);
+            }
+
 
             // start at index 1, 0 is platform
             for (var i = 1; i < args.Count(); i++)
@@ -114,7 +121,7 @@ namespace Phantasma.Spook.Command
             }
         }
 
-        [ConsoleCommand("export inprogress", Category = "Oracle", Description = "resync certain blocks on a psecific platform")]
+        [ConsoleCommand("export inprogress", Category = "Oracle", Description = "export in progress swaps")]
         protected void onExportInProgress(string[] args)
         {
             if (args.Length != 1)
@@ -137,7 +144,40 @@ namespace Phantasma.Spook.Command
             System.IO.File.WriteAllText(filePath, csv.ToString());
         }
 
-        [ConsoleCommand("import inprogress", Category = "Oracle", Description = "resync certain blocks on a psecific platform")]
+        [ConsoleCommand("check", Category = "Oracle", Description = "Show in progress swaps")]
+        protected void onCheckInProgress(string[] args)
+        {
+            if (args.Length != 1)
+            {
+                Console.WriteLine("File path needs to be given!");
+            }
+
+            var filePath = args[0];
+            using(var reader = new StreamReader(filePath))
+            {
+                while (!reader.EndOfStream)
+                {
+                    var line = reader.ReadLine();
+                    var values = line.Split(',');
+                    var hash = Hash.Parse(values[0]);
+                    Console.WriteLine("Hash: " + hash);
+                }
+            }
+        }
+
+        [ConsoleCommand("show inprogress", Category = "Oracle", Description = "Show in progress swaps")]
+        protected void onShowInProgress()
+        {
+            var InProgressTag = ".inprogress";
+            var storage = new KeyStoreStorage(_cli.Nexus.CreateKeyStoreAdapter("swaps"));
+            var inProgressMap = new StorageMap(InProgressTag, storage);
+
+            inProgressMap.Visit<Hash, string>((key, value) => {
+                Console.WriteLine($"{key.ToString()},{value}");
+            });
+        }
+
+        [ConsoleCommand("import inprogress", Category = "Oracle", Description = "import in progress swaps")]
         protected void onImportInProgress(string[] args)
         {
             if (args.Length != 1)
@@ -155,10 +195,10 @@ namespace Phantasma.Spook.Command
                 {
                     var line = reader.ReadLine();
                     var values = line.Split(',');
-                    var hash = Hash.FromString(values[0]);
+                    var hash = Hash.Parse(values[0]);
                     if (!inProgressMap.ContainsKey<Hash>(hash))
                     {
-                        inProgressMap.Set<Hash,string>(Hash.FromString(values[0]), values[1]);
+                        inProgressMap.Set<Hash,string>(hash, values[1]);
                     }
                 }
             }

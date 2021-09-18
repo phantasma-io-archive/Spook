@@ -47,7 +47,7 @@ namespace Phantasma.Spook
     public class Spook : Runnable
     {
         public readonly string LogPath;
-        public readonly SpookSettings Settings;
+        public SpookSettings Settings;
 
         public static string Version { get; private set; }
         public static string TxIdentifier => $"SPK{Version}";
@@ -62,6 +62,7 @@ namespace Phantasma.Spook
         private List<string> _seeds = new List<string>();
         private NeoAPI _neoAPI;
         private EthAPI _ethAPI;
+        private EthAPI _bscAPI;
         private NeoScanAPI _neoScanAPI;
         private CommandDispatcher _commandDispatcher;
         private TokenSwapper _tokenSwapper;
@@ -73,6 +74,7 @@ namespace Phantasma.Spook
         public Nexus Nexus { get { return _nexus; } }
         public NeoAPI NeoAPI { get { return _neoAPI; } }
         public EthAPI EthAPI { get { return _ethAPI; } }
+        public EthAPI BscAPI { get { return _bscAPI; } }
         public NeoScanAPI NeoScanAPI { get { return _neoScanAPI; } }
         public string CryptoCompareAPIKey  { get { return _cryptoCompareAPIKey; } }
         public TokenSwapper TokenSwapper { get { return _tokenSwapper; } }
@@ -113,7 +115,7 @@ namespace Phantasma.Spook
 
             _nodeKeys = SetupNodeKeys();
 
-            if (!SetupNexus())
+            if (Settings.Node.Mode != NodeMode.Proxy && !SetupNexus())
             {
                 this.OnStop();
                 return;
@@ -154,18 +156,23 @@ namespace Phantasma.Spook
                 MakeReady(_commandDispatcher);
             }
 
-            if (!string.IsNullOrEmpty(Settings.Oracle.Swaps))
+            var enabledSwapPlatforms = Settings.Oracle.SwapPlatforms.Select(x => x.Chain != SwapPlatformChain.Phantasma && x.Enabled);
+
+            if (enabledSwapPlatforms.Any())
             {
                 _tokenSwapper = StartTokenSwapper();
+            }
+            else
+            {
+                Logger.Warning("No swap platforms found in config, token swapper won't be available");
             }
         }
 
         public TokenSwapper StartTokenSwapper()
         {
-            var platforms = Settings.Oracle.Swaps.Split(',');
             var minimumFee = Settings.Node.MinimumFee;
             var oracleSettings = Settings.Oracle;
-            var tokenSwapper = new TokenSwapper(this, _nodeKeys, _neoAPI, _ethAPI, minimumFee, platforms);
+            var tokenSwapper = new TokenSwapper(this, _nodeKeys, _neoAPI, _ethAPI, _bscAPI, minimumFee);
             _nexusApi.TokenSwapper = tokenSwapper;
 
             _tokenSwapperThread = new Thread(() =>
@@ -247,20 +254,34 @@ namespace Phantasma.Spook
 
         private void SetupOracleApis()
         {
-            var neoScanURL = Settings.Oracle.NeoscanUrl;
+            var neoPlatform = Settings.Oracle.SwapPlatforms.FirstOrDefault(x => x.Chain == SwapPlatformChain.Neo);
+            if (neoPlatform != null && neoPlatform.Enabled)
+            {
+                var neoScanURL = Settings.Oracle.NeoscanUrl;
 
-            var neoRpcList = Settings.Oracle.NeoRpcNodes;
-            this._neoAPI = new Neo.Core.RemoteRPCNode(neoScanURL, neoRpcList.ToArray());
-            this._neoAPI.SetLogger((s) => Logger.Message(s));
+                this._neoAPI = new Neo.Core.RemoteRPCNode(neoScanURL, neoPlatform.RpcNodes);
+                this._neoAPI.SetLogger((s) => Logger.Message(s));
 
-            var ethRpcList = Settings.Oracle.EthRpcNodes;
-            
-            var ethWIF = Settings.GetInteropWif(Nexus, _nodeKeys, EthereumWallet.EthereumPlatform);
-            var ethKeys = PhantasmaKeys.FromWIF(ethWIF);
-            
-            this._ethAPI = new EthAPI(this.Nexus, this.Settings, new EthAccount(ethKeys.PrivateKey.ToHex()), Logger);
+                this._neoScanAPI = new NeoScanAPI(neoScanURL, Logger, _nexus, _nodeKeys);
+            }
 
-            this._neoScanAPI = new NeoScanAPI(neoScanURL, Logger, _nexus, _nodeKeys);
+            var bscPlatform = Settings.Oracle.SwapPlatforms.FirstOrDefault(x => x.Chain == SwapPlatformChain.BSC);
+            if (bscPlatform != null && bscPlatform.Enabled)
+            {
+                var bscWIF = Settings.GetInteropWif(Nexus, _nodeKeys, BSCWallet.BSCPlatform);
+                var bscKeys = PhantasmaKeys.FromWIF(bscWIF);
+
+                this._bscAPI = new EthAPI(SwapPlatformChain.BSC, this.Nexus, this.Settings, new EthAccount(bscKeys.PrivateKey.ToHex()), Logger);
+            }
+
+            var ethPlatform = Settings.Oracle.SwapPlatforms.FirstOrDefault(x => x.Chain == SwapPlatformChain.Ethereum);
+            if (ethPlatform != null && ethPlatform.Enabled)
+            {
+                var ethWIF = Settings.GetInteropWif(Nexus, _nodeKeys, EthereumWallet.EthereumPlatform);
+                var ethKeys = PhantasmaKeys.FromWIF(ethWIF);
+
+                this._ethAPI = new EthAPI(SwapPlatformChain.Ethereum, this.Nexus, this.Settings, new EthAccount(ethKeys.PrivateKey.ToHex()), Logger);
+            }
 
             this._cryptoCompareAPIKey = Settings.Oracle.CryptoCompareAPIKey;
             if (!string.IsNullOrEmpty(this._cryptoCompareAPIKey))
@@ -269,7 +290,7 @@ namespace Phantasma.Spook
             }
             else
             {
-                Logger.Warning($"CryptoCompare API key missing, oracles won't work properly...");
+                throw new Exception($"CryptoCompare API key missing, oracles won't work properly and oracles are no longer optional...");
             }
         }
 
@@ -555,12 +576,6 @@ namespace Phantasma.Spook
                     throw new Exception($"A {Settings.Node.Mode.ToString().ToLower()} node must have a proxy url specified.");
                 }
             }
-
-            if (!Settings.Node.IsValidator && !string.IsNullOrEmpty(Settings.Oracle.Swaps))
-            {
-                    throw new Exception("Non-validator nodes cannot have swaps enabled");
-            }
-
 
             // TODO to be continued...
         }

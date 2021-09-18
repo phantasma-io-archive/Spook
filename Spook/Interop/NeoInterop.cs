@@ -603,9 +603,9 @@ namespace Phantasma.Spook.Interop
                     {
                         if (pos ==2)
                         {
-                            if (entry.data == null)
+                            if (entry.data == null || entry.data.Length == 0)
                             {
-                                logger.Debug("No data associated with op, ignore tx " + tx);
+                                logger.Debug("Invalid op on pos 2, ignoring tx: " + tx);
                                 return emptyTx;
                             }
                             var targetScriptHash = new UInt160(entry.data);
