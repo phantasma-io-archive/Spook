@@ -11,4 +11,7 @@
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.RocksDB\Phantasma.RocksDB.csproj" />
     <ProjectReference Include="..\..\PhantasmaChain\Phantasma.Storage\Phantasma.Storage.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="McMaster.Extensions.CommandLineUtils" Version="3.1.0" />
+  </ItemGroup>
 </Project>

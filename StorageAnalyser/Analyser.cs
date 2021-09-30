@@ -184,7 +184,7 @@ namespace StorageDump
 
             var fungible = token.IsFungible();
 
-            var prefix = fungible ? BalanceSheet.MakePrefix(symbol) : OwnershipSheet.MakePrefix(symbol);
+            var prefix = fungible ? BalanceSheet.MakePrefix(symbol) : System.Text.Encoding.UTF8.GetBytes($".ids.{symbol}");
 
             var store = chain.Storage;
             
@@ -456,7 +456,6 @@ namespace StorageDump
 
                             BigInteger balance = balances.ContainsKey(key) ? balances[key] : 0;
                             var chainBalance = chain.GetTokenBalance(chain.Storage, data.Symbol, Address.FromText(addr));
-                            Console.WriteLine(chainBalance);
 
                             transferList.Add(new TransferEntry(block.Height, tx.Hash.ToString(), block.Timestamp.Value, evt.Kind, addr, data.Symbol, amount.ToString(), balance.ToString(), chainBalance.ToString()));
 

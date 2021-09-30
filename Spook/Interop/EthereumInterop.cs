@@ -474,7 +474,7 @@ namespace Phantasma.Spook.Interop
                     // RecoverFromSignature() crashed and we cannot avoid it atm.
                     // Related to EIP-1559, example of probematic tx: https://etherscan.io/tx/0xb022c146d8d1e684de0c1faae43e7ce36afb6969719adfdcafcc5bb7d5913185
                     // TODO Fix by updating to new Nethereum and dealing with EIP-1559 better.
-                    logger.Message("Warning: Skipping 'Header byte out of range' tx: " + tx.TransactionHash);
+                    logger.Debug("Warning: Skipping 'Header byte out of range' tx: " + tx.TransactionHash);
                     return interopTransfers;
                 }
                 else
