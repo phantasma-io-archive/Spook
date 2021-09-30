@@ -254,6 +254,10 @@ namespace Phantasma.Spook.Command
                     localAddress = EthereumWallet.EncodeAddress(externalAddress);
                     break;
 
+                case BSCWallet.BSCPlatform:
+                    localAddress = BSCWallet.EncodeAddress(externalAddress);
+                    break;
+
                 default:
                     throw new Exception("Unknown platform: " + platform);
             }
