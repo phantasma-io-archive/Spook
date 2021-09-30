@@ -2,7 +2,7 @@
   <PropertyGroup>
     <Copyright>2018 - 2021 Phantasma.io</Copyright>
     <AssemblyTitle>Phantasma.Spook.CLI</AssemblyTitle>
-    <Version>1.5.1</Version>
+    <Version>1.6</Version>
     <Authors>The Phantasma Team</Authors>
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <AssemblyName>spook-cli</AssemblyName>
