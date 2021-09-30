@@ -21,6 +21,9 @@ using PBigInteger = Phantasma.Numerics.BigInteger;
 using InteropTransfers = System.Collections.Generic.Dictionary<string,
       System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<Phantasma.Domain.InteropTransfer>>>;
 
+using System.Linq;
+using System;
+
 namespace Phantasma.Spook.Chains
 {
     public class CrawledBlock
@@ -103,7 +106,27 @@ namespace Phantasma.Spook.Chains
                     var txr = txVo.TransactionReceipt;
                     var tx = txVo.Transaction;
 
-                    var interopAddress = addressExtractor(tx);
+                    Address interopAddress;
+                    try
+                    {
+                        interopAddress = EthereumInterop.ExtractInteropAddress(tx, logger);
+                    }
+                    catch(Exception e)
+                    {
+                        if (e.ToString().Contains("Header byte out of range"))
+                        {
+                            // Ignoring this exception and skipping this tx.
+                            // RecoverFromSignature() crashed and we cannot avoid it atm.
+                            // Related to EIP-1559, example of probematic tx: https://etherscan.io/tx/0xb022c146d8d1e684de0c1faae43e7ce36afb6969719adfdcafcc5bb7d5913185
+                            // TODO Fix by updating to new Nethereum and dealing with EIP-1559 better.
+                            logger.Message("Warning: Skipping 'Header byte out of range' tx: " + tx.TransactionHash);
+                            continue;
+                        }
+                        else
+                        {
+                            throw;
+                        }
+                    }
                     var transferEvents = txr.DecodeAllEvents<TransferEventDTO>();
                     //var swapEvents = txr.DecodeAllEvents<SwapEventDTO>();
                     var nodeSwapAddresses = swapAddresses.Select(x => encodeHandler(x)).ToList();
