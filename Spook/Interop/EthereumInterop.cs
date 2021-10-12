@@ -377,7 +377,7 @@ namespace Phantasma.Spook.Interop
             try
             {
                 Func<string, Address> addressEncoder = (address) => { return EthereumWallet.EncodeAddress(address); };
-                Func<Nethereum.RPC.Eth.DTOs.Transaction, Address> addressExtractor = (tx) => { return EthereumInterop.ExtractInteropAddress(tx); };
+                Func<Nethereum.RPC.Eth.DTOs.Transaction, Address> addressExtractor = (tx) => { return EthereumInterop.ExtractInteropAddress(tx, logger); };
 
                 var crawler = new EvmBlockCrawler(logger, combinedAddresses.ToArray(), confirmations, api,
                         addressEncoder, addressExtractor, EthereumWallet.EthereumPlatform);
