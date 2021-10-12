@@ -382,7 +382,7 @@ namespace Phantasma.Spook.Interop
             try
             {
                 // TODO pass from outside to not instantiate for each call to MakeInteropBlock
-                Func<string, Address> addressEncoder = (address) => { Console.WriteLine("BSC ENCODER!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1"); return BSCWallet.EncodeAddress(address); };
+                Func<string, Address> addressEncoder = (address) => { return BSCWallet.EncodeAddress(address); };
                 Func<Nethereum.RPC.Eth.DTOs.Transaction, Address> addressExtractor = (tx) => { return BSCInterop.ExtractInteropAddress(tx); };
 
                 var crawler = new EvmBlockCrawler(logger, combinedAddresses.ToArray(), confirmations, api,

@@ -354,14 +354,12 @@ namespace Phantasma.Spook.Interop
 
             var point = Cryptography.ECC.ECPoint.DecodePoint(pubKey, Cryptography.ECC.ECCurve.Secp256k1);
             pubKey = point.EncodePoint(true);
-            Console.WriteLine("account recovered: " + accountSenderRecovered.GetPublicAddress());
 
             var bytes = new byte[34];
             bytes[0] = (byte)AddressKind.User;
             ByteArrayUtils.CopyBytes(pubKey, 0, bytes, 1, 33);
 
             var address = Address.FromBytes(bytes);
-            Console.WriteLine("account recovered: " + accountSenderRecovered.GetPublicAddress());
             return address;
         }
 

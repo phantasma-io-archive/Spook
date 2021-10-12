@@ -424,11 +424,11 @@ namespace Phantasma.Spook.Interop
                                 if (_pendingSwaps.ContainsKey(swap.hash))
                                 {
 
-                                    Logger.Message($"Already known swap, ignore {swap.platform} swap: {swap.source} => {swap.destination}");
+                                    Logger.Debug($"Already known swap, ignore {swap.platform} swap: {swap.source} => {swap.destination}");
                                     continue;
                                 }
 
-                                Logger.Message($"Detected {swap.platform} swap: {swap.source} => {swap.destination} hash: {swap.hash}");
+                                Logger.Debug($"Detected {swap.platform} swap: {swap.source} => {swap.destination} hash: {swap.hash}");
                                 _pendingSwaps[swap.hash] = swap;
                                 MapSwap(swap.source, swap.hash);
                                 MapSwap(swap.destination, swap.hash);
