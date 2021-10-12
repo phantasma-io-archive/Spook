@@ -70,6 +70,8 @@ namespace Phantasma.Spook
         private string _cryptoCompareAPIKey = null;
         private Thread _tokenSwapperThread;
 
+        private List<PeerPort> _availablePorts = new List<PeerPort>();
+
         public NexusAPI NexusAPI { get { return _nexusApi; } }
         public Nexus Nexus { get { return _nexus; } }
         public NeoAPI NeoAPI { get { return _neoAPI; } }
@@ -126,6 +128,21 @@ namespace Phantasma.Spook
             if (Settings.Node.HasMempool && !Settings.Node.Readonly)
             {
                 _mempool = SetupMempool();
+            }
+
+            if (Settings.Node.Mode != NodeMode.Proxy)
+            {
+                _availablePorts.Add(new PeerPort("sync", Settings.Node.NodePort));
+            }
+
+            if (Settings.Node.HasRpc)
+            {
+                _availablePorts.Add(new PeerPort("rpc", Settings.Node.RpcPort));
+            }
+
+            if (Settings.Node.HasRest)
+            {
+                _availablePorts.Add(new PeerPort("rest", Settings.Node.RestPort));
             }
 
             _peerCaps = SetupPeerCaps();
@@ -319,7 +336,7 @@ namespace Phantasma.Spook
                     , _mempool
                     , _nodeKeys
                     , Settings.Node.NodeHost
-                    , Settings.Node.NodePort
+                    , _availablePorts
                     , _peerCaps
                     , Settings.Node.Seeds
                     , Logger);
