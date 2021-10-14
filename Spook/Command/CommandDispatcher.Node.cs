@@ -277,9 +277,19 @@ namespace Phantasma.Spook.Command
                     return;
                 }
 
-                tx = GenerateToken(_cli.NodeKeys, symbol, name, maxSupply, decimals,
-                        TokenFlags.Fungible | TokenFlags.Transferable | TokenFlags.Divisible
-                        | TokenFlags.Burnable);
+                var flags = TokenFlags.Fungible | TokenFlags.Transferable | TokenFlags.Burnable;
+
+                if (decimals > 0)
+                {
+                    flags = flags | TokenFlags.Divisible;
+                }
+
+                if (maxSupply > 0)
+                {
+                    flags = flags | TokenFlags.Finite;
+                }
+
+                tx = GenerateToken(_cli.NodeKeys, symbol, name, maxSupply, decimals, flags);
             }
             else
             {
