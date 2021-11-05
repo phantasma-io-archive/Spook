@@ -595,6 +595,12 @@ namespace Phantasma.Spook.Interop
                         break;
                     }
 
+                    if (entry.data == null || entry.data.Length == 0)
+                    {
+                        logger.Debug("Ignore tx, invalid data field: " + tx);
+                        return emptyTx;
+                    }
+
                     if (pos == 1)
                     {
                         amount = PBigInteger.FromUnsignedArray(entry.data, true);
