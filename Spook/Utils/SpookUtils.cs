@@ -171,7 +171,7 @@ namespace Phantasma.Spook.Utils
                 results.Add(task.Result);
             }
 
-            var median = GetMedian<decimal>(results.ToArray());
+            var median = GetMedian(results.ToArray());
 
             return median;
         }
@@ -206,12 +206,12 @@ namespace Phantasma.Spook.Utils
             return fee;
         }
 
-        public static T GetMedian<T>(T[] sourceArray) where T : IComparable<T>
+        public static decimal GetMedian(decimal[] sourceArray)
         {
             if (sourceArray == null || sourceArray.Length == 0)
                 throw new ArgumentException("Median of empty array not defined.");
 
-            T[] sortedArray = sourceArray;
+            decimal[] sortedArray = sourceArray;
             Array.Sort(sortedArray);
 
             //get the median
@@ -222,10 +222,10 @@ namespace Phantasma.Spook.Utils
                 return sortedArray[mid];
             }
 
-            dynamic value1 = sortedArray[mid];
-            dynamic value2 = sortedArray[mid - 1];
+            decimal value1 = sortedArray[mid];
+            decimal value2 = sortedArray[mid - 1];
 
-            return (sortedArray[mid] + value2) * 0.5;
+            return (value1 + value2) * 0.5M;
         }
     }
 }

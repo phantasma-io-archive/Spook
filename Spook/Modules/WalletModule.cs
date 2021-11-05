@@ -617,6 +617,14 @@ namespace Phantasma.Spook.Modules
             throw new Exception("Script execution failed for: " + methodName);
         }
 
+        private static bool FileExistsCaseSensitive(string filename)
+        {
+            string name = Path.GetDirectoryName(filename);
+
+            return name != null
+                   && Array.Exists(Directory.GetFiles(name), s => s == Path.GetFullPath(filename));
+        }
+
         private static void DeployOrUpgrade(string[] args, SpookSettings settings, NexusAPI api, BigInteger minFee, bool isUpgrade)
         {
             if (args.Length != 1)
@@ -631,6 +639,11 @@ namespace Phantasma.Spook.Modules
             if (!File.Exists(fileName))
             {
                 throw new CommandException("Provided file does not exist");
+            }
+
+            if (!FileExistsCaseSensitive(fileName))
+            {
+                throw new CommandException("Provided file case does not match real file name case");
             }
 
             var extension = ScriptModule.ScriptExtension;
@@ -679,6 +692,7 @@ namespace Phantasma.Spook.Modules
             {
                 throw new CommandException("Failed to obtain nexus version via API");
             }
+
 
             bool isToken = ValidationUtils.IsValidTicker(contractName);
             var availableFlags = Enum.GetValues(typeof(TokenFlags)).Cast<TokenFlags>().ToArray();
