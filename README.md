@@ -41,7 +41,7 @@ Note - you will need .NET runtime 3.1 installed on your desktop https://dotnet.m
 To bootstrap your own test net just run a single instance of Phantasma node using the following arguments:
 
 ```
-spook-cli -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet
+spook -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet
 #To enable the RPC server add this argument to the line above
 -rpc.enabled=true
 ```
@@ -67,9 +67,9 @@ Build and publish the code
 - Open Visual Studio
 - Open the PhantasmaSpook\Spook.sln solution
 - Build the solution
-- Publish the Spook.CLI Project
+- Publish the Spook Project
 
-The files needed to run a node will now be in PhantasmaSpook\Phantasma.CLI\Publish
+The files needed to run a node will now be in PhantasmaSpook\Spook\Publish
 
 As per above you can run it with the following command:
 
