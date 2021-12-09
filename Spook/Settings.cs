@@ -71,6 +71,11 @@ namespace Phantasma.Spook
                 {
                     throw new Exception("One or more ports are being re-used for different services, check the config");
                 }
+
+                if (Node.Mode == NodeMode.Proxy && this.Simulator.Enabled)
+                {
+                    throw new Exception($"Simulator must be disabled in proxy mode");
+                }
             }
             catch (Exception e)
             {
