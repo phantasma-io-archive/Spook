@@ -79,7 +79,6 @@
         },
 
         "App": {
-            "gui.enabled": false, 
             "shell.enabled": false, 
             "node.start": true, 
             "app.name": "SPK",
