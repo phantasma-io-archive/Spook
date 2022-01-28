@@ -225,7 +225,6 @@ namespace Phantasma.Spook.Command
         [ConsoleCommand("create token", Category = "Node", Description = "Create a token, foreign or native")]
         protected void OnCreatePlatformToken(string[] args)
         {
-
             var chain = _cli.Nexus.GetChainByName(_cli.Nexus.RootChain.Name);
             var fuelToken = _cli.Nexus.GetTokenInfo(_cli.Nexus.RootStorage, DomainSettings.FuelTokenSymbol);
             var balance = chain.GetTokenBalance(chain.Storage, fuelToken, _cli.NodeKeys.Address);
@@ -236,24 +235,41 @@ namespace Phantasma.Spook.Command
                 return;
             }
 
-            var symbol = args[0];
+            if (args.Length < 1)
+            {
+                Console.WriteLine("Symbol argument is missing!");
+                return;
+            }
 
+            var symbol = args[0];
             if (string.IsNullOrEmpty(symbol)) 
             {
                 Console.WriteLine("Symbol has to be set!");
                 return;
             }
 
+            if (args.Length < 2)
+            {
+                Console.WriteLine("Platform argument is missing!");
+                return;
+            }
+
             var platform = args[1];
-            if (string.IsNullOrEmpty(platform)) 
+            if (string.IsNullOrEmpty(platform))
             {
                 Console.WriteLine("Platform has to be set!");
                 return;
             }
 
-            Transaction tx = null;
+            Transaction tx;
             if (platform == DomainSettings.PlatformName)
             {
+                if (args.Length < 3)
+                {
+                    Console.WriteLine("Native token name argument is missing!");
+                    return;
+                }
+
                 var name = args[2];
                 if (string.IsNullOrEmpty(name)) 
                 {
@@ -261,19 +277,29 @@ namespace Phantasma.Spook.Command
                     return;
                 }
 
-                int decimals = 0;
-                var success = Int32.TryParse(args[3], out decimals);
+                if (args.Length < 4)
+                {
+                    Console.WriteLine("Native token decimals argument is missing!");
+                    return;
+                }
+
+                var success = int.TryParse(args[3], out var decimals);
                 if (!success) 
                 {
                     Console.WriteLine("Native token needs decimals");
                     return;
                 }
 
-                int maxSupply = 0;
-                success = Int32.TryParse(args[4], out maxSupply);
+                if (args.Length < 5)
+                {
+                    Console.WriteLine("Native token max supply argument is missing!");
+                    return;
+                }
+
+                success = int.TryParse(args[4], out var maxSupply);
                 if (!success) 
                 {
-                    Console.WriteLine("Native token needs decimals");
+                    Console.WriteLine("Native token needs max supply");
                     return;
                 }
 
@@ -281,12 +307,12 @@ namespace Phantasma.Spook.Command
 
                 if (decimals > 0)
                 {
-                    flags = flags | TokenFlags.Divisible;
+                    flags |= TokenFlags.Divisible;
                 }
 
                 if (maxSupply > 0)
                 {
-                    flags = flags | TokenFlags.Finite;
+                    flags |= TokenFlags.Finite;
                 }
 
                 tx = GenerateToken(_cli.NodeKeys, symbol, name, maxSupply, decimals, flags);
@@ -306,7 +332,7 @@ namespace Phantasma.Spook.Command
                 }
 
                 var val = args.ElementAtOrDefault(3);
-                var nativeToken = string.IsNullOrEmpty(val) ? false : Boolean.Parse(val);
+                var nativeToken = !string.IsNullOrEmpty(val) && bool.Parse(val);
                 Hash hash;
                 try
                 {
@@ -331,7 +357,7 @@ namespace Phantasma.Spook.Command
                     .SpendGas(_cli.NodeKeys.Address).EndScript();
 
                 var expire = Timestamp.Now + TimeSpan.FromMinutes(2);
-                tx = new Phantasma.Blockchain.Transaction(_cli.Nexus.Name, _cli.Nexus.RootChain.Name, script, expire, Spook.TxIdentifier);
+                tx = new Transaction(_cli.Nexus.Name, _cli.Nexus.RootChain.Name, script, expire, Spook.TxIdentifier);
             }
 
             if (tx != null)
@@ -526,10 +552,7 @@ namespace Phantasma.Spook.Command
                 IEnumerable<ContractMethod> customMethods = null, uint seriesID = 0)
         {
             var version = _cli.Nexus.GetGovernanceValue(_cli.Nexus.RootStorage, Nexus.NexusProtocolVersionTag);
-            if (labels == null)
-            {
-                labels = new Dictionary<string, int>();
-            }
+            labels ??= new Dictionary<string, int>();
 
             if (tokenScript == null)
             {
@@ -539,7 +562,7 @@ namespace Phantasma.Spook.Command
 
                 if (version >= 4)
                 {
-                    scriptString = new string[] {
+                    scriptString = new[] {
                     $"alias r3, $result",
                     $"alias r4, $owner",
                     $"@{AccountTrigger.OnMint}: nop",
@@ -635,12 +658,12 @@ namespace Phantasma.Spook.Command
                 if (version >= 6)
                 {
                     methods = methods.Concat(new ContractMethod[] {
-                        new ContractMethod("getOwner", VMType.Object, labels, new ContractParameter[0]),
-                        new ContractMethod("getSymbol", VMType.String, labels, new ContractParameter[0]),
-                        new ContractMethod("getName", VMType.String, labels, new ContractParameter[0]),
-                        new ContractMethod("getDecimals", VMType.Number, labels, new ContractParameter[0]),
-                        new ContractMethod("getMaxSupply", VMType.Number, labels, new ContractParameter[0]),
-                        new ContractMethod("getTokenFlags", VMType.Enum, labels, new ContractParameter[0]),
+                        new ("getOwner", VMType.Object, labels, new ContractParameter[0]),
+                        new ("getSymbol", VMType.String, labels, new ContractParameter[0]),
+                        new ("getName", VMType.String, labels, new ContractParameter[0]),
+                        new ("getDecimals", VMType.Number, labels, new ContractParameter[0]),
+                        new ("getMaxSupply", VMType.Number, labels, new ContractParameter[0]),
+                        new ("getTokenFlags", VMType.Enum, labels, new ContractParameter[0]),
                     }) ;
                 }
 
