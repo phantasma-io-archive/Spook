@@ -10,15 +10,14 @@ namespace Phantasma.Spook.Shell
     public static class Prompt
     {
         private static string _prompt;
-        private static int startingCursorLeft;
-        private static int startingCursorTop;
-        private static ConsoleKeyInfo key, lastKey;
-        private static XmlSerializer xmls = new XmlSerializer(typeof(List<List<char>>)); // TODO use json
-        private static List<string> historyList = new List<string>(); 
-        private static List<List<char>> inputHistory = new List<List<char>>();
+        private static int _startingCursorLeft;
+        private static int _startingCursorTop;
+        private static ConsoleKeyInfo _key, _lastKey;
+        private static readonly XmlSerializer xmls = new(typeof(List<List<char>>)); // TODO use json
+        private static List<List<char>> _inputHistory = new();
         public static bool running = true; 
 
-        private static bool InputIsOnNewLine(List<char> input, int inputPosition)
+        private static bool InputIsOnNewLine(int inputPosition)
         {
             return (inputPosition + _prompt.Length > Console.BufferWidth - 1);
         }
@@ -36,73 +35,31 @@ namespace Phantasma.Spook.Shell
             return currentLine;
         }
 
-        public static List<List<char>> GetHistory() 
+        private static void PersistHistory(string path = null)
         {
-            return inputHistory;
-        }
-
-        private static void PersistHistory(string path = null) 
-        {
-            using (FileStream fs = new FileStream(path == null ? ".history" : path, FileMode.OpenOrCreate))
-            {
-                xmls.Serialize(fs, inputHistory);
-            }
+            using var fs = new FileStream(path ?? ".history", FileMode.OpenOrCreate);
+            xmls.Serialize(fs, _inputHistory);
         }
 
         private static void LoadHistory(string path = null) 
         {
-            try 
+            try
             {
-                using (FileStream fs = new FileStream(path == null ? ".history" : path, FileMode.Open))
+                using var fs = new FileStream(path ?? ".history", FileMode.Open);
+                try
                 {
-                    try 
-                    {
-                        inputHistory = xmls.Deserialize(fs) as List<List<char>>;
-                        fs.SetLength(0);
-                    } 
-                    catch (InvalidOperationException) 
-                    {
+                    _inputHistory = xmls.Deserialize(fs) as List<List<char>>;
+                    fs.SetLength(0);
+                }
+                catch (InvalidOperationException)
+                {
 
-                    }
                 }
             }
             catch (FileNotFoundException)
             {
 
             }
-        }
-
-        private static void drawTextProgressBar(int progress, int total)
-        {
-         //draw empty progress bar
-         Console.CursorLeft = 0;
-         Console.Write("["); //start
-         Console.CursorLeft = 32;
-         Console.Write("]"); //end
-         Console.CursorLeft = 1;
-         float onechunk = 30.0f / total;
-        
-         //draw filled part
-         int position = 1;
-         for (int i = 0; i < onechunk * progress; i++)
-         {
-          Console.BackgroundColor = ConsoleColor.Gray;
-          Console.CursorLeft = position++;
-          Console.Write(" ");
-         }
-        
-         //draw unfilled part
-         for (int i = position; i <= 31; i++)
-         {
-          Console.BackgroundColor = ConsoleColor.Black;
-          Console.CursorLeft = position++;
-          Console.Write(" ");
-         }
-        
-         //draw totals
-         Console.CursorLeft = 35;
-         Console.BackgroundColor = ConsoleColor.Black;
-         Console.Write(progress.ToString() + " of " + total.ToString()+"    "); //blanks at the end remove any excess
         }
 
         private static Tuple<int,int> GetCursorRelativePosition(List<char> input, int inputPosition)
@@ -129,14 +86,14 @@ namespace Phantasma.Spook.Shell
             return Tuple.Create(currentPos, currentLine);
         }
 
-        private static int mod(int x, int m)
+        private static int Mod(int x, int m)
         {
             return (x % m + m) % m;
         }
 
         private static void ClearLine(List<char> input, int inputPosition)
         {
-            int cursorLeft = InputIsOnNewLine(input, inputPosition) ? 0 : _prompt.Length;
+            int cursorLeft = InputIsOnNewLine(inputPosition) ? 0 : _prompt.Length;
             Console.SetCursorPosition(cursorLeft, Console.CursorTop);
             Console.Write(new string(' ', input.Count + 5));
         }
@@ -146,7 +103,7 @@ namespace Phantasma.Spook.Shell
             for (int i = 0; i <= lines; i++)
                 Console.WriteLine("");
             Console.SetCursorPosition(0, Console.CursorTop - lines);
-            startingCursorTop = Console.CursorTop - lines;
+            _startingCursorTop = Console.CursorTop - lines;
         }
 
         private static void RewriteLine(List<char> input, int inputPosition)
@@ -155,9 +112,9 @@ namespace Phantasma.Spook.Shell
 
             try
             {
-                Console.SetCursorPosition(startingCursorLeft, startingCursorTop);
+                Console.SetCursorPosition(_startingCursorLeft, _startingCursorTop);
                 var coords = GetCursorRelativePosition(input, inputPosition);
-                cursorTop = startingCursorTop;
+                cursorTop = _startingCursorTop;
                 int cursorLeft = 0;
 
                 if (GetCurrentLineForInput(input, inputPosition) == 0)
@@ -181,7 +138,7 @@ namespace Phantasma.Spook.Shell
                 }
 
                 Console.Write(String.Concat(input));
-                Console.SetCursorPosition(mod(cursorLeft, Console.BufferWidth), cursorTop);
+                Console.SetCursorPosition(Mod(cursorLeft, Console.BufferWidth), cursorTop);
             }
             catch (Exception e)
             {
@@ -192,11 +149,11 @@ namespace Phantasma.Spook.Shell
         private static IEnumerable<string> GetMatch(List<string> s, string input)
         {
             s.Add(input);
-            int direction = (key.Modifiers == ConsoleModifiers.Shift) ? -1 : 1;
+            int direction = (_key.Modifiers == ConsoleModifiers.Shift) ? -1 : 1;
             for (int i = -1; i < s.Count; )
             {
-                direction = (key.Modifiers == ConsoleModifiers.Shift) ? -1 : 1;
-                i = mod((i + direction), s.Count);
+                direction = (_key.Modifiers == ConsoleModifiers.Shift) ? -1 : 1;
+                i = Mod((i + direction), s.Count);
 
                 if (Regex.IsMatch(s[i], ".*(?:" + input + ").*", RegexOptions.IgnoreCase))
                 {
@@ -233,15 +190,10 @@ namespace Phantasma.Spook.Shell
             return Tuple.Create(cursorLeftPosition % Console.BufferWidth, cursorTopPosition);
         }
 
-        public static void ForEach<T>(this IEnumerable<T> source, Action<T> action)
-        {   
-            foreach (T item in source) { action(item); }
-        }
-
         public static void Run(Func<string, List<char>, List<string>, string> lambda, string prompt,
-                Func<string> PromptGenerator, string startupMsg, string history, List<string> completionList = null)
+                Func<string> promptGenerator, string startupMsg, string history, List<string> completionList = null)
         {
-            _prompt = PromptGenerator();
+            _prompt = promptGenerator();
             Console.WriteLine(startupMsg);
             IEnumerator<string> wordIterator = null;
             LoadHistory(history);
@@ -250,18 +202,18 @@ namespace Phantasma.Spook.Shell
             {
                 string completion = null;
                 List<char> input = new List<char>();
-                startingCursorLeft = _prompt.Length;
-                startingCursorTop = Console.CursorTop;
+                _startingCursorLeft = _prompt.Length;
+                _startingCursorTop = Console.CursorTop;
                 int inputPosition = 0;
-                int inputHistoryPosition = inputHistory.Count;
+                int inputHistoryPosition = _inputHistory.Count;
 
-                key = lastKey = new ConsoleKeyInfo();
+                _key = _lastKey = new ConsoleKeyInfo();
                 Console.Write(_prompt);
                 do
                 {
-                    _prompt = PromptGenerator();
-                    key = Console.ReadKey(true);
-                    if (key.Key == ConsoleKey.LeftArrow)
+                    _prompt = promptGenerator();
+                    _key = Console.ReadKey(true);
+                    if (_key.Key == ConsoleKey.LeftArrow)
                     {
                         if (inputPosition > 0)
                         {
@@ -270,7 +222,7 @@ namespace Phantasma.Spook.Shell
                             Console.SetCursorPosition(pos.Item1, pos.Item2);
                         }
                     }
-                    else if (key.Key == ConsoleKey.RightArrow)
+                    else if (_key.Key == ConsoleKey.RightArrow)
                     {
                         if (inputPosition < input.Count)
                         {
@@ -279,14 +231,14 @@ namespace Phantasma.Spook.Shell
                         }
                     }
 
-                    else if (key.Key == ConsoleKey.Tab && completionList != null && completionList.Count > 0)
+                    else if (_key.Key == ConsoleKey.Tab && completionList != null && completionList.Count > 0)
                     {
                         int tempPosition = inputPosition;
                         List<char> word = new List<char>();
                         while (tempPosition-- > 0 && !string.IsNullOrWhiteSpace(input[tempPosition].ToString()))
                             word.Insert(0, input[tempPosition]);
 
-                        if (lastKey.Key == ConsoleKey.Tab)
+                        if (_lastKey.Key == ConsoleKey.Tab)
                         {
                             wordIterator.MoveNext();
                             if (completion != null)
@@ -317,7 +269,7 @@ namespace Phantasma.Spook.Shell
                             }
                             RewriteLine(input, inputPosition);
 
-                            List<string> hist = (from item in inputHistory select new String(item.ToArray())).ToList();
+                            List<string> hist = (from item in _inputHistory select new String(item.ToArray())).ToList();
 
                             List<string> wordList = completionList.Concat(hist).ToList();
 
@@ -336,17 +288,17 @@ namespace Phantasma.Spook.Shell
                         RewriteLine(input, inputPosition);
 
                     }
-                    else if (key.Key == ConsoleKey.Home || (key.Key == ConsoleKey.H && key.Modifiers == ConsoleModifiers.Control))
+                    else if (_key.Key == ConsoleKey.Home || (_key.Key == ConsoleKey.H && _key.Modifiers == ConsoleModifiers.Control))
                     {
                         inputPosition = 0;
-                        Console.SetCursorPosition(prompt.Length, startingCursorTop);
+                        Console.SetCursorPosition(prompt.Length, _startingCursorTop);
                     }
 
-                    else if (key.Key == ConsoleKey.End || (key.Key == ConsoleKey.E && key.Modifiers == ConsoleModifiers.Control))
+                    else if (_key.Key == ConsoleKey.End || (_key.Key == ConsoleKey.E && _key.Modifiers == ConsoleModifiers.Control))
                     {
                         inputPosition = input.Count;
                         var cursorLeft = 0;
-                        int cursorTop = startingCursorTop;
+                        int cursorTop = _startingCursorTop;
                         if ((inputPosition + _prompt.Length) / Console.BufferWidth > 0)
                         {
                             cursorTop += (inputPosition + _prompt.Length) / Console.BufferWidth;
@@ -355,7 +307,7 @@ namespace Phantasma.Spook.Shell
                         Console.SetCursorPosition(cursorLeft, cursorTop);
                     }
 
-                    else if (key.Key == ConsoleKey.Delete)
+                    else if (_key.Key == ConsoleKey.Delete)
                     {
                         if (inputPosition < input.Count)
                         {
@@ -365,7 +317,7 @@ namespace Phantasma.Spook.Shell
                         }
                     }
 
-                    else if (key.Key == ConsoleKey.UpArrow)
+                    else if (_key.Key == ConsoleKey.UpArrow)
                     {
                         if (inputHistoryPosition > 0)
                         {
@@ -373,33 +325,33 @@ namespace Phantasma.Spook.Shell
                             ClearLine(input, inputPosition);
 
                             // ToList() so we make a copy and don't use the reference in the list
-                            input = inputHistory[inputHistoryPosition].ToList();
+                            input = _inputHistory[inputHistoryPosition].ToList();
                             RewriteLine(input, input.Count);
                             inputPosition = input.Count;
                         }
                     }
-                    else if (key.Key == ConsoleKey.DownArrow)
+                    else if (_key.Key == ConsoleKey.DownArrow)
                     {
-                        if (inputHistoryPosition < inputHistory.Count - 1)
+                        if (inputHistoryPosition < _inputHistory.Count - 1)
                         {
                             inputHistoryPosition += 1;
                             ClearLine(input, inputPosition);
 
                             // ToList() so we make a copy and don't use the reference in the list
-                            input = inputHistory[inputHistoryPosition].ToList();
+                            input = _inputHistory[inputHistoryPosition].ToList();
                             RewriteLine(input, input.Count);
                             inputPosition = input.Count;
                         }
                         else
                         {
-                            inputHistoryPosition = inputHistory.Count;
+                            inputHistoryPosition = _inputHistory.Count;
                             ClearLine(input, inputPosition);
                             Console.SetCursorPosition(prompt.Length, Console.CursorTop);
                             input = new List<char>();
                             inputPosition = 0;
                         }
                     }
-                    else if (key.Key == ConsoleKey.Backspace)
+                    else if (_key.Key == ConsoleKey.Backspace)
                     {
                         if (inputPosition > 0)
                         {
@@ -410,52 +362,52 @@ namespace Phantasma.Spook.Shell
                         }
                     }
 
-                    else if (key.Key == ConsoleKey.Escape)
+                    else if (_key.Key == ConsoleKey.Escape)
                     {
-                        if (lastKey.Key == ConsoleKey.Escape)
+                        if (_lastKey.Key == ConsoleKey.Escape)
                             Environment.Exit(0);
                         else
                             Console.WriteLine("Press Escape again to exit.");
                     }
 
-                    else if (key.Key == ConsoleKey.Enter && (key.Modifiers == ConsoleModifiers.Shift || key.Modifiers == ConsoleModifiers.Alt))
+                    else if (_key.Key == ConsoleKey.Enter && (_key.Modifiers == ConsoleModifiers.Shift || _key.Modifiers == ConsoleModifiers.Alt))
                     {
                         input.Insert(inputPosition++, (input.Count > 0) ? '\n' : ' ');
                         RewriteLine(input, inputPosition);
                     }
 
                     // multiline paste event
-                    else if (key.Key == ConsoleKey.Enter && Console.KeyAvailable == true)
+                    else if (_key.Key == ConsoleKey.Enter && Console.KeyAvailable == true)
                     {
                         input.Insert(inputPosition++, '\n');
                         RewriteLine(input, inputPosition);
                     }
 
-                    else if (key.Key != ConsoleKey.Enter)
+                    else if (_key.Key != ConsoleKey.Enter)
                     {
 
-                        input.Insert(inputPosition++, key.KeyChar);
+                        input.Insert(inputPosition++, _key.KeyChar);
                         RewriteLine(input, inputPosition);
                     }
-                    else if (key.Key == ConsoleKey.Enter && input.Count == 0)
+                    else if (_key.Key == ConsoleKey.Enter && input.Count == 0)
                     {
 
                         input.Insert(inputPosition++, ' ');
                         RewriteLine(input, inputPosition);
                     }
                     
-                    lastKey = key;
-                } while (!(key.Key == ConsoleKey.Enter && Console.KeyAvailable == false) 
+                    _lastKey = _key;
+                } while (!(_key.Key == ConsoleKey.Enter && Console.KeyAvailable == false)
                     // If Console.KeyAvailable = true then we have a multiline paste event
-                    || (key.Key == ConsoleKey.Enter && (key.Modifiers == ConsoleModifiers.Shift 
-                    || key.Modifiers == ConsoleModifiers.Alt)));
+                    || (_key.Key == ConsoleKey.Enter && (_key.Modifiers == ConsoleModifiers.Shift
+                    || _key.Modifiers == ConsoleModifiers.Alt)));
 
                 Console.WriteLine("");
                 var cmd = string.Concat(input);
-                if (String.IsNullOrWhiteSpace(cmd))
+                if (string.IsNullOrWhiteSpace(cmd))
                     continue;
 
-                inputHistory.Add(input);
+                _inputHistory.Add(input);
                 PersistHistory(history);
 
                 lambda(cmd, input, completionList);

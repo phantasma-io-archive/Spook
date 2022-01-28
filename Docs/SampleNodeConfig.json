@@ -79,15 +79,22 @@
         },
 
         "App": {
-            "gui.enabled": false, 
-            "shell.enabled": false, 
+            "shell.enabled": false,
+            "shell.mode": "cli",
+            "shell.port": 7079,
             "node.start": true, 
             "app.name": "SPK",
             "config": "",
             "prompt": "[{0}] spook> ",
             "history": ".history", 
-            "log.file": "spookNode.log" 
         },
+
+        "Log": {
+            "file.path": "",
+            "file.name": "spook.log",
+            "file.level": "Debug",
+            "shell.level": "Debug"
+          },
 
         "RPC": {
             "rpc.address": "localhost",
