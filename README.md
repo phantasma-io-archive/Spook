@@ -167,7 +167,13 @@ This is what the default configuration looks like:
             "config": "",
             "prompt": "[{0}] spook> ",
             "history": ".history",
-            "log.file": "spook.log"
+        },
+
+        "Log": {
+          "file.path": "",
+          "file.name": "spook.log",
+          "file.level": "Debug",
+          "shell.level": "Debug"
         },
 
         "RPC": {

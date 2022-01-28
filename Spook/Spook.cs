@@ -603,7 +603,7 @@ namespace Phantasma.Spook
 
             var loggers = new List<Logger>();
 
-            this.LogPath = Settings.Log.LogPath + Settings.Log.LogName;
+            this.LogPath = Path.Combine(Settings.Log.LogPath, Settings.Log.LogName);
 
             loggers.Add(new ConsoleLogger(Settings.Log.ShellLevel));
             loggers.Add(new FileLogger(LogPath, Settings.Log.FileLevel));
