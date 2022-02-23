@@ -605,8 +605,16 @@ namespace Phantasma.Spook
 
             this.LogPath = Path.Combine(Settings.Log.LogPath, Settings.Log.LogName);
 
-            loggers.Add(new ConsoleLogger(Settings.Log.ShellLevel));
-            loggers.Add(new FileLogger(LogPath, Settings.Log.FileLevel));
+            if (Settings.Log.ShellLevel > LogLevel.None)
+            {
+                loggers.Add(new ConsoleLogger(Settings.Log.ShellLevel));
+            }
+
+            if (Settings.Log.FileLevel > LogLevel.None)
+            {
+                loggers.Add(new FileLogger(LogPath, Settings.Log.FileLevel));
+            }
+
             Logger = new MultiLogger(loggers);
         }
 
