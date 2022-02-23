@@ -91,9 +91,7 @@ Spook can be run in three different modes:
 
 - no interface (default)
 - shell ("shell.enabled": true)
-- tui ("gui.enabled": true)
 
-Note, you cannot have shell and tui enabled at the same time.
 
 This is what the default configuration looks like:
 
@@ -163,14 +161,19 @@ This is what the default configuration looks like:
         },
 
         "App": {
-            "gui.enabled": false,
             "shell.enabled": false,
             "node.start": true,
             "app.name": "SPK",
             "config": "",
             "prompt": "[{0}] spook> ",
             "history": ".history",
-            "log.file": "spook.log"
+        },
+
+        "Log": {
+          "file.path": "",
+          "file.name": "spook.log",
+          "file.level": "Debug",
+          "shell.level": "Debug"
         },
 
         "RPC": {
@@ -258,10 +261,6 @@ Converts the backend storage from file to db, after the conversion is finished, 
 #Default: true
 #Enables or disables the event log.  Must be enabled for validator nodes.
 
--gui.enabled=
-#Options: 'true' or 'false'
-#Enables or disables the graphic when running spook - enabled doesn't work well in a scripted start
-
 -storage.path=
 #Default: /Storage
 #Selects the path where the node will save the chain data
@@ -341,13 +340,11 @@ sudo dpkg -i libssl1.0.0_1.0.1t-1+deb8u12_amd64.deb
 
 ````
 dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet -rpc.enabled=true
-#to disable the graphic in the terminal, add the following argument to the line above
--gui.enabled=false
 ````
 - An example shell script to execute the above and run it in the background as a process is
 ````
 #!/bin/bash
-dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet -rpc.enabled=true -gui.enabled=false &
+dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet -rpc.enabled=true &
 ````
 
 ### Ubuntu 18.04+
@@ -384,13 +381,11 @@ sudo apt-get install dotnet-runtime-2.2
 
 ````
 dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet -rpc.enabled=true
-#to disable the graphic in the terminal, add the following argument to the line above
--gui.enabled=false
 ````
 - An example shell script to execute the above and run it in the background as a process is
 ````
 #!/bin/bash
-dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet -rpc.enabled=true -gui.enabled=false &
+dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet -rpc.enabled=true &
 ````
 
 ### Ubuntu 19.04+
@@ -427,8 +422,6 @@ sudo apt-get install dotnet-runtime-2.2
 - Then run the instance
 ````
 dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet -rpc.enabled=true
-#to disable the graphic in the terminal, add the following argument to the line above
--gui.enabled=false  
 ````
 ### macOS 
 - Copy the compiled Spook files from the previous section to somewhere on the filesystem
@@ -439,8 +432,6 @@ https://dotnet.microsoft.com/download/thank-you/dotnet-runtime-2.2.5-macos-x64-i
 - Then run the instance
 ````
 dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet -rpc.enabled=true
-#to disable the graphic in the terminal, add the following argument to the line above
--gui.enabled=false 
 ````
 
 ### CentOS
@@ -457,15 +448,13 @@ sudo yum install dotnet-runtime-2.2
 - Then run the instance
 ````
 dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet -rpc.enabled=true
-#to disable the graphic in the terminal, add the following argument to the line above
--gui.enabled=false 
 ````
 
 - An example shell script to execute the above and run it in the background as a process is
 
 ````
 #!/bin/bash
-dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet -rpc.enabled=true -gui.enabled=false &
+dotnet Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet -rpc.enabled=true &
 ````
 ### Running in a screen - Linux
 
@@ -490,7 +479,7 @@ screen -S SpeckyRules
 - My shell script from above FYI looks like this
 ````
 #!/bin/bash
-dotnet ./Phantasma/Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet -rpc.enabled=true -gui.enabled=false &
+dotnet ./Phantasma/Spook.dll -node.wif=L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25 -nexus.name=simnet -rpc.enabled=true &
 ````
 
 To list screens
