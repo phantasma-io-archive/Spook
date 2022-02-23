@@ -495,7 +495,8 @@ namespace TxSender
 
                         var sb = new ScriptBuilder().AllowGas(signerKeys.Address, Address.Null, 100000, 99999);
 
-                            sb.CallContract(NativeContractKind.Sale, nameof(SaleContract.EditSalePrice), Hash.Parse("043D730801A8FDCD17F1E540C08282E91A387FA6236D43A39A10EAA01622BC4D"), 4);
+                        //sb.CallContract(NativeContractKind.Sale, nameof(SaleContract.EditSalePrice), Hash.Parse("043D730801A8FDCD17F1E540C08282E91A387FA6236D43A39A10EAA01622BC4D"), 4);
+                        sb.CallInterop("Organization.Kill", signerKeys.Address, "exchange_pot");
 
                         script = sb.SpendGas(signerKeys.Address).
                             EndScript();
