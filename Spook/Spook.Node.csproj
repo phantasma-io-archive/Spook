@@ -35,7 +35,7 @@
     <PackageReference Include="Nethereum.StandardNonFungibleTokenERC721" Version="3.8.0" />
     <PackageReference Include="Nethereum.StandardTokenEIP20" Version="3.8.0" />
     <PackageReference Include="Nethereum.Util" Version="3.8.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
     <PackageReference Include="ReadLine" Version="2.0.1" />
     <PackageReference Include="System.Runtime.Loader" Version="4.3.0" />
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="4.7.0" />
