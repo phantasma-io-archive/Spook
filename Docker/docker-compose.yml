@@ -1,0 +1,25 @@
+version: "3.9"
+
+services:
+  spook:
+    image: "pha-spook-old"
+    container_name: pha-spook-old
+    volumes:
+      - ./Storage:/app/Storage
+      - ./logs:/app/spook-log
+    entrypoint: dotnet
+    command: Spook.Node.dll
+    ports:
+      - "7078:7078"
+    networks:
+      - pha-spook-old
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "5"
+        max-size: "20m"
+
+networks:
+   pha-spook-old:
+      name: pha-spook-old-network
