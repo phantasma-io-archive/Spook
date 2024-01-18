@@ -1,0 +1,178 @@
+{
+  "ApplicationConfiguration": {
+    "Node": {
+      "web.logs": false,
+      "block.time": 2,
+      "minimum.fee": 100000,
+      "minimum.pow": 0,
+      "api.proxy.url": "",
+      "nexus.name": "simnet",
+      "node.mode": "validator",
+      "node.wif": "L2LGgkZAdupN2ee8Rs6hpkc65zaGcLbxhbSDGq8oh6umUxxzeW25",
+      "api.log": false,
+      "node.port": 7777,
+      "profiler.path": "",
+      "has.sync": false,
+      "has.mempool": true,
+      "mempool.log": false,
+      "has.events": false,
+      "has.relay": false,
+      "has.archive": false,
+      "has.rpc": true,
+      "has.rest": true,
+      "rpc.port": 7077,
+      "rest.port": 7078,
+      "nexus.bootstrap": true,
+      "genesis.timestamp": 0,
+      "api.cache": true,
+      "readonly": true,
+      "sender.host": "",
+      "sender.threads": 8,
+      "sender.address.count": 100,
+      "storage.path": "",
+      "verify.storage.path": "",
+      "oracle.path": "",
+      "storage.backend": "rocksdb",
+      "convert.storage": false,
+      "random.swap.data": false,
+      "seeds": []
+    },
+
+    "Oracle": {
+      "neoscan.api": "mankinighost.phantasma.io:4000",
+      "neo.rpc.specific.nodes": [],
+
+      "eth.fee.urls": [
+        {
+          "url": "https://gasprice.poa.network/",
+          "feeHeight": "instant",
+          "feeIncrease": 40,
+          "defaultFee": 0
+        },
+        {
+          "url": "https://www.etherchain.org/api/gasPriceOracle",
+          "feeHeight": "fastest",
+          "feeIncrease": 40,
+          "defaultFee": 0
+        },
+        {
+          "url": "https://api.anyblock.tools/latest-minimum-gasprice",
+          "feeHeight": "instant",
+          "feeIncrease": 40,
+          "defaultFee": 0
+        }
+      ],
+
+      "bsc.fee.urls": [
+        {
+          "url": "https://bscgas.info/gas",
+          "feeHeight": "instant",
+          "feeIncrease": 20,
+          "defaultFee": 15
+        }
+      ],
+
+      "pricer.coingecko.enabled": true,
+      "pricer.supportedtokens": [
+        {
+          "ticker": "SOUL",
+          "coingeckoid": "phantasma",
+          "cryptocompareid": "SOUL"
+        },
+        {
+          "ticker": "KCAL",
+          "coingeckoid": "phantasma-energy",
+          "cryptocompareid": "KCAL"
+        },
+        {
+          "ticker": "NEO",
+          "coingeckoid": "neo",
+          "cryptocompareid": "NEO"
+        },
+        {
+          "ticker": "GAS",
+          "coingeckoid": "gas",
+          "cryptocompareid": "GAS"
+        },
+        {
+          "ticker": "USDT",
+          "coingeckoid": "tether",
+          "cryptocompareid": "USDT"
+        },
+        {
+          "ticker": "ETH",
+          "coingeckoid": "ethereum",
+          "cryptocompareid": "ETH"
+        },
+        {
+          "ticker": "DAI",
+          "coingeckoid": "dai",
+          "cryptocompareid": "DAI"
+        },
+        {
+          "ticker": "DYT",
+          "coingeckoid": "dynamite",
+          "cryptocompareid": "DYT"
+        },
+        {
+          "ticker": "DANK",
+          "coingeckoid": "mu-dank",
+          "cryptocompareid": "DANK"
+        },
+        {
+          "ticker": "GOATI",
+          "coingeckoid": "GOATI",
+          "cryptocompareid": "GOATI"
+        },
+        {
+          "ticker": "USDC",
+          "coingeckoid": "usd-coin",
+          "cryptocompareid": "USDC"
+        },
+        {
+          "ticker": "BNB",
+          "coingeckoid": "binancecoin",
+          "cryptocompareid": "BNB"
+        },
+        {
+          "ticker": "BUSD",
+          "coingeckoid": "binance-usd",
+          "cryptocompareid": "BNB"
+        }
+      ],
+
+	  "swap.platforms": [
+		],		  
+
+      "eth.block.confirmations": 12,
+      "eth.gas.limit": 100000,
+      "crypto.compare.key": "AAAAAAAA"
+    },
+
+    "Simulator": {
+      "simulator.enabled": false,
+      "simulator.generate.blocks": false
+    },
+
+    "App": {
+      "shell.enabled": false,
+      "node.start": true,
+      "app.name": "SPK",
+      "config": "",
+      "prompt": "[{0}] spook> ",
+      "history": ".history"
+    },
+
+
+    "Log": {
+      "file.path": "spook.log",
+      "file.level": "Debug",
+      "shell.level": "Debug"
+    },
+
+    "RPC": {
+      "rpc.address": "localhost",
+      "rpc.port": 7654
+    }
+  }
+}
